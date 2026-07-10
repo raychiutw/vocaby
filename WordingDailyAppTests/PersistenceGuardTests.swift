@@ -15,6 +15,43 @@ final class PersistenceGuardTests: XCTestCase {
         XCTAssertEqual(sessions.first?.dayKey, "2026-07-10")
     }
 
+    func testSessionItemsAreCreatedInSelectionOrder() throws {
+        let context = try makeContext()
+        let service = ProgressPersistenceService()
+
+        let session = try service.session(
+            for: "2026-07-10",
+            itemIDs: ["basic-001", "basic-002", "basic-003"],
+            targetItemCount: 10,
+            in: context
+        )
+
+        let items = session.items.sorted { $0.position < $1.position }
+        XCTAssertEqual(items.map(\.itemID), ["basic-001", "basic-002", "basic-003"])
+        XCTAssertEqual(items.map(\.position), [0, 1, 2])
+    }
+
+    func testSessionItemsAreNotReplacedForExistingSession() throws {
+        let context = try makeContext()
+        let service = ProgressPersistenceService()
+
+        _ = try service.session(
+            for: "2026-07-10",
+            itemIDs: ["basic-001", "basic-002"],
+            targetItemCount: 10,
+            in: context
+        )
+        let existing = try service.session(
+            for: "2026-07-10",
+            itemIDs: ["basic-003", "basic-004"],
+            targetItemCount: 10,
+            in: context
+        )
+
+        let items = existing.items.sorted { $0.position < $1.position }
+        XCTAssertEqual(items.map(\.itemID), ["basic-001", "basic-002"])
+    }
+
     func testWordProgressGuardReusesExistingItemID() throws {
         let context = try makeContext()
         let service = ProgressPersistenceService()

@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 @main
@@ -6,6 +7,12 @@ struct WordingDailyApp: App {
         WindowGroup {
             RootView()
                 .tint(AppTheme.accent)
+                .modelContainer(for: [
+                    WordProgress.self,
+                    DailySession.self,
+                    DailySessionItem.self,
+                    QuizResult.self
+                ])
         }
     }
 }

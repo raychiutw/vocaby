@@ -21,6 +21,27 @@ struct ProgressPersistenceService {
         return session
     }
 
+    func session(
+        for dayKey: String,
+        itemIDs: [String],
+        targetItemCount: Int = 10,
+        in context: ModelContext
+    ) throws -> DailySession {
+        let session = try session(for: dayKey, targetItemCount: targetItemCount, in: context)
+        guard session.items.isEmpty else {
+            return session
+        }
+
+        for (position, itemID) in itemIDs.enumerated() {
+            let item = DailySessionItem(itemID: itemID, position: position)
+            context.insert(item)
+            session.items.append(item)
+        }
+
+        try context.save()
+        return session
+    }
+
     func wordProgress(
         for itemID: String,
         level: VocabularyLevel,
