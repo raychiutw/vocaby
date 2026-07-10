@@ -1,0 +1,11 @@
+import SwiftUI
+
+enum AppTheme {
+    static let accent = Color("Accent")
+    static let accentSoft = Color("AccentSoft")
+    static let focusInk = Color("FocusInk")
+    static let mutedInk = Color("MutedInk")
+    static let reviewAmber = Color("ReviewAmber")
+    static let wrongRed = Color("WrongRed")
+    static let correctGreen = Color("CorrectGreen")
+}

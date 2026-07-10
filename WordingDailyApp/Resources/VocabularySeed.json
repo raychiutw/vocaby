@@ -1,0 +1,842 @@
+[
+  {
+    "id": "basic-001",
+    "level": "basic",
+    "sortOrder": 1,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "very good",
+    "upgradedExpression": "excellent",
+    "meaning": {
+      "en": "A stronger, cleaner way to say very good.",
+      "zh-Hant": "比 very good 更精準，用來稱讚表現或品質。"
+    },
+    "example": {
+      "text": "Your summary was excellent.",
+      "translation": {
+        "zh-Hant": "你的摘要寫得很出色。"
+      }
+    },
+    "pronunciationText": "excellent",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression best upgrades very good?",
+        "zh-Hant": "哪個表達最適合替換 very good？"
+      },
+      "options": ["excellent", "very okay", "not bad", "maybe good"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-002",
+    "level": "basic",
+    "sortOrder": 2,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "help me",
+    "upgradedExpression": "give me a hand",
+    "meaning": {
+      "en": "A friendly request for help.",
+      "zh-Hant": "自然、口語的請人幫忙說法。"
+    },
+    "example": {
+      "text": "Could you give me a hand with this?",
+      "translation": {
+        "zh-Hant": "你可以幫我處理這個嗎？"
+      }
+    },
+    "pronunciationText": "give me a hand",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression best upgrades help me?",
+        "zh-Hant": "哪個表達最適合替換 help me？"
+      },
+      "options": ["give me a hand", "hand me a give", "helping maybe", "good help"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-003",
+    "level": "basic",
+    "sortOrder": 3,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "I think",
+    "upgradedExpression": "I suppose",
+    "meaning": {
+      "en": "A softer way to share an opinion.",
+      "zh-Hant": "比 I think 更柔和，適合保留一點不確定性。"
+    },
+    "example": {
+      "text": "I suppose we could meet earlier.",
+      "translation": {
+        "zh-Hant": "我想我們可以早一點見面。"
+      }
+    },
+    "pronunciationText": "I suppose",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression softly upgrades I think?",
+        "zh-Hant": "哪個表達能更柔和地替換 I think？"
+      },
+      "options": ["I suppose", "I maybe", "I good", "I opinion"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-004",
+    "level": "basic",
+    "sortOrder": 4,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "a lot of",
+    "upgradedExpression": "plenty of",
+    "meaning": {
+      "en": "A natural phrase for a generous amount.",
+      "zh-Hant": "表示數量很多，而且語氣自然不生硬。"
+    },
+    "example": {
+      "text": "We still have plenty of time.",
+      "translation": {
+        "zh-Hant": "我們還有很多時間。"
+      }
+    },
+    "pronunciationText": "plenty of",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression best upgrades a lot of?",
+        "zh-Hant": "哪個表達最適合替換 a lot of？"
+      },
+      "options": ["plenty of", "many much", "lotly", "full of many"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-005",
+    "level": "basic",
+    "sortOrder": 5,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "I am tired",
+    "upgradedExpression": "I'm worn out",
+    "meaning": {
+      "en": "A common phrase for being very tired.",
+      "zh-Hant": "口語中表示非常累，比 I am tired 更有畫面。"
+    },
+    "example": {
+      "text": "I'm worn out after the meeting.",
+      "translation": {
+        "zh-Hant": "開完會後我累壞了。"
+      }
+    },
+    "pronunciationText": "I'm worn out",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression best upgrades I am tired?",
+        "zh-Hant": "哪個表達最適合替換 I am tired？"
+      },
+      "options": ["I'm worn out", "I'm tiredly", "I'm sleep", "I'm much tired"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-006",
+    "level": "basic",
+    "sortOrder": 6,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "wait",
+    "upgradedExpression": "hold on",
+    "meaning": {
+      "en": "A casual way to ask someone to wait briefly.",
+      "zh-Hant": "請對方稍等一下的自然口語說法。"
+    },
+    "example": {
+      "text": "Hold on, I need to check the address.",
+      "translation": {
+        "zh-Hant": "等一下，我要確認地址。"
+      }
+    },
+    "pronunciationText": "hold on",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression naturally upgrades wait?",
+        "zh-Hant": "哪個表達能自然替換 wait？"
+      },
+      "options": ["hold on", "waitly", "stop waiting", "on holded"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-007",
+    "level": "basic",
+    "sortOrder": 7,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "call me",
+    "upgradedExpression": "give me a call",
+    "meaning": {
+      "en": "A more natural request for someone to phone you.",
+      "zh-Hant": "請對方打電話給你的自然說法。"
+    },
+    "example": {
+      "text": "Give me a call when you arrive.",
+      "translation": {
+        "zh-Hant": "你到的時候打給我。"
+      }
+    },
+    "pronunciationText": "give me a call",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression best upgrades call me?",
+        "zh-Hant": "哪個表達最適合替換 call me？"
+      },
+      "options": ["give me a call", "make me phone", "call to me", "phone me a give"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-008",
+    "level": "basic",
+    "sortOrder": 8,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "I don't know",
+    "upgradedExpression": "I'm not sure",
+    "meaning": {
+      "en": "A softer way to say you do not know.",
+      "zh-Hant": "比 I don't know 更委婉，適合日常對話。"
+    },
+    "example": {
+      "text": "I'm not sure which option is better.",
+      "translation": {
+        "zh-Hant": "我不確定哪個選項比較好。"
+      }
+    },
+    "pronunciationText": "I'm not sure",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression softly upgrades I don't know?",
+        "zh-Hant": "哪個表達能更委婉地替換 I don't know？"
+      },
+      "options": ["I'm not sure", "I'm no know", "I unknown", "I don't sure"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-009",
+    "level": "basic",
+    "sortOrder": 9,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "look at",
+    "upgradedExpression": "take a look at",
+    "meaning": {
+      "en": "A natural phrase for asking someone to check something.",
+      "zh-Hant": "請對方看一下或確認某物時很常用。"
+    },
+    "example": {
+      "text": "Can you take a look at this draft?",
+      "translation": {
+        "zh-Hant": "你可以看一下這份草稿嗎？"
+      }
+    },
+    "pronunciationText": "take a look at",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression best upgrades look at?",
+        "zh-Hant": "哪個表達最適合替換 look at？"
+      },
+      "options": ["take a look at", "look a take", "see at", "watch to"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "basic-010",
+    "level": "basic",
+    "sortOrder": 10,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "I agree",
+    "upgradedExpression": "that makes sense",
+    "meaning": {
+      "en": "A conversational way to show agreement with someone's point.",
+      "zh-Hant": "表示認同對方說法，比 I agree 更像自然對話。"
+    },
+    "example": {
+      "text": "That makes sense. Let's try it.",
+      "translation": {
+        "zh-Hant": "這樣說得通，我們試試看。"
+      }
+    },
+    "pronunciationText": "that makes sense",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression conversationally upgrades I agree?",
+        "zh-Hant": "哪個表達能自然替換 I agree？"
+      },
+      "options": ["that makes sense", "I agreeful", "sense is that", "I same"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-001",
+    "level": "intermediate",
+    "sortOrder": 1,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "very important",
+    "upgradedExpression": "crucial",
+    "meaning": {
+      "en": "A concise word for something extremely important.",
+      "zh-Hant": "表示非常重要、不可忽略，比 very important 更精煉。"
+    },
+    "example": {
+      "text": "Clear timing is crucial for this launch.",
+      "translation": {
+        "zh-Hant": "清楚的時程對這次上線非常關鍵。"
+      }
+    },
+    "pronunciationText": "crucial",
+    "quiz": {
+      "prompt": {
+        "en": "Which word best upgrades very important?",
+        "zh-Hant": "哪個字最適合替換 very important？"
+      },
+      "options": ["crucial", "importantly", "big needed", "mainly good"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-002",
+    "level": "intermediate",
+    "sortOrder": 2,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "start doing",
+    "upgradedExpression": "get started on",
+    "meaning": {
+      "en": "A natural phrase for beginning a task.",
+      "zh-Hant": "開始著手某件事的自然說法。"
+    },
+    "example": {
+      "text": "I'll get started on the report this afternoon.",
+      "translation": {
+        "zh-Hant": "我今天下午會開始寫報告。"
+      }
+    },
+    "pronunciationText": "get started on",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression best upgrades start doing?",
+        "zh-Hant": "哪個表達最適合替換 start doing？"
+      },
+      "options": ["get started on", "startingly do", "begin on doing", "do startful"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-003",
+    "level": "intermediate",
+    "sortOrder": 3,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "make better",
+    "upgradedExpression": "improve",
+    "meaning": {
+      "en": "A direct verb for making something better.",
+      "zh-Hant": "表示改善、提升，比 make better 更正式簡潔。"
+    },
+    "example": {
+      "text": "We can improve the flow with clearer labels.",
+      "translation": {
+        "zh-Hant": "我們可以用更清楚的標籤改善流程。"
+      }
+    },
+    "pronunciationText": "improve",
+    "quiz": {
+      "prompt": {
+        "en": "Which verb best upgrades make better?",
+        "zh-Hant": "哪個動詞最適合替換 make better？"
+      },
+      "options": ["improve", "betterize", "good make", "up good"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-004",
+    "level": "intermediate",
+    "sortOrder": 4,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "talk about",
+    "upgradedExpression": "discuss",
+    "meaning": {
+      "en": "A concise verb for talking through a topic.",
+      "zh-Hant": "討論某個主題，比 talk about 更精準。"
+    },
+    "example": {
+      "text": "Let's discuss the pricing before Friday.",
+      "translation": {
+        "zh-Hant": "我們週五前討論一下定價。"
+      }
+    },
+    "pronunciationText": "discuss",
+    "quiz": {
+      "prompt": {
+        "en": "Which verb best upgrades talk about?",
+        "zh-Hant": "哪個動詞最適合替換 talk about？"
+      },
+      "options": ["discuss", "speak around", "talking topic", "say about"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-005",
+    "level": "intermediate",
+    "sortOrder": 5,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "not clear",
+    "upgradedExpression": "unclear",
+    "meaning": {
+      "en": "A cleaner adjective for something that is hard to understand.",
+      "zh-Hant": "表示不清楚、不明確，比 not clear 更簡潔。"
+    },
+    "example": {
+      "text": "The next step is still unclear.",
+      "translation": {
+        "zh-Hant": "下一步目前還不清楚。"
+      }
+    },
+    "pronunciationText": "unclear",
+    "quiz": {
+      "prompt": {
+        "en": "Which adjective best upgrades not clear?",
+        "zh-Hant": "哪個形容詞最適合替換 not clear？"
+      },
+      "options": ["unclear", "unclearly thing", "not clearness", "clearless maybe"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-006",
+    "level": "intermediate",
+    "sortOrder": 6,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "because of",
+    "upgradedExpression": "due to",
+    "meaning": {
+      "en": "A concise phrase for explaining a cause.",
+      "zh-Hant": "用來說明原因，比 because of 更精煉。"
+    },
+    "example": {
+      "text": "The meeting was delayed due to traffic.",
+      "translation": {
+        "zh-Hant": "會議因為交通延誤而延後。"
+      }
+    },
+    "pronunciationText": "due to",
+    "quiz": {
+      "prompt": {
+        "en": "Which phrase best upgrades because of?",
+        "zh-Hant": "哪個片語最適合替換 because of？"
+      },
+      "options": ["due to", "cause by of", "because due", "of reason"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-007",
+    "level": "intermediate",
+    "sortOrder": 7,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "a good chance",
+    "upgradedExpression": "a strong possibility",
+    "meaning": {
+      "en": "A clearer way to describe something likely.",
+      "zh-Hant": "表示很有可能，比 a good chance 更清楚正式。"
+    },
+    "example": {
+      "text": "There is a strong possibility that prices will rise.",
+      "translation": {
+        "zh-Hant": "價格很有可能會上漲。"
+      }
+    },
+    "pronunciationText": "a strong possibility",
+    "quiz": {
+      "prompt": {
+        "en": "Which phrase best upgrades a good chance?",
+        "zh-Hant": "哪個片語最適合替換 a good chance？"
+      },
+      "options": ["a strong possibility", "a chance strong", "possible good", "a likely maybe"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-008",
+    "level": "intermediate",
+    "sortOrder": 8,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "fix a problem",
+    "upgradedExpression": "resolve an issue",
+    "meaning": {
+      "en": "A more professional way to say fix a problem.",
+      "zh-Hant": "表示解決問題，語氣比 fix a problem 更專業。"
+    },
+    "example": {
+      "text": "We resolved the issue before the demo.",
+      "translation": {
+        "zh-Hant": "我們在 demo 前解決了這個問題。"
+      }
+    },
+    "pronunciationText": "resolve an issue",
+    "quiz": {
+      "prompt": {
+        "en": "Which expression best upgrades fix a problem?",
+        "zh-Hant": "哪個表達最適合替換 fix a problem？"
+      },
+      "options": ["resolve an issue", "problem a fix", "repair trouble", "solve fixing"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-009",
+    "level": "intermediate",
+    "sortOrder": 9,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "think carefully",
+    "upgradedExpression": "consider",
+    "meaning": {
+      "en": "A concise verb for thinking carefully before deciding.",
+      "zh-Hant": "表示仔細考慮，比 think carefully 更簡潔。"
+    },
+    "example": {
+      "text": "Please consider the timeline before approving it.",
+      "translation": {
+        "zh-Hant": "核准前請先考慮時程。"
+      }
+    },
+    "pronunciationText": "consider",
+    "quiz": {
+      "prompt": {
+        "en": "Which verb best upgrades think carefully?",
+        "zh-Hant": "哪個動詞最適合替換 think carefully？"
+      },
+      "options": ["consider", "mind carefully", "thoughting", "care think"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "intermediate-010",
+    "level": "intermediate",
+    "sortOrder": 10,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "keep doing",
+    "upgradedExpression": "continue to",
+    "meaning": {
+      "en": "A clean phrase for carrying on with an action.",
+      "zh-Hant": "表示持續做某件事，比 keep doing 更正式。"
+    },
+    "example": {
+      "text": "We will continue to monitor the results.",
+      "translation": {
+        "zh-Hant": "我們會持續觀察結果。"
+      }
+    },
+    "pronunciationText": "continue to",
+    "quiz": {
+      "prompt": {
+        "en": "Which phrase best upgrades keep doing?",
+        "zh-Hant": "哪個片語最適合替換 keep doing？"
+      },
+      "options": ["continue to", "keep to doing", "doing keep", "continue doingness"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-001",
+    "level": "advanced",
+    "sortOrder": 1,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "make worse",
+    "upgradedExpression": "exacerbate",
+    "meaning": {
+      "en": "A precise verb for making a bad situation worse.",
+      "zh-Hant": "表示讓壞情況惡化，常用於正式或分析語境。"
+    },
+    "example": {
+      "text": "Poor communication can exacerbate the delay.",
+      "translation": {
+        "zh-Hant": "溝通不良可能讓延誤更加嚴重。"
+      }
+    },
+    "pronunciationText": "exacerbate",
+    "quiz": {
+      "prompt": {
+        "en": "Which verb best upgrades make worse?",
+        "zh-Hant": "哪個動詞最適合替換 make worse？"
+      },
+      "options": ["exacerbate", "worsenize", "badly make", "down improve"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-002",
+    "level": "advanced",
+    "sortOrder": 2,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "very careful",
+    "upgradedExpression": "meticulous",
+    "meaning": {
+      "en": "A precise adjective for careful attention to detail.",
+      "zh-Hant": "表示非常細心、重視細節，比 very careful 更精準。"
+    },
+    "example": {
+      "text": "Her review was meticulous and practical.",
+      "translation": {
+        "zh-Hant": "她的審查很細緻，也很實用。"
+      }
+    },
+    "pronunciationText": "meticulous",
+    "quiz": {
+      "prompt": {
+        "en": "Which adjective best upgrades very careful?",
+        "zh-Hant": "哪個形容詞最適合替換 very careful？"
+      },
+      "options": ["meticulous", "carefulest", "detail good", "more caution"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-003",
+    "level": "advanced",
+    "sortOrder": 3,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "hard to understand",
+    "upgradedExpression": "ambiguous",
+    "meaning": {
+      "en": "Used when something can be understood in more than one way.",
+      "zh-Hant": "表示意思模糊、可能有多種解讀。"
+    },
+    "example": {
+      "text": "The policy is ambiguous without examples.",
+      "translation": {
+        "zh-Hant": "沒有範例的話，這項政策會顯得模糊。"
+      }
+    },
+    "pronunciationText": "ambiguous",
+    "quiz": {
+      "prompt": {
+        "en": "Which adjective best upgrades hard to understand?",
+        "zh-Hant": "哪個形容詞最適合替換 hard to understand？"
+      },
+      "options": ["ambiguous", "understandless", "hard meaning", "confuseful"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-004",
+    "level": "advanced",
+    "sortOrder": 4,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "use something well",
+    "upgradedExpression": "leverage",
+    "meaning": {
+      "en": "To use a resource or advantage effectively.",
+      "zh-Hant": "有效運用資源或優勢，常見於商務語境。"
+    },
+    "example": {
+      "text": "We can leverage existing content for onboarding.",
+      "translation": {
+        "zh-Hant": "我們可以運用既有內容來做 onboarding。"
+      }
+    },
+    "pronunciationText": "leverage",
+    "quiz": {
+      "prompt": {
+        "en": "Which verb best upgrades use something well?",
+        "zh-Hant": "哪個動詞最適合替換 use something well？"
+      },
+      "options": ["leverage", "usefully use", "resource do", "well utilize good"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-005",
+    "level": "advanced",
+    "sortOrder": 5,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "change a lot",
+    "upgradedExpression": "fluctuate",
+    "meaning": {
+      "en": "To rise and fall or change often.",
+      "zh-Hant": "表示數值或狀態上下變動、波動。"
+    },
+    "example": {
+      "text": "Demand tends to fluctuate during holidays.",
+      "translation": {
+        "zh-Hant": "假期期間需求通常會波動。"
+      }
+    },
+    "pronunciationText": "fluctuate",
+    "quiz": {
+      "prompt": {
+        "en": "Which verb best upgrades change a lot?",
+        "zh-Hant": "哪個動詞最適合替換 change a lot？"
+      },
+      "options": ["fluctuate", "changeful", "vary muchly", "move random"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-006",
+    "level": "advanced",
+    "sortOrder": 6,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "not needed",
+    "upgradedExpression": "redundant",
+    "meaning": {
+      "en": "Unnecessary because something is already covered.",
+      "zh-Hant": "表示多餘、重複，因為已經被涵蓋。"
+    },
+    "example": {
+      "text": "The second confirmation step feels redundant.",
+      "translation": {
+        "zh-Hant": "第二個確認步驟感覺有點多餘。"
+      }
+    },
+    "pronunciationText": "redundant",
+    "quiz": {
+      "prompt": {
+        "en": "Which adjective best upgrades not needed?",
+        "zh-Hant": "哪個形容詞最適合替換 not needed？"
+      },
+      "options": ["redundant", "needlessed", "not needful", "extra necessary"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-007",
+    "level": "advanced",
+    "sortOrder": 7,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "short and clear",
+    "upgradedExpression": "concise",
+    "meaning": {
+      "en": "Brief while still giving the needed meaning.",
+      "zh-Hant": "表示簡潔清楚，不只是短，而是剛好夠用。"
+    },
+    "example": {
+      "text": "The message should be concise and specific.",
+      "translation": {
+        "zh-Hant": "訊息應該簡潔且具體。"
+      }
+    },
+    "pronunciationText": "concise",
+    "quiz": {
+      "prompt": {
+        "en": "Which adjective best upgrades short and clear?",
+        "zh-Hant": "哪個形容詞最適合替換 short and clear？"
+      },
+      "options": ["concise", "shortly clear", "tiny exact", "briefed"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-008",
+    "level": "advanced",
+    "sortOrder": 8,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "make sure",
+    "upgradedExpression": "ensure",
+    "meaning": {
+      "en": "A formal verb for making certain that something happens.",
+      "zh-Hant": "確保某事發生或符合條件，比 make sure 更正式。"
+    },
+    "example": {
+      "text": "We need to ensure the data is accurate.",
+      "translation": {
+        "zh-Hant": "我們需要確保資料正確。"
+      }
+    },
+    "pronunciationText": "ensure",
+    "quiz": {
+      "prompt": {
+        "en": "Which verb best upgrades make sure?",
+        "zh-Hant": "哪個動詞最適合替換 make sure？"
+      },
+      "options": ["ensure", "sure make", "certain do", "assure maybe"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-009",
+    "level": "advanced",
+    "sortOrder": 9,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "can change",
+    "upgradedExpression": "flexible",
+    "meaning": {
+      "en": "Able to adjust when the situation changes.",
+      "zh-Hant": "表示有彈性、能依情況調整。"
+    },
+    "example": {
+      "text": "The schedule is flexible if we decide early.",
+      "translation": {
+        "zh-Hant": "如果我們早點決定，時程是有彈性的。"
+      }
+    },
+    "pronunciationText": "flexible",
+    "quiz": {
+      "prompt": {
+        "en": "Which adjective best upgrades can change?",
+        "zh-Hant": "哪個形容詞最適合替換 can change？"
+      },
+      "options": ["flexible", "change able good", "movable maybe", "variedly"],
+      "correctOptionIndex": 0
+    }
+  },
+  {
+    "id": "advanced-010",
+    "level": "advanced",
+    "sortOrder": 10,
+    "contentLanguageCode": "en",
+    "supportLanguageCodes": ["zh-Hant"],
+    "plainExpression": "very common",
+    "upgradedExpression": "widespread",
+    "meaning": {
+      "en": "Found or happening in many places.",
+      "zh-Hant": "表示普遍存在、廣泛發生，比 very common 更精準。"
+    },
+    "example": {
+      "text": "Remote work is widespread in this industry.",
+      "translation": {
+        "zh-Hant": "遠端工作在這個產業很普遍。"
+      }
+    },
+    "pronunciationText": "widespread",
+    "quiz": {
+      "prompt": {
+        "en": "Which adjective best upgrades very common?",
+        "zh-Hant": "哪個形容詞最適合替換 very common？"
+      },
+      "options": ["widespread", "commonful", "very usual", "popular everywherely"],
+      "correctOptionIndex": 0
+    }
+  }
+]

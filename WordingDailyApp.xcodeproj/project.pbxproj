@@ -1,0 +1,586 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 70;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000400 /* WordingDailyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000300 /* WordingDailyApp.swift */; };
+		000000000000000000000401 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000301 /* RootTabView.swift */; };
+		000000000000000000000402 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000302 /* TodayView.swift */; };
+		000000000000000000000403 /* ReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000303 /* ReviewView.swift */; };
+		000000000000000000000404 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000304 /* LibraryView.swift */; };
+		000000000000000000000405 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000305 /* SettingsView.swift */; };
+		000000000000000000000406 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000306 /* Theme.swift */; };
+		000000000000000000000407 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000307 /* Assets.xcassets */; };
+		000000000000000000000408 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000308 /* Localizable.xcstrings */; };
+		000000000000000000000409 /* VocabularyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000309 /* VocabularyModels.swift */; };
+		00000000000000000000040A /* PersistenceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030A /* PersistenceModels.swift */; };
+		00000000000000000000040B /* DayKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030B /* DayKeyService.swift */; };
+		00000000000000000000040C /* SeedLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030C /* SeedLoader.swift */; };
+		00000000000000000000040D /* VocabularySeed.json in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030D /* VocabularySeed.json */; };
+		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
+		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		000000000000000000000230 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000100;
+			remoteInfo = WordingDailyApp;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000110 /* WordingDailyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WordingDailyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000111 /* WordingDailyAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WordingDailyAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000300 /* WordingDailyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordingDailyApp.swift; sourceTree = "<group>"; };
+		000000000000000000000301 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		000000000000000000000302 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		000000000000000000000303 /* ReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewView.swift; sourceTree = "<group>"; };
+		000000000000000000000304 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		000000000000000000000305 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000000306 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		000000000000000000000307 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		000000000000000000000308 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		000000000000000000000309 /* VocabularyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyModels.swift; sourceTree = "<group>"; };
+		00000000000000000000030A /* PersistenceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceModels.swift; sourceTree = "<group>"; };
+		00000000000000000000030B /* DayKeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyService.swift; sourceTree = "<group>"; };
+		00000000000000000000030C /* SeedLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedLoader.swift; sourceTree = "<group>"; };
+		00000000000000000000030D /* VocabularySeed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = VocabularySeed.json; sourceTree = "<group>"; };
+		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
+		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000122 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000132 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000004 /* WordingDailyApp */,
+				000000000000000000000060 /* WordingDailyAppTests */,
+				000000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000110 /* WordingDailyApp.app */,
+				000000000000000000000111 /* WordingDailyAppTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		000000000000000000000004 /* WordingDailyApp */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000005 /* App */,
+				000000000000000000000050 /* Features */,
+				000000000000000000000058 /* Models */,
+				000000000000000000000059 /* Services */,
+				000000000000000000000056 /* Design */,
+				000000000000000000000057 /* Resources */,
+				000000000000000000000307 /* Assets.xcassets */,
+			);
+			path = WordingDailyApp;
+			sourceTree = "<group>";
+		};
+		000000000000000000000005 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000300 /* WordingDailyApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		000000000000000000000050 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000051 /* Root */,
+				000000000000000000000052 /* Today */,
+				000000000000000000000053 /* Review */,
+				000000000000000000000054 /* Library */,
+				000000000000000000000055 /* Settings */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		000000000000000000000051 /* Root */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000301 /* RootTabView.swift */,
+			);
+			path = Root;
+			sourceTree = "<group>";
+		};
+		000000000000000000000052 /* Today */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000302 /* TodayView.swift */,
+			);
+			path = Today;
+			sourceTree = "<group>";
+		};
+		000000000000000000000053 /* Review */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000303 /* ReviewView.swift */,
+			);
+			path = Review;
+			sourceTree = "<group>";
+		};
+		000000000000000000000054 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000304 /* LibraryView.swift */,
+			);
+			path = Library;
+			sourceTree = "<group>";
+		};
+		000000000000000000000055 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000305 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		000000000000000000000056 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000306 /* Theme.swift */,
+			);
+			path = Design;
+			sourceTree = "<group>";
+		};
+		000000000000000000000057 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000308 /* Localizable.xcstrings */,
+				00000000000000000000030D /* VocabularySeed.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		000000000000000000000058 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000309 /* VocabularyModels.swift */,
+				00000000000000000000030A /* PersistenceModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		000000000000000000000059 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000030B /* DayKeyService.swift */,
+				00000000000000000000030C /* SeedLoader.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		000000000000000000000060 /* WordingDailyAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000320 /* DayKeyServiceTests.swift */,
+				000000000000000000000321 /* VocabularySeedValidationTests.swift */,
+			);
+			path = WordingDailyAppTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000100 /* WordingDailyApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000212 /* Build configuration list for PBXNativeTarget "WordingDailyApp" */;
+			buildPhases = (
+				000000000000000000000120 /* Sources */,
+				000000000000000000000122 /* Frameworks */,
+				000000000000000000000121 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WordingDailyApp;
+			productName = WordingDailyApp;
+			productReference = 000000000000000000000110 /* WordingDailyApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		000000000000000000000101 /* WordingDailyAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000222 /* Build configuration list for PBXNativeTarget "WordingDailyAppTests" */;
+			buildPhases = (
+				000000000000000000000130 /* Sources */,
+				000000000000000000000132 /* Frameworks */,
+				000000000000000000000131 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				000000000000000000000231 /* PBXTargetDependency */,
+			);
+			name = WordingDailyAppTests;
+			productName = WordingDailyAppTests;
+			productReference = 000000000000000000000111 /* WordingDailyAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					000000000000000000000100 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					000000000000000000000101 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 000000000000000000000100;
+					};
+				};
+			};
+			buildConfigurationList = 000000000000000000000202 /* Build configuration list for PBXProject "WordingDailyApp" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				"zh-Hant",
+			);
+			mainGroup = 000000000000000000000002;
+			productRefGroup = 000000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000100 /* WordingDailyApp */,
+				000000000000000000000101 /* WordingDailyAppTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000000121 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000407 /* Assets.xcassets in Resources */,
+				000000000000000000000408 /* Localizable.xcstrings in Resources */,
+				00000000000000000000040D /* VocabularySeed.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000131 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000120 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000400 /* WordingDailyApp.swift in Sources */,
+				000000000000000000000401 /* RootTabView.swift in Sources */,
+				000000000000000000000402 /* TodayView.swift in Sources */,
+				000000000000000000000403 /* ReviewView.swift in Sources */,
+				000000000000000000000404 /* LibraryView.swift in Sources */,
+				000000000000000000000405 /* SettingsView.swift in Sources */,
+				000000000000000000000406 /* Theme.swift in Sources */,
+				000000000000000000000409 /* VocabularyModels.swift in Sources */,
+				00000000000000000000040A /* PersistenceModels.swift in Sources */,
+				00000000000000000000040B /* DayKeyService.swift in Sources */,
+				00000000000000000000040C /* SeedLoader.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000130 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000420 /* DayKeyServiceTests.swift in Sources */,
+				000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		000000000000000000000231 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000100 /* WordingDailyApp */;
+			targetProxy = 000000000000000000000230 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		000000000000000000000200 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		000000000000000000000201 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		000000000000000000000210 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Accent;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Wording Daily";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.raychiutw.WordingDaily;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		000000000000000000000211 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Accent;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Wording Daily";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.raychiutw.WordingDaily;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		000000000000000000000220 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.raychiutw.WordingDailyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WordingDailyApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WordingDailyApp";
+			};
+			name = Debug;
+		};
+		000000000000000000000221 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.raychiutw.WordingDailyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WordingDailyApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WordingDailyApp";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000202 /* Build configuration list for PBXProject "WordingDailyApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000200 /* Debug */,
+				000000000000000000000201 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000212 /* Build configuration list for PBXNativeTarget "WordingDailyApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000210 /* Debug */,
+				000000000000000000000211 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000222 /* Build configuration list for PBXNativeTarget "WordingDailyAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000220 /* Debug */,
+				000000000000000000000221 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000001 /* Project object */;
+}
