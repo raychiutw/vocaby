@@ -80,6 +80,10 @@ struct QuizRunState {
         self.questions = questions
     }
 
+    mutating func reset(with questions: [QuizQuestion]) {
+        self = QuizRunState(questions: questions)
+    }
+
     @discardableResult
     mutating func submit(_ submittedAnswer: String) -> QuizAttempt? {
         record(submittedAnswer: submittedAnswer, timedOut: false)

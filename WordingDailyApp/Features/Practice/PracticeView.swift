@@ -2,6 +2,8 @@ import AVFoundation
 import SwiftUI
 
 struct QuizRunView<Completion: View>: View {
+    let runID: AnyHashable
+    let questions: [QuizQuestion]
     let configuration: PracticeConfiguration
     let tint: Color
     let onFirstAttempt: (QuizAttempt) throws -> Void
@@ -13,13 +15,16 @@ struct QuizRunView<Completion: View>: View {
     @State private var errorMessage: String?
     @State private var speechSynthesizer = AVSpeechSynthesizer()
 
-    init(
+    init<RunID: Hashable>(
+        runID: RunID,
         questions: [QuizQuestion],
         configuration: PracticeConfiguration,
         tint: Color,
         onFirstAttempt: @escaping (QuizAttempt) throws -> Void,
         @ViewBuilder completion: @escaping () -> Completion
     ) {
+        self.runID = AnyHashable(runID)
+        self.questions = questions
         self.configuration = configuration
         self.tint = tint
         self.onFirstAttempt = onFirstAttempt
@@ -60,6 +65,9 @@ struct QuizRunView<Completion: View>: View {
                 .padding(.vertical, 12)
                 .background(.regularMaterial)
             }
+        }
+        .onChange(of: runID) {
+            resetRun()
         }
     }
 
@@ -105,6 +113,7 @@ struct QuizRunView<Completion: View>: View {
                             speak(spokenText)
                         } label: {
                             Label("practice.audio.replay", systemImage: "speaker.wave.2")
+                                .frame(minWidth: 44, minHeight: 44)
                         }
                         .buttonStyle(.bordered)
                         .accessibilityLabel(Text("practice.audio.replay"))
@@ -293,6 +302,13 @@ struct QuizRunView<Completion: View>: View {
 
     private func resetDeadline() {
         deadline = Date().addingTimeInterval(TimeInterval(configuration.timeLimitSeconds))
+    }
+
+    private func resetRun() {
+        runState.reset(with: questions)
+        spellingText = ""
+        errorMessage = nil
+        resetDeadline()
     }
 
     private func speak(_ text: String) {

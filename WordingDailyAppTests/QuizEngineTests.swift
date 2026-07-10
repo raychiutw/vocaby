@@ -204,6 +204,28 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertEqual(state.firstAttempts.count, 2)
     }
 
+    func testResetStartsNewRunWithClearedHistory() {
+        let original = makeQuestion("original")
+        let replacement = makeQuestion("replacement", mode: .spelling)
+        var state = QuizRunState(questions: [original])
+
+        state.submit("wrong")
+        state.advance()
+        XCTAssertTrue(state.startRetry())
+        state.submit("still wrong")
+        state.advance()
+
+        state.reset(with: [replacement])
+
+        XCTAssertEqual(state.questions, [replacement])
+        XCTAssertEqual(state.currentQuestion, replacement)
+        XCTAssertEqual(state.currentIndex, 0)
+        XCTAssertNil(state.currentFeedback)
+        XCTAssertTrue(state.firstAttempts.isEmpty)
+        XCTAssertTrue(state.retryAttempts.isEmpty)
+        XCTAssertFalse(state.isRetryRound)
+    }
+
     func testOptionPersistenceIndicesUseVisibleOptionPositions() {
         let question = QuizQuestion(
             id: "choice-expressionChoice",
