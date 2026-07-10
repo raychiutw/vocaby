@@ -198,16 +198,6 @@ private struct ReviewSessionView: View {
                     Section {
                         Text(String(localized: selectedOptionIndex == item.quiz.correctOptionIndex ? "practice.correct" : "practice.wrong"))
                             .font(.headline)
-
-                        Button {
-                            persistAnswer()
-                        } label: {
-                            Text(String(localized: isLastItem ? "common.done" : "practice.next"))
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .tint(AppTheme.reviewAmber)
                     }
                 }
             } else {
@@ -229,6 +219,24 @@ private struct ReviewSessionView: View {
             }
         }
         .navigationTitle("review.session.title")
+        .safeAreaInset(edge: .bottom) {
+            if selectedOptionIndex != nil, currentItem != nil {
+                VStack(spacing: 0) {
+                    Button {
+                        persistAnswer()
+                    } label: {
+                        Text(String(localized: isLastItem ? "common.done" : "practice.next"))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(AppTheme.reviewAmber)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
+            }
+        }
         .onDisappear {
             onUpdate()
         }

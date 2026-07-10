@@ -356,16 +356,6 @@ private struct TodayPracticeView: View {
                     Section {
                         Text(String(localized: selectedOptionIndex == item.quiz.correctOptionIndex ? "practice.correct" : "practice.wrong"))
                             .font(.headline)
-
-                        Button {
-                            persistAnswer()
-                        } label: {
-                            Text("practice.next")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .tint(AppTheme.accent)
                     }
                 }
             } else {
@@ -387,6 +377,24 @@ private struct TodayPracticeView: View {
             }
         }
         .navigationTitle("practice.title")
+        .safeAreaInset(edge: .bottom) {
+            if selectedOptionIndex != nil, currentSeedItem != nil {
+                VStack(spacing: 0) {
+                    Button {
+                        persistAnswer()
+                    } label: {
+                        Text("practice.next")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(AppTheme.accent)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
+            }
+        }
     }
 
     @ViewBuilder
