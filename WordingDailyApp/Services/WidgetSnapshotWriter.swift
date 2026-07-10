@@ -50,6 +50,7 @@ struct WidgetSnapshot: Codable, Equatable {
 struct WidgetSnapshotWriter {
     static let appGroupSuiteName = "group.com.raychiutw.WordingDaily"
     static let snapshotKey = "WordingDailyWidgetSnapshot"
+    static let widgetKind = "WordingDailyWidget"
 
     private let userDefaults: UserDefaults
     private let encoder: JSONEncoder

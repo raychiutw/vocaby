@@ -31,6 +31,10 @@
 		000000000000000000000415 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000315 /* OnboardingView.swift */; };
 		000000000000000000000416 /* ReviewQueueService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000316 /* ReviewQueueService.swift */; };
 		000000000000000000000417 /* LibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000317 /* LibraryService.swift */; };
+		000000000000000000000430 /* WordingDailyWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000330 /* WordingDailyWidget.swift */; };
+		000000000000000000000431 /* WidgetSnapshotWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000311 /* WidgetSnapshotWriter.swift */; };
+		000000000000000000000432 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000308 /* Localizable.xcstrings */; };
+		000000000000000000000433 /* WordingDailyWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000112 /* WordingDailyWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
 		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
 		000000000000000000000422 /* PersistenceGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000322 /* PersistenceGuardTests.swift */; };
@@ -51,11 +55,19 @@
 			remoteGlobalIDString = 000000000000000000000100;
 			remoteInfo = WordingDailyApp;
 		};
+		000000000000000000000240 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000102;
+			remoteInfo = WordingDailyWidget;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000110 /* WordingDailyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WordingDailyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000111 /* WordingDailyAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WordingDailyAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000112 /* WordingDailyWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WordingDailyWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000300 /* WordingDailyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordingDailyApp.swift; sourceTree = "<group>"; };
 		000000000000000000000301 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		000000000000000000000302 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
@@ -80,6 +92,7 @@
 		000000000000000000000315 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		000000000000000000000316 /* ReviewQueueService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueService.swift; sourceTree = "<group>"; };
 		000000000000000000000317 /* LibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryService.swift; sourceTree = "<group>"; };
+		000000000000000000000318 /* WordingDailyApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyApp.entitlements; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
 		000000000000000000000322 /* PersistenceGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceGuardTests.swift; sourceTree = "<group>"; };
@@ -90,7 +103,24 @@
 		000000000000000000000327 /* UserPreferencesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferencesStoreTests.swift; sourceTree = "<group>"; };
 		000000000000000000000328 /* ReviewQueueServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000329 /* LibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryServiceTests.swift; sourceTree = "<group>"; };
+		000000000000000000000330 /* WordingDailyWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordingDailyWidget.swift; sourceTree = "<group>"; };
+		000000000000000000000331 /* WordingDailyWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyWidget.entitlements; sourceTree = "<group>"; };
+		000000000000000000000332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		000000000000000000000123 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				000000000000000000000433 /* WordingDailyWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		000000000000000000000122 /* Frameworks */ = {
@@ -107,6 +137,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		000000000000000000000142 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -115,6 +152,7 @@
 			children = (
 				000000000000000000000004 /* WordingDailyApp */,
 				000000000000000000000060 /* WordingDailyAppTests */,
+				000000000000000000000061 /* WordingDailyWidget */,
 				000000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -124,6 +162,7 @@
 			children = (
 				000000000000000000000110 /* WordingDailyApp.app */,
 				000000000000000000000111 /* WordingDailyAppTests.xctest */,
+				000000000000000000000112 /* WordingDailyWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -138,6 +177,7 @@
 				000000000000000000000056 /* Design */,
 				000000000000000000000057 /* Resources */,
 				000000000000000000000307 /* Assets.xcassets */,
+				000000000000000000000318 /* WordingDailyApp.entitlements */,
 			);
 			path = WordingDailyApp;
 			sourceTree = "<group>";
@@ -272,6 +312,16 @@
 			path = WordingDailyAppTests;
 			sourceTree = "<group>";
 		};
+		000000000000000000000061 /* WordingDailyWidget */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000330 /* WordingDailyWidget.swift */,
+				000000000000000000000332 /* Info.plist */,
+				000000000000000000000331 /* WordingDailyWidget.entitlements */,
+			);
+			path = WordingDailyWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -282,15 +332,34 @@
 				000000000000000000000120 /* Sources */,
 				000000000000000000000122 /* Frameworks */,
 				000000000000000000000121 /* Resources */,
+				000000000000000000000123 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				000000000000000000000241 /* PBXTargetDependency */,
 			);
 			name = WordingDailyApp;
 			productName = WordingDailyApp;
 			productReference = 000000000000000000000110 /* WordingDailyApp.app */;
 			productType = "com.apple.product-type.application";
+		};
+		000000000000000000000102 /* WordingDailyWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000252 /* Build configuration list for PBXNativeTarget "WordingDailyWidget" */;
+			buildPhases = (
+				000000000000000000000140 /* Sources */,
+				000000000000000000000142 /* Frameworks */,
+				000000000000000000000141 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WordingDailyWidget;
+			productName = WordingDailyWidget;
+			productReference = 000000000000000000000112 /* WordingDailyWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		000000000000000000000101 /* WordingDailyAppTests */ = {
 			isa = PBXNativeTarget;
@@ -322,10 +391,23 @@
 				TargetAttributes = {
 					000000000000000000000100 = {
 						CreatedOnToolsVersion = 26.6;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 					000000000000000000000101 = {
 						CreatedOnToolsVersion = 26.6;
 						TestTargetID = 000000000000000000000100;
+					};
+					000000000000000000000102 = {
+						CreatedOnToolsVersion = 26.6;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -344,6 +426,7 @@
 			targets = (
 				000000000000000000000100 /* WordingDailyApp */,
 				000000000000000000000101 /* WordingDailyAppTests */,
+				000000000000000000000102 /* WordingDailyWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -363,6 +446,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000141 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000432 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -414,6 +505,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		000000000000000000000140 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000430 /* WordingDailyWidget.swift in Sources */,
+				000000000000000000000431 /* WidgetSnapshotWriter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -421,6 +521,11 @@
 			isa = PBXTargetDependency;
 			target = 000000000000000000000100 /* WordingDailyApp */;
 			targetProxy = 000000000000000000000230 /* PBXContainerItemProxy */;
+		};
+		000000000000000000000241 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000102 /* WordingDailyWidget */;
+			targetProxy = 000000000000000000000240 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -530,6 +635,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Accent;
+				CODE_SIGN_ENTITLEMENTS = WordingDailyApp/WordingDailyApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -560,6 +666,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Accent;
+				CODE_SIGN_ENTITLEMENTS = WordingDailyApp/WordingDailyApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -630,6 +737,62 @@
 			};
 			name = Release;
 		};
+		000000000000000000000250 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WordingDailyWidget/WordingDailyWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WordingDailyWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.raychiutw.WordingDaily.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		000000000000000000000251 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WordingDailyWidget/WordingDailyWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WordingDailyWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.raychiutw.WordingDaily.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -656,6 +819,15 @@
 			buildConfigurations = (
 				000000000000000000000220 /* Debug */,
 				000000000000000000000221 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000252 /* Build configuration list for PBXNativeTarget "WordingDailyWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000250 /* Debug */,
+				000000000000000000000251 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

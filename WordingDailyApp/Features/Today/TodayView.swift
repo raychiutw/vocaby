@@ -1,6 +1,7 @@
 import AVFoundation
 import SwiftData
 import SwiftUI
+import WidgetKit
 
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
@@ -19,6 +20,7 @@ struct TodayView: View {
     private let preferencesStore = UserPreferencesStore()
     private let reviewScheduler = ReviewScheduler()
     private let seedLoader = SeedLoader()
+    private let widgetSnapshotWriter = WidgetSnapshotWriter.appGroupWriter()
 
     private var orderedSessionItems: [DailySessionItem] {
         (todaySession?.items ?? []).sorted { $0.position < $1.position }
@@ -148,6 +150,7 @@ struct TodayView: View {
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
             dueReviewCount = reviewScheduler.dueItems(from: progressRows, on: dayKey, limit: 10).count
+            writeWidgetSnapshot(dayKey: dayKey)
             statusMessage = nil
         } catch {
             statusMessage = String(localized: "today.load.error")
@@ -161,6 +164,7 @@ struct TodayView: View {
 
             if let existingSession = try existingSession(for: dayKey), !existingSession.items.isEmpty {
                 todaySession = existingSession
+                writeWidgetSnapshot(dayKey: dayKey)
                 isShowingPractice = true
                 return
             }
@@ -202,6 +206,7 @@ struct TodayView: View {
             try modelContext.save()
             todaySession = session
             dueReviewCount = dueReviewItemIDs.count
+            writeWidgetSnapshot(dayKey: dayKey)
             statusMessage = nil
             isShowingPractice = true
         } catch {
@@ -220,6 +225,30 @@ struct TodayView: View {
         if seedItems.isEmpty {
             seedItems = try seedLoader.loadBundledSeed()
         }
+    }
+
+    private func writeWidgetSnapshot(dayKey: String) {
+        guard let widgetSnapshotWriter else {
+            return
+        }
+
+        let snapshot = WidgetSnapshot(
+            dayKey: dayKey,
+            progressCompleted: completedCount,
+            progressTotal: totalCount,
+            streakCount: 0,
+            displayExpression: nextSeedItem.map {
+                WidgetSnapshotExpression(
+                    itemID: $0.id,
+                    plainExpression: $0.plainExpression,
+                    upgradedExpression: $0.upgradedExpression
+                )
+            },
+            generatedAt: Date()
+        )
+
+        try? widgetSnapshotWriter.write(snapshot)
+        WidgetCenter.shared.reloadTimelines(ofKind: WidgetSnapshotWriter.widgetKind)
     }
 }
 
