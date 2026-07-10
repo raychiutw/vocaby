@@ -31,6 +31,7 @@
 		000000000000000000000415 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000315 /* OnboardingView.swift */; };
 		000000000000000000000416 /* ReviewQueueService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000316 /* ReviewQueueService.swift */; };
 		000000000000000000000417 /* LibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000317 /* LibraryService.swift */; };
+		000000000000000000000418 /* QuizEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031A /* QuizEngine.swift */; };
 		000000000000000000000430 /* WordingDailyWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000330 /* WordingDailyWidget.swift */; };
 		000000000000000000000431 /* WidgetSnapshotWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000311 /* WidgetSnapshotWriter.swift */; };
 		000000000000000000000432 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000308 /* Localizable.xcstrings */; };
@@ -46,6 +47,7 @@
 		000000000000000000000428 /* ReviewQueueServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000328 /* ReviewQueueServiceTests.swift */; };
 		000000000000000000000429 /* LibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000329 /* LibraryServiceTests.swift */; };
 		00000000000000000000042A /* LocalizationCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000032A /* LocalizationCoverageTests.swift */; };
+		00000000000000000000042B /* QuizEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000032B /* QuizEngineTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -93,6 +95,7 @@
 		000000000000000000000315 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		000000000000000000000316 /* ReviewQueueService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueService.swift; sourceTree = "<group>"; };
 		000000000000000000000317 /* LibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryService.swift; sourceTree = "<group>"; };
+		00000000000000000000031A /* QuizEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizEngine.swift; sourceTree = "<group>"; };
 		000000000000000000000318 /* WordingDailyApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyApp.entitlements; sourceTree = "<group>"; };
 		000000000000000000000319 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
@@ -106,6 +109,7 @@
 		000000000000000000000328 /* ReviewQueueServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000329 /* LibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryServiceTests.swift; sourceTree = "<group>"; };
 		00000000000000000000032A /* LocalizationCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationCoverageTests.swift; sourceTree = "<group>"; };
+		00000000000000000000032B /* QuizEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizEngineTests.swift; sourceTree = "<group>"; };
 		000000000000000000000330 /* WordingDailyWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordingDailyWidget.swift; sourceTree = "<group>"; };
 		000000000000000000000331 /* WordingDailyWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyWidget.entitlements; sourceTree = "<group>"; };
 		000000000000000000000332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -292,6 +296,7 @@
 				000000000000000000000310 /* ReviewScheduler.swift */,
 				000000000000000000000316 /* ReviewQueueService.swift */,
 				000000000000000000000317 /* LibraryService.swift */,
+				00000000000000000000031A /* QuizEngine.swift */,
 				000000000000000000000311 /* WidgetSnapshotWriter.swift */,
 				000000000000000000000312 /* NotificationScheduler.swift */,
 				000000000000000000000313 /* UserPreferencesStore.swift */,
@@ -313,6 +318,7 @@
 				000000000000000000000328 /* ReviewQueueServiceTests.swift */,
 				000000000000000000000329 /* LibraryServiceTests.swift */,
 				00000000000000000000032A /* LocalizationCoverageTests.swift */,
+				00000000000000000000032B /* QuizEngineTests.swift */,
 			);
 			path = WordingDailyAppTests;
 			sourceTree = "<group>";
@@ -490,6 +496,7 @@
 				000000000000000000000415 /* OnboardingView.swift in Sources */,
 				000000000000000000000416 /* ReviewQueueService.swift in Sources */,
 				000000000000000000000417 /* LibraryService.swift in Sources */,
+				000000000000000000000418 /* QuizEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -508,6 +515,7 @@
 				000000000000000000000428 /* ReviewQueueServiceTests.swift in Sources */,
 				000000000000000000000429 /* LibraryServiceTests.swift in Sources */,
 				00000000000000000000042A /* LocalizationCoverageTests.swift in Sources */,
+				00000000000000000000042B /* QuizEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
