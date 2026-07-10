@@ -97,7 +97,9 @@ struct TodayView: View {
                     Button {
                         startPractice()
                     } label: {
-                        Label(primaryButtonTitle, systemImage: completedCount == totalCount ? "checkmark.circle.fill" : "play.fill")
+                        Text(primaryButtonTitle)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
