@@ -103,6 +103,22 @@ final class PersistenceGuardTests: XCTestCase {
         XCTAssertNil(progressRows.first?.lastReviewedAt)
     }
 
+    func testExistingWordProgressReturnsStoredRowAndDoesNotInsertMissingRow() throws {
+        let context = try makeContext()
+        let service = ProgressPersistenceService()
+        let stored = WordProgress(itemID: "basic-001", level: .basic)
+        context.insert(stored)
+        try context.save()
+
+        let existing = try service.existingWordProgress(for: stored.itemID, in: context)
+        let missing = try service.existingWordProgress(for: "missing", in: context)
+
+        XCTAssertEqual(existing?.itemID, stored.itemID)
+        XCTAssertNil(missing)
+        XCTAssertFalse(context.hasChanges)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<WordProgress>()).count, 1)
+    }
+
     func testWordProgressPersistsExplicitTimestamps() throws {
         let context = try makeContext()
         let firstSeenAt = Date(timeIntervalSince1970: 100)

@@ -56,11 +56,7 @@ struct ProgressPersistenceService {
         level: VocabularyLevel,
         in context: ModelContext
     ) throws -> WordProgress {
-        let descriptor = FetchDescriptor<WordProgress>(
-            predicate: #Predicate { $0.itemID == itemID }
-        )
-
-        if let existing = try context.fetch(descriptor).first {
+        if let existing = try existingWordProgress(for: itemID, in: context) {
             return existing
         }
 
@@ -68,6 +64,16 @@ struct ProgressPersistenceService {
         context.insert(progress)
         try context.save()
         return progress
+    }
+
+    func existingWordProgress(
+        for itemID: String,
+        in context: ModelContext
+    ) throws -> WordProgress? {
+        let descriptor = FetchDescriptor<WordProgress>(
+            predicate: #Predicate { $0.itemID == itemID }
+        )
+        return try context.fetch(descriptor).first
     }
 
     func quizResult(

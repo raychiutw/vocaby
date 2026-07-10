@@ -160,11 +160,12 @@ private struct ReviewSessionView: View {
                 for: attempt.submittedAnswer,
                 wasCorrect: attempt.wasCorrect
             )
-            let progress = try persistenceService.wordProgress(
+            guard let progress = try persistenceService.existingWordProgress(
                 for: item.id,
-                level: item.level,
                 in: modelContext
-            )
+            ) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
             reviewScheduler.applyAnswer(
                 to: progress,
                 wasCorrect: attempt.wasCorrect,
