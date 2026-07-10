@@ -45,6 +45,7 @@
 		000000000000000000000427 /* UserPreferencesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000327 /* UserPreferencesStoreTests.swift */; };
 		000000000000000000000428 /* ReviewQueueServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000328 /* ReviewQueueServiceTests.swift */; };
 		000000000000000000000429 /* LibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000329 /* LibraryServiceTests.swift */; };
+		00000000000000000000042A /* LocalizationCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000032A /* LocalizationCoverageTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -104,6 +105,7 @@
 		000000000000000000000327 /* UserPreferencesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferencesStoreTests.swift; sourceTree = "<group>"; };
 		000000000000000000000328 /* ReviewQueueServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000329 /* LibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryServiceTests.swift; sourceTree = "<group>"; };
+		00000000000000000000032A /* LocalizationCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationCoverageTests.swift; sourceTree = "<group>"; };
 		000000000000000000000330 /* WordingDailyWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordingDailyWidget.swift; sourceTree = "<group>"; };
 		000000000000000000000331 /* WordingDailyWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyWidget.entitlements; sourceTree = "<group>"; };
 		000000000000000000000332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -310,6 +312,7 @@
 				000000000000000000000327 /* UserPreferencesStoreTests.swift */,
 				000000000000000000000328 /* ReviewQueueServiceTests.swift */,
 				000000000000000000000329 /* LibraryServiceTests.swift */,
+				00000000000000000000032A /* LocalizationCoverageTests.swift */,
 			);
 			path = WordingDailyAppTests;
 			sourceTree = "<group>";
@@ -504,6 +507,7 @@
 				000000000000000000000427 /* UserPreferencesStoreTests.swift in Sources */,
 				000000000000000000000428 /* ReviewQueueServiceTests.swift in Sources */,
 				000000000000000000000429 /* LibraryServiceTests.swift in Sources */,
+				00000000000000000000042A /* LocalizationCoverageTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
