@@ -84,6 +84,61 @@ final class PersistenceGuardTests: XCTestCase {
         XCTAssertEqual(stored.lastReviewedAt, lastReviewedAt)
     }
 
+    func testSelectionPersistenceAndFetchedReviewIdentityDriveScheduling() throws {
+        let context = try makeContext()
+        let persistenceService = ProgressPersistenceService()
+        let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
+        let items = [seedItem("basic-new", sortOrder: 1), seedItem("basic-review", sortOrder: 2)]
+        context.insert(WordProgress(
+            itemID: "basic-review",
+            level: .basic,
+            firstSeenAt: date("2026-07-01T02:00:00Z"),
+            dueDayKey: "2026-07-10"
+        ))
+        try context.save()
+
+        let progressRows = try context.fetch(FetchDescriptor<WordProgress>())
+        let selection = DailySelectionService().selectItems(
+            from: items,
+            selectedLevel: .basic,
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant",
+            firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
+            dueReviewItemIDs: scheduler.allDueItems(from: progressRows, on: "2026-07-10").map(\.itemID),
+            targetCount: 2
+        )
+        _ = try persistenceService.session(
+            for: "2026-07-10",
+            itemIDs: selection.itemIDs,
+            reviewItemIDs: Set(selection.reviewItemIDs),
+            in: context
+        )
+        _ = try persistenceService.wordProgress(for: "basic-new", level: .basic, in: context)
+        try context.save()
+
+        let storedSession = try XCTUnwrap(context.fetch(FetchDescriptor<DailySession>()).first)
+        let storedItems = storedSession.items.sorted { $0.position < $1.position }
+        XCTAssertEqual(storedItems.map(\.isReviewFill), [false, true])
+
+        let storedProgress = try context.fetch(FetchDescriptor<WordProgress>())
+        let progressByID = Dictionary(uniqueKeysWithValues: storedProgress.map { ($0.itemID, $0) })
+        let answeredAt = date("2026-07-10T02:00:00Z")
+        for storedItem in storedItems {
+            scheduler.applyAnswer(
+                to: try XCTUnwrap(progressByID[storedItem.itemID]),
+                wasCorrect: false,
+                answeredAt: answeredAt,
+                context: storedItem.reviewAnswerContext
+            )
+        }
+        try context.save()
+
+        let updatedProgress = try context.fetch(FetchDescriptor<WordProgress>())
+        let dueDayByID = Dictionary(uniqueKeysWithValues: updatedProgress.map { ($0.itemID, $0.dueDayKey) })
+        XCTAssertEqual(dueDayByID["basic-new"], "2026-07-10")
+        XCTAssertEqual(dueDayByID["basic-review"], "2026-07-11")
+    }
+
     func testQuizResultGuardKeepsFirstAnswerForSameDayAndItem() throws {
         let context = try makeContext()
         let service = ProgressPersistenceService()
@@ -119,5 +174,32 @@ final class PersistenceGuardTests: XCTestCase {
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])
         return ModelContext(container)
+    }
+
+    private func seedItem(_ id: String, sortOrder: Int) -> VocabularySeedItem {
+        VocabularySeedItem(
+            id: id,
+            level: .basic,
+            sortOrder: sortOrder,
+            contentLanguageCode: "en",
+            supportLanguageCodes: ["zh-Hant"],
+            plainExpression: "plain \(id)",
+            upgradedExpression: "upgraded \(id)",
+            meaning: ["zh-Hant": "meaning"],
+            example: VocabularyExample(text: "Example.", translation: ["zh-Hant": "例句。"]),
+            pronunciationText: id,
+            quiz: VocabularyQuiz(prompt: ["zh-Hant": "prompt"], options: ["A", "B"], correctOptionIndex: 0)
+        )
+    }
+
+    private func dayKeyService() -> DayKeyService {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        calendar.timeZone = TimeZone(identifier: "Asia/Taipei")!
+        return DayKeyService(calendar: calendar)
+    }
+
+    private func date(_ value: String) -> Date {
+        ISO8601DateFormatter().date(from: value)!
     }
 }

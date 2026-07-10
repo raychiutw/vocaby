@@ -122,6 +122,43 @@ final class DailySelectionServiceTests: XCTestCase {
         XCTAssertEqual(selection.newItemIDs, ["basic-001"])
     }
 
+    func testEligibleReviewIsNotHiddenBehindEarlierOffLevelDueRows() {
+        let offLevelItems = (1...11).map { index in
+            item(String(format: "advanced-%03d", index), level: .advanced, sortOrder: index)
+        }
+        let eligibleItem = item("basic-review", level: .basic, sortOrder: 1)
+        let progressRows = offLevelItems.map { item in
+            WordProgress(
+                itemID: item.id,
+                level: item.level,
+                firstSeenAt: Date(timeIntervalSince1970: 100),
+                dueDayKey: "2026-07-01"
+            )
+        } + [
+            WordProgress(
+                itemID: eligibleItem.id,
+                level: eligibleItem.level,
+                firstSeenAt: Date(timeIntervalSince1970: 100),
+                dueDayKey: "2026-07-10"
+            )
+        ]
+        let dueReviewItemIDs = ReviewScheduler()
+            .allDueItems(from: progressRows, on: "2026-07-10")
+            .map(\.itemID)
+
+        let selection = DailySelectionService().selectItems(
+            from: offLevelItems + [eligibleItem],
+            selectedLevel: .basic,
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant",
+            firstSeenItemIDs: Set(progressRows.map(\.itemID)),
+            dueReviewItemIDs: dueReviewItemIDs,
+            targetCount: 10
+        )
+
+        XCTAssertEqual(selection.reviewItemIDs, ["basic-review"])
+    }
+
     private func item(
         _ id: String,
         level: VocabularyLevel,

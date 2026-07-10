@@ -218,7 +218,7 @@ struct TodayView: View {
 
     private func dailySelection(from progressRows: [WordProgress], on dayKey: String) -> DailySelectionResult {
         let dueReviewItemIDs = reviewScheduler
-            .dueItems(from: progressRows, on: dayKey, limit: dailyTargetCount)
+            .allDueItems(from: progressRows, on: dayKey)
             .map(\.itemID)
 
         return dailySelectionService.selectItems(

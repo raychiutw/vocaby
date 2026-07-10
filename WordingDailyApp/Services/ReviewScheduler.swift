@@ -65,7 +65,11 @@ struct ReviewScheduler {
     }
 
     func dueCount(from progressRows: [WordProgress], on dayKey: String) -> Int {
-        dueItems(from: progressRows, on: dayKey, limit: progressRows.count).count
+        allDueItems(from: progressRows, on: dayKey).count
+    }
+
+    func allDueItems(from progressRows: [WordProgress], on dayKey: String) -> [WordProgress] {
+        dueItems(from: progressRows, on: dayKey, limit: progressRows.count)
     }
 
     private func applyCorrectAnswer(to progress: WordProgress, answeredAt: Date, answeredDayKey: String) {
