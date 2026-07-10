@@ -38,11 +38,104 @@ struct QuizQuestion: Identifiable, Equatable {
     var correctOptionIndex: Int? { options.firstIndex(of: correctAnswer) }
 }
 
+struct QuizPersistenceIndices: Equatable {
+    let selected: Int
+    let correct: Int
+}
+
+extension QuizQuestion {
+    func persistenceIndices(for submittedAnswer: String, wasCorrect: Bool) -> QuizPersistenceIndices {
+        if mode == .spelling {
+            return QuizPersistenceIndices(selected: wasCorrect ? 1 : 0, correct: 1)
+        }
+
+        return QuizPersistenceIndices(
+            selected: options.firstIndex(of: submittedAnswer) ?? -1,
+            correct: correctOptionIndex ?? -1
+        )
+    }
+}
+
 struct QuizAttempt: Equatable {
     let question: QuizQuestion
     let submittedAnswer: String
     let wasCorrect: Bool
     let timedOut: Bool
+    let isFirstAttempt: Bool
+}
+
+struct QuizRunState {
+    private(set) var questions: [QuizQuestion]
+    private(set) var currentIndex = 0
+    private(set) var currentFeedback: QuizAttempt?
+    private(set) var firstAttempts: [QuizAttempt] = []
+    private(set) var retryAttempts: [QuizAttempt] = []
+    private(set) var isRetryRound = false
+
+    var currentQuestion: QuizQuestion? {
+        questions.indices.contains(currentIndex) ? questions[currentIndex] : nil
+    }
+
+    init(questions: [QuizQuestion]) {
+        self.questions = questions
+    }
+
+    @discardableResult
+    mutating func submit(_ submittedAnswer: String) -> QuizAttempt? {
+        record(submittedAnswer: submittedAnswer, timedOut: false)
+    }
+
+    @discardableResult
+    mutating func timeout() -> QuizAttempt? {
+        record(submittedAnswer: "", timedOut: true)
+    }
+
+    mutating func advance() {
+        guard currentFeedback != nil else { return }
+
+        currentIndex += 1
+        currentFeedback = nil
+    }
+
+    @discardableResult
+    mutating func startRetry() -> Bool {
+        guard currentQuestion == nil else { return false }
+
+        let attempts = isRetryRound ? retryAttempts : firstAttempts
+        let wrongQuestions = attempts.filter { !$0.wasCorrect }.map(\.question)
+        guard !wrongQuestions.isEmpty else { return false }
+
+        questions = wrongQuestions
+        currentIndex = 0
+        currentFeedback = nil
+        retryAttempts = []
+        isRetryRound = true
+        return true
+    }
+
+    private mutating func record(submittedAnswer: String, timedOut: Bool) -> QuizAttempt? {
+        if let currentFeedback {
+            return currentFeedback
+        }
+        guard let currentQuestion else { return nil }
+
+        let attempt = QuizAttempt(
+            question: currentQuestion,
+            submittedAnswer: submittedAnswer,
+            wasCorrect: !timedOut && QuizEngine().isCorrect(submittedAnswer, for: currentQuestion),
+            timedOut: timedOut,
+            isFirstAttempt: !isRetryRound
+        )
+        currentFeedback = attempt
+
+        if isRetryRound {
+            retryAttempts.append(attempt)
+        } else {
+            firstAttempts.append(attempt)
+        }
+
+        return attempt
+    }
 }
 
 struct QuizEngine {
@@ -99,9 +192,15 @@ struct QuizEngine {
         using random: inout Random
     ) -> [QuizQuestion] {
         let concreteModes = PracticeMode.allCases.filter { $0 != .mixed }
+        var mixedModes: [PracticeMode] = []
+        if mode == .mixed {
+            while mixedModes.count < items.count {
+                mixedModes.append(contentsOf: shuffled(concreteModes, using: &random))
+            }
+        }
 
         return items.enumerated().map { index, item in
-            let questionMode = mode == .mixed ? concreteModes[index % concreteModes.count] : mode
+            let questionMode = mode == .mixed ? mixedModes[index] : mode
             let correctAnswer = answer(
                 for: item,
                 mode: questionMode,

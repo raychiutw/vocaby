@@ -86,7 +86,22 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertFalse(QuizEngine().isCorrect("different answer", for: question))
     }
 
-    func testMixedCreatesOnlyConcreteModesAndShufflesCorrectPositions() {
+    func testMixedUsesShuffledFourModeBags() {
+        let items = makeItems(count: 12)
+        var random = IncrementingRandomNumberGenerator()
+        let questions = QuizEngine().makeQuestions(
+            for: items, candidates: items, mode: .mixed,
+            supportLanguageCode: "zh-Hant", using: &random
+        )
+        let concreteModes = PracticeMode.allCases.filter { $0 != .mixed }
+
+        XCTAssertEqual(Set(questions.prefix(4).map(\.mode)), Set(concreteModes))
+        XCTAssertEqual(Set(questions.dropFirst(4).prefix(4).map(\.mode)), Set(concreteModes))
+        XCTAssertNotEqual(questions.prefix(4).map(\.mode), concreteModes)
+        XCTAssertFalse(questions.contains { $0.mode == .mixed })
+    }
+
+    func testMixedShufflesCorrectPositions() {
         let items = makeItems(count: 12)
         var random = IncrementingRandomNumberGenerator()
         let questions = QuizEngine().makeQuestions(
@@ -94,8 +109,6 @@ final class QuizEngineTests: XCTestCase {
             supportLanguageCode: "zh-Hant", using: &random
         )
 
-        XCTAssertEqual(Set(questions.prefix(4).map(\.mode)), Set(PracticeMode.allCases.filter { $0 != .mixed }))
-        XCTAssertFalse(questions.contains { $0.mode == .mixed })
         XCTAssertGreaterThan(Set(questions.compactMap(\.correctOptionIndex)).count, 1)
     }
 
@@ -110,6 +123,117 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertEqual(question.options.count, 2)
         XCTAssertEqual(Set(question.options).count, 2)
         XCTAssertTrue(question.options.contains(question.correctAnswer))
+    }
+
+    func testSubmitFreezesFeedbackOnTheCurrentQuestion() throws {
+        let first = makeQuestion("first")
+        let second = makeQuestion("second")
+        var state = QuizRunState(questions: [first, second])
+
+        let initialFeedback = try XCTUnwrap(state.submit("wrong first"))
+        let repeatedFeedback = try XCTUnwrap(state.submit(first.correctAnswer))
+
+        XCTAssertEqual(state.currentQuestion, first)
+        XCTAssertEqual(state.currentFeedback, initialFeedback)
+        XCTAssertEqual(repeatedFeedback, initialFeedback)
+        XCTAssertEqual(state.firstAttempts, [initialFeedback])
+    }
+
+    func testAdvanceIsTheOnlyTransitionToTheNextQuestion() {
+        let first = makeQuestion("first")
+        let second = makeQuestion("second")
+        var state = QuizRunState(questions: [first, second])
+
+        state.advance()
+        XCTAssertEqual(state.currentQuestion, first)
+
+        state.submit(first.correctAnswer)
+        XCTAssertEqual(state.currentQuestion, first)
+
+        state.advance()
+        XCTAssertEqual(state.currentQuestion, second)
+        XCTAssertNil(state.currentFeedback)
+    }
+
+    func testTimeoutRecordsWrongAttemptAndWaitsForAdvance() throws {
+        let first = makeQuestion("first")
+        let second = makeQuestion("second")
+        var state = QuizRunState(questions: [first, second])
+
+        let attempt = try XCTUnwrap(state.timeout())
+
+        XCTAssertFalse(attempt.wasCorrect)
+        XCTAssertTrue(attempt.timedOut)
+        XCTAssertTrue(attempt.isFirstAttempt)
+        XCTAssertEqual(state.currentQuestion, first)
+        XCTAssertEqual(state.currentFeedback, attempt)
+
+        state.advance()
+        XCTAssertEqual(state.currentQuestion, second)
+    }
+
+    func testRetryContainsOnlyWrongQuestionsAndMarksAttemptsAsRetries() throws {
+        let wrongQuestion = makeQuestion("wrong", mode: .listeningChoice)
+        let correctQuestion = makeQuestion("correct", mode: .spelling)
+        var state = QuizRunState(questions: [wrongQuestion, correctQuestion])
+
+        state.submit("wrong answer")
+        state.advance()
+        state.submit(correctQuestion.correctAnswer)
+        state.advance()
+
+        XCTAssertTrue(state.startRetry())
+        XCTAssertEqual(state.questions, [wrongQuestion])
+        XCTAssertEqual(state.currentQuestion?.mode, .listeningChoice)
+        XCTAssertTrue(state.isRetryRound)
+
+        let retryAttempt = try XCTUnwrap(state.submit(wrongQuestion.correctAnswer))
+        XCTAssertFalse(retryAttempt.isFirstAttempt)
+        XCTAssertEqual(state.retryAttempts, [retryAttempt])
+        XCTAssertEqual(state.firstAttempts.count, 2)
+    }
+
+    func testOptionPersistenceIndicesUseVisibleOptionPositions() {
+        let question = QuizQuestion(
+            id: "choice-expressionChoice",
+            itemID: "choice",
+            mode: .expressionChoice,
+            prompt: "prompt",
+            options: ["option A", "correct", "option C", "selected"],
+            correctAnswer: "correct",
+            spokenText: nil
+        )
+
+        XCTAssertEqual(
+            question.persistenceIndices(for: "selected", wasCorrect: false),
+            QuizPersistenceIndices(selected: 3, correct: 1)
+        )
+    }
+
+    func testSpellingPersistenceIndicesUseSyntheticBinaryValues() {
+        let question = makeQuestion("spelling", mode: .spelling)
+
+        XCTAssertEqual(
+            question.persistenceIndices(for: question.correctAnswer, wasCorrect: true),
+            QuizPersistenceIndices(selected: 1, correct: 1)
+        )
+        XCTAssertEqual(
+            question.persistenceIndices(for: "wrong", wasCorrect: false),
+            QuizPersistenceIndices(selected: 0, correct: 1)
+        )
+    }
+
+    private func makeQuestion(_ id: String, mode: PracticeMode = .expressionChoice) -> QuizQuestion {
+        let correctAnswer = "correct \(id)"
+        return QuizQuestion(
+            id: "\(id)-\(mode.rawValue)",
+            itemID: id,
+            mode: mode,
+            prompt: "prompt \(id)",
+            options: mode == .spelling ? [] : ["wrong \(id)", correctAnswer],
+            correctAnswer: correctAnswer,
+            spokenText: mode == .listeningChoice ? correctAnswer : nil
+        )
     }
 
     private func makeItems(count: Int) -> [VocabularySeedItem] {
