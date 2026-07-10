@@ -16,6 +16,7 @@ Required setup:
 - Test at least one run in `zh-Hant` and one run in English.
 - Test Dynamic Type at default size and one accessibility size.
 - Capture screenshots for failed visual checks and for widget small/medium layouts.
+- Complete `docs/content-review.md` before TestFlight if seed content changed.
 
 ## Notification Permission States
 
