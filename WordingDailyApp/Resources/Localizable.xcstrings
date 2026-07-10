@@ -1537,6 +1537,22 @@
         }
       }
     },
+    "widget.completed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice complete."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天完成了。"
+          }
+        }
+      }
+    },
     "widget.configuration.description" : {
       "localizations" : {
         "en" : {

@@ -84,6 +84,12 @@ struct WidgetSnapshotWriter {
     }
 
     func snapshotOrFallback(dayKey: String, generatedAt: Date = Date()) -> WidgetSnapshot {
-        read() ?? .fallback(dayKey: dayKey, generatedAt: generatedAt)
+        guard let snapshot = read(),
+              snapshot.version == WidgetSnapshot.currentVersion,
+              snapshot.dayKey == dayKey else {
+            return .fallback(dayKey: dayKey, generatedAt: generatedAt)
+        }
+
+        return snapshot
     }
 }

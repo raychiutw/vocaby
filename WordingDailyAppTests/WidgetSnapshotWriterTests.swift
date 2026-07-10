@@ -53,6 +53,74 @@ final class WidgetSnapshotWriterTests: XCTestCase {
         )
     }
 
+    func testSnapshotWithDifferentVersionReturnsRequestedFallback() throws {
+        let writer = WidgetSnapshotWriter(userDefaults: makeDefaults())
+        try writer.write(
+            WidgetSnapshot(
+                version: WidgetSnapshot.currentVersion + 1,
+                dayKey: "2026-07-10",
+                progressCompleted: 6,
+                progressTotal: 10,
+                streakCount: 4,
+                displayExpression: nil,
+                generatedAt: date("2026-07-10T01:00:00Z")
+            )
+        )
+        let fallback = WidgetSnapshot.fallback(
+            dayKey: "2026-07-10",
+            generatedAt: date("2026-07-10T02:00:00Z")
+        )
+
+        XCTAssertEqual(
+            writer.snapshotOrFallback(dayKey: fallback.dayKey, generatedAt: fallback.generatedAt),
+            fallback
+        )
+    }
+
+    func testSnapshotFromDifferentDayReturnsRequestedFallback() throws {
+        let writer = WidgetSnapshotWriter(userDefaults: makeDefaults())
+        try writer.write(
+            WidgetSnapshot(
+                dayKey: "2026-07-09",
+                progressCompleted: 10,
+                progressTotal: 10,
+                streakCount: 4,
+                displayExpression: nil,
+                generatedAt: date("2026-07-09T02:00:00Z")
+            )
+        )
+        let fallback = WidgetSnapshot.fallback(
+            dayKey: "2026-07-10",
+            generatedAt: date("2026-07-10T02:00:00Z")
+        )
+
+        XCTAssertEqual(
+            writer.snapshotOrFallback(dayKey: fallback.dayKey, generatedAt: fallback.generatedAt),
+            fallback
+        )
+    }
+
+    func testCurrentSameDaySnapshotReturnsUnchanged() throws {
+        let writer = WidgetSnapshotWriter(userDefaults: makeDefaults())
+        let snapshot = WidgetSnapshot(
+            dayKey: "2026-07-10",
+            progressCompleted: 6,
+            progressTotal: 10,
+            streakCount: 4,
+            displayExpression: nil,
+            generatedAt: date("2026-07-10T01:00:00Z")
+        )
+        try writer.write(snapshot)
+
+        XCTAssertEqual(
+            writer.snapshotOrFallback(
+                dayKey: snapshot.dayKey,
+                generatedAt: date("2026-07-10T02:00:00Z")
+            ),
+            snapshot
+        )
+    }
+
     private func makeDefaults() -> UserDefaults {
         let suiteName = "WidgetSnapshotWriterTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

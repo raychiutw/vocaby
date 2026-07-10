@@ -27,6 +27,7 @@ final class LocalizationCoverageTests: XCTestCase {
             "widget.title": .init(en: 16, zhHant: 16),
             "widget.today": .init(en: 24, zhHant: 8),
             "widget.empty": .init(en: 28, zhHant: 10),
+            "widget.completed": .init(en: 20, zhHant: 8),
             "notifications.daily.title": .init(en: 44, zhHant: 20),
             "notifications.daily.body": .init(en: 56, zhHant: 24),
             "onboarding.continue": .init(en: 24, zhHant: 12),
