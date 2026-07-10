@@ -40,6 +40,21 @@ struct UserPreferences: Codable, Equatable {
         reminderHour = calendar.component(.hour, from: date)
         reminderMinute = calendar.component(.minute, from: date)
     }
+
+    mutating func completeOnboarding(
+        selectedLevel: VocabularyLevel,
+        remindersEnabled: Bool,
+        reminderTime: Date?,
+        calendar: Calendar = .current
+    ) {
+        self.selectedLevel = selectedLevel
+        self.remindersEnabled = remindersEnabled
+        onboardingCompleted = true
+
+        if let reminderTime {
+            setReminderTime(reminderTime, calendar: calendar)
+        }
+    }
 }
 
 struct UserPreferencesStore {

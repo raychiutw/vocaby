@@ -4,7 +4,7 @@ import SwiftUI
 struct WordingDailyApp: App {
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            RootView()
                 .tint(AppTheme.accent)
         }
     }

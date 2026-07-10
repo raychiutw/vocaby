@@ -54,6 +54,49 @@ final class UserPreferencesStoreTests: XCTestCase {
         XCTAssertEqual(calendar.component(.minute, from: preferences.reminderTimeDate(calendar: calendar)), 45)
     }
 
+    func testCompletingOnboardingStoresLevelAndReminderChoice() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        calendar.timeZone = TimeZone(identifier: "Asia/Taipei")!
+        var preferences = UserPreferences.defaults
+        let reminderTime = calendar.date(from: DateComponents(year: 2026, month: 7, day: 10, hour: 7, minute: 15))!
+
+        preferences.completeOnboarding(
+            selectedLevel: .intermediate,
+            remindersEnabled: true,
+            reminderTime: reminderTime,
+            calendar: calendar
+        )
+
+        XCTAssertTrue(preferences.onboardingCompleted)
+        XCTAssertEqual(preferences.selectedLevel, .intermediate)
+        XCTAssertTrue(preferences.remindersEnabled)
+        XCTAssertEqual(preferences.reminderHour, 7)
+        XCTAssertEqual(preferences.reminderMinute, 15)
+    }
+
+    func testCompletingOnboardingWithSkippedReminderKeepsReminderOff() {
+        var preferences = UserPreferences(
+            selectedLevel: .advanced,
+            reminderHour: 21,
+            reminderMinute: 30,
+            remindersEnabled: true,
+            onboardingCompleted: false
+        )
+
+        preferences.completeOnboarding(
+            selectedLevel: .basic,
+            remindersEnabled: false,
+            reminderTime: nil
+        )
+
+        XCTAssertTrue(preferences.onboardingCompleted)
+        XCTAssertEqual(preferences.selectedLevel, .basic)
+        XCTAssertFalse(preferences.remindersEnabled)
+        XCTAssertEqual(preferences.reminderHour, 21)
+        XCTAssertEqual(preferences.reminderMinute, 30)
+    }
+
     private func makeDefaults() -> UserDefaults {
         let suiteName = "UserPreferencesStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

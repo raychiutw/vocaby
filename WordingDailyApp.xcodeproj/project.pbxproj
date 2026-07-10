@@ -27,6 +27,8 @@
 		000000000000000000000411 /* WidgetSnapshotWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000311 /* WidgetSnapshotWriter.swift */; };
 		000000000000000000000412 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000312 /* NotificationScheduler.swift */; };
 		000000000000000000000413 /* UserPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000313 /* UserPreferencesStore.swift */; };
+		000000000000000000000414 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000314 /* RootView.swift */; };
+		000000000000000000000415 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000315 /* OnboardingView.swift */; };
 		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
 		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
 		000000000000000000000422 /* PersistenceGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000322 /* PersistenceGuardTests.swift */; };
@@ -70,6 +72,8 @@
 		000000000000000000000311 /* WidgetSnapshotWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotWriter.swift; sourceTree = "<group>"; };
 		000000000000000000000312 /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
 		000000000000000000000313 /* UserPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferencesStore.swift; sourceTree = "<group>"; };
+		000000000000000000000314 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		000000000000000000000315 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
 		000000000000000000000322 /* PersistenceGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceGuardTests.swift; sourceTree = "<group>"; };
@@ -142,6 +146,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000051 /* Root */,
+				00000000000000000000005A /* Onboarding */,
 				000000000000000000000052 /* Today */,
 				000000000000000000000053 /* Review */,
 				000000000000000000000054 /* Library */,
@@ -154,8 +159,17 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000301 /* RootTabView.swift */,
+				000000000000000000000314 /* RootView.swift */,
 			);
 			path = Root;
+			sourceTree = "<group>";
+		};
+		00000000000000000000005A /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000315 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		000000000000000000000052 /* Today */ = {
@@ -364,6 +378,8 @@
 				000000000000000000000411 /* WidgetSnapshotWriter.swift in Sources */,
 				000000000000000000000412 /* NotificationScheduler.swift in Sources */,
 				000000000000000000000413 /* UserPreferencesStore.swift in Sources */,
+				000000000000000000000414 /* RootView.swift in Sources */,
+				000000000000000000000415 /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
