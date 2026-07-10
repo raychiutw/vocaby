@@ -817,6 +817,22 @@
         }
       }
     },
+    "settings.language.openSettingsHint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change in iOS Settings"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 iOS 設定切換"
+          }
+        }
+      }
+    },
     "settings.language.system" : {
       "localizations" : {
         "en" : {

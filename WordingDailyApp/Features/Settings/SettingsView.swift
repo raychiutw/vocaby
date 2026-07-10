@@ -55,7 +55,29 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("settings.language.label", value: String(localized: "settings.language.system"))
+                Button {
+                    openAppSettings()
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("settings.language.label")
+                                .foregroundStyle(.primary)
+
+                            Text("settings.language.openSettingsHint")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
         .navigationTitle("settings.title")
