@@ -3,17 +3,24 @@ import SwiftUI
 
 struct LibraryView: View {
     @Environment(\.modelContext) private var modelContext
+    @Binding private var deepLinkedItemID: String?
+
     @State private var query = ""
     @State private var selectedScope = LibraryScope.learned
     @State private var seedItems: [VocabularySeedItem] = []
     @State private var progressRows: [WordProgress] = []
     @State private var quizResults: [QuizResult] = []
     @State private var statusMessage: String?
+    @State private var selectedDetailItemID: String?
 
     private let contentLanguageCode = "en"
     private let supportLanguageCode = "zh-Hant"
     private let libraryService = LibraryService()
     private let seedLoader = SeedLoader()
+
+    init(deepLinkedItemID: Binding<String?> = .constant(nil)) {
+        _deepLinkedItemID = deepLinkedItemID
+    }
 
     private var libraryItems: [LibraryListItem] {
         libraryService.items(
@@ -75,7 +82,24 @@ struct LibraryView: View {
         }
         .navigationTitle("library.title")
         .searchable(text: $query, prompt: Text("library.search.prompt"))
+        .navigationDestination(item: $selectedDetailItemID) { itemID in
+            Group {
+                if let item = detailItem(for: itemID) {
+                    LibraryDetailView(
+                        item: item,
+                        supportLanguageCode: supportLanguageCode
+                    ) {
+                        refreshLibrary()
+                    }
+                } else {
+                    Text("library.empty.search")
+                }
+            }
+        }
         .task {
+            refreshLibrary()
+        }
+        .onChange(of: deepLinkedItemID) { _, _ in
             refreshLibrary()
         }
     }
@@ -86,6 +110,7 @@ struct LibraryView: View {
             progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
             quizResults = try modelContext.fetch(FetchDescriptor<QuizResult>())
             statusMessage = nil
+            openDeepLinkedItemIfNeeded()
         } catch {
             statusMessage = String(localized: "library.load.error")
         }
@@ -95,6 +120,26 @@ struct LibraryView: View {
         if seedItems.isEmpty {
             seedItems = try seedLoader.loadBundledSeed()
         }
+    }
+
+    private func openDeepLinkedItemIfNeeded() {
+        guard let itemID = deepLinkedItemID else {
+            return
+        }
+
+        deepLinkedItemID = nil
+        selectedDetailItemID = detailItem(for: itemID)?.id
+    }
+
+    private func detailItem(for itemID: String) -> LibraryListItem? {
+        guard let seedItem = seedItems.first(where: { $0.id == itemID }) else {
+            return nil
+        }
+
+        return LibraryListItem(
+            seedItem: seedItem,
+            progress: progressRows.first { $0.itemID == itemID }
+        )
     }
 }
 

@@ -64,3 +64,26 @@ final class WidgetSnapshotWriterTests: XCTestCase {
         ISO8601DateFormatter().date(from: value)!
     }
 }
+
+final class WordingDailyDeepLinkTests: XCTestCase {
+    func testRoutesTodayReviewAndWordLinks() {
+        XCTAssertEqual(
+            WordingDailyDeepLink(url: URL(string: "wordingdaily://today")!),
+            WordingDailyDeepLink(tab: .today, wordID: nil)
+        )
+        XCTAssertEqual(
+            WordingDailyDeepLink(url: URL(string: "wordingdaily://review")!),
+            WordingDailyDeepLink(tab: .review, wordID: nil)
+        )
+        XCTAssertEqual(
+            WordingDailyDeepLink(url: URL(string: "wordingdaily://word/basic-001")!),
+            WordingDailyDeepLink(tab: .library, wordID: "basic-001")
+        )
+    }
+
+    func testRejectsUnknownOrIncompleteLinks() {
+        XCTAssertNil(WordingDailyDeepLink(url: URL(string: "https://wordingdaily.test/today")!))
+        XCTAssertNil(WordingDailyDeepLink(url: URL(string: "wordingdaily://settings")!))
+        XCTAssertNil(WordingDailyDeepLink(url: URL(string: "wordingdaily://word")!))
+    }
+}
