@@ -1,11 +1,11 @@
 {
     "schema_version": 1,
-    "commit": "30215abc1a9374bba5c4ce80b31bdc8f1b8ac4d8",
-    "indexed_at": "2026-07-10T09:58:42Z",
+    "commit": "cb9b05dc4da6f800e2fc95f7ddb3fb8dc4714ad8",
+    "indexed_at": "2026-07-10T10:05:12Z",
     "project": "Users-ray-Projects-wording-daily",
-    "nodes": 684,
-    "edges": 1541,
+    "nodes": 703,
+    "edges": 1559,
     "original_size": 3145728,
-    "compressed_size": 305826,
+    "compressed_size": 308512,
     "compression_level": 3
 }
