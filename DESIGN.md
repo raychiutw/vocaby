@@ -157,11 +157,17 @@ Empty states:
 
 Rules:
 
+- Learn may show the upgraded expression and supporting answer content. Quiz must not reveal a standalone correct answer before the learner responds.
+- Quiz supports four concrete modes: choose the upgraded expression from a plain-expression prompt, choose the meaning from an upgraded-expression prompt, listen and choose the expression, and spell the upgraded expression from its localized meaning. Mixed mode distributes those four modes across a run.
+- Quiz timers use 10, 15, 20, or 30 seconds. Expiry freezes the question with time-up feedback; it does not advance automatically.
 - The practice card may be a focused card surface. The whole screen must not become nested cards.
 - Quiz choices must have stable height and clear selected/correct/wrong states.
 - The pronunciation button uses a speaker SF Symbol with a text label for clarity.
 - After the user answers, freeze all quiz options, reveal correct/wrong state, and show a primary `Next` action. Do not auto-advance in v1.
 - If the selected answer is wrong, keep the correct answer visible before the user moves on.
+- Results list the most recent round's wrong answers. When retry is enabled, retry only those questions while preserving their modes.
+
+Practice Center remains a destination under Today, not a fourth tab.
 
 ### Review
 
@@ -305,3 +311,4 @@ Don't:
 | 2026-07-10 | Use Apple platform typography instead of imported fonts | Wording Daily is a native iOS app; platform text styles give Dynamic Type, localization, and accessibility behavior by default. |
 | 2026-07-10 | Use restrained teal accent with system surfaces | Keeps the app calm and learning-focused while avoiding generic purple/blue AI palettes. |
 | 2026-07-10 | Require explicit answered state with Next action | Prevents quiz auto-advance from hiding feedback before the learner can read it. |
+| 2026-07-10 | Replace the multiple-choice-only quiz scope with four concrete modes plus mixed | The user approved expression, meaning, listening, and spelling practice with a mixed option. |

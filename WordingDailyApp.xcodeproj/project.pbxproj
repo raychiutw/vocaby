@@ -32,6 +32,7 @@
 		000000000000000000000416 /* ReviewQueueService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000316 /* ReviewQueueService.swift */; };
 		000000000000000000000417 /* LibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000317 /* LibraryService.swift */; };
 		000000000000000000000418 /* QuizEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031A /* QuizEngine.swift */; };
+		000000000000000000000419 /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031B /* PracticeView.swift */; };
 		000000000000000000000430 /* WordingDailyWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000330 /* WordingDailyWidget.swift */; };
 		000000000000000000000431 /* WidgetSnapshotWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000311 /* WidgetSnapshotWriter.swift */; };
 		000000000000000000000432 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000308 /* Localizable.xcstrings */; };
@@ -96,6 +97,7 @@
 		000000000000000000000316 /* ReviewQueueService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueService.swift; sourceTree = "<group>"; };
 		000000000000000000000317 /* LibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryService.swift; sourceTree = "<group>"; };
 		00000000000000000000031A /* QuizEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizEngine.swift; sourceTree = "<group>"; };
+		00000000000000000000031B /* PracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
 		000000000000000000000318 /* WordingDailyApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyApp.entitlements; sourceTree = "<group>"; };
 		000000000000000000000319 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
@@ -204,6 +206,7 @@
 				000000000000000000000051 /* Root */,
 				00000000000000000000005A /* Onboarding */,
 				000000000000000000000052 /* Today */,
+				00000000000000000000005B /* Practice */,
 				000000000000000000000053 /* Review */,
 				000000000000000000000054 /* Library */,
 				000000000000000000000055 /* Settings */,
@@ -234,6 +237,14 @@
 				000000000000000000000302 /* TodayView.swift */,
 			);
 			path = Today;
+			sourceTree = "<group>";
+		};
+		00000000000000000000005B /* Practice */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000031B /* PracticeView.swift */,
+			);
+			path = Practice;
 			sourceTree = "<group>";
 		};
 		000000000000000000000053 /* Review */ = {
@@ -497,6 +508,7 @@
 				000000000000000000000416 /* ReviewQueueService.swift in Sources */,
 				000000000000000000000417 /* LibraryService.swift in Sources */,
 				000000000000000000000418 /* QuizEngine.swift in Sources */,
+				000000000000000000000419 /* PracticeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
