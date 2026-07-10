@@ -26,6 +26,7 @@
 		000000000000000000000410 /* ReviewScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000310 /* ReviewScheduler.swift */; };
 		000000000000000000000411 /* WidgetSnapshotWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000311 /* WidgetSnapshotWriter.swift */; };
 		000000000000000000000412 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000312 /* NotificationScheduler.swift */; };
+		000000000000000000000413 /* UserPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000313 /* UserPreferencesStore.swift */; };
 		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
 		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
 		000000000000000000000422 /* PersistenceGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000322 /* PersistenceGuardTests.swift */; };
@@ -33,6 +34,7 @@
 		000000000000000000000424 /* ReviewSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000324 /* ReviewSchedulerTests.swift */; };
 		000000000000000000000425 /* WidgetSnapshotWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000325 /* WidgetSnapshotWriterTests.swift */; };
 		000000000000000000000426 /* NotificationSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000326 /* NotificationSchedulerTests.swift */; };
+		000000000000000000000427 /* UserPreferencesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000327 /* UserPreferencesStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +69,7 @@
 		000000000000000000000310 /* ReviewScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewScheduler.swift; sourceTree = "<group>"; };
 		000000000000000000000311 /* WidgetSnapshotWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotWriter.swift; sourceTree = "<group>"; };
 		000000000000000000000312 /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
+		000000000000000000000313 /* UserPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferencesStore.swift; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
 		000000000000000000000322 /* PersistenceGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceGuardTests.swift; sourceTree = "<group>"; };
@@ -74,6 +77,7 @@
 		000000000000000000000324 /* ReviewSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSchedulerTests.swift; sourceTree = "<group>"; };
 		000000000000000000000325 /* WidgetSnapshotWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotWriterTests.swift; sourceTree = "<group>"; };
 		000000000000000000000326 /* NotificationSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSchedulerTests.swift; sourceTree = "<group>"; };
+		000000000000000000000327 /* UserPreferencesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferencesStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -222,6 +226,7 @@
 				000000000000000000000310 /* ReviewScheduler.swift */,
 				000000000000000000000311 /* WidgetSnapshotWriter.swift */,
 				000000000000000000000312 /* NotificationScheduler.swift */,
+				000000000000000000000313 /* UserPreferencesStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -236,6 +241,7 @@
 				000000000000000000000324 /* ReviewSchedulerTests.swift */,
 				000000000000000000000325 /* WidgetSnapshotWriterTests.swift */,
 				000000000000000000000326 /* NotificationSchedulerTests.swift */,
+				000000000000000000000327 /* UserPreferencesStoreTests.swift */,
 			);
 			path = WordingDailyAppTests;
 			sourceTree = "<group>";
@@ -357,6 +363,7 @@
 				000000000000000000000410 /* ReviewScheduler.swift in Sources */,
 				000000000000000000000411 /* WidgetSnapshotWriter.swift in Sources */,
 				000000000000000000000412 /* NotificationScheduler.swift in Sources */,
+				000000000000000000000413 /* UserPreferencesStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -371,6 +378,7 @@
 				000000000000000000000424 /* ReviewSchedulerTests.swift in Sources */,
 				000000000000000000000425 /* WidgetSnapshotWriterTests.swift in Sources */,
 				000000000000000000000426 /* NotificationSchedulerTests.swift in Sources */,
+				000000000000000000000427 /* UserPreferencesStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

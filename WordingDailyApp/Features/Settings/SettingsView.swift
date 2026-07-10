@@ -2,20 +2,39 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var remindersEnabled = false
-    @State private var reminderTime = Calendar.current.date(from: DateComponents(hour: 8, minute: 30)) ?? Date()
+    @State private var preferences: UserPreferences
+    private let preferencesStore: UserPreferencesStore
+    private let calendar: Calendar
+
+    init(
+        preferencesStore: UserPreferencesStore = UserPreferencesStore(),
+        calendar: Calendar = .current
+    ) {
+        self.preferencesStore = preferencesStore
+        self.calendar = calendar
+        _preferences = State(initialValue: preferencesStore.read())
+    }
 
     var body: some View {
         Form {
             Section {
-                Toggle("settings.reminders.toggle", isOn: $remindersEnabled)
+                Picker("settings.level.label", selection: $preferences.selectedLevel) {
+                    Text("settings.level.basic").tag(VocabularyLevel.basic)
+                    Text("settings.level.intermediate").tag(VocabularyLevel.intermediate)
+                    Text("settings.level.advanced").tag(VocabularyLevel.advanced)
+                }
+                .pickerStyle(.navigationLink)
+            }
+
+            Section {
+                Toggle("settings.reminders.toggle", isOn: $preferences.remindersEnabled)
 
                 DatePicker(
                     "settings.reminders.time",
-                    selection: $reminderTime,
+                    selection: reminderTimeBinding,
                     displayedComponents: .hourAndMinute
                 )
-                .disabled(!remindersEnabled)
+                .disabled(!preferences.remindersEnabled)
             }
 
             Section {
@@ -23,12 +42,23 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("settings.title")
+        .onChange(of: preferences) { _, newValue in
+            try? preferencesStore.write(newValue)
+        }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("common.done") {
                     dismiss()
                 }
             }
+        }
+    }
+
+    private var reminderTimeBinding: Binding<Date> {
+        Binding {
+            preferences.reminderTimeDate(calendar: calendar)
+        } set: { newDate in
+            preferences.setReminderTime(newDate, calendar: calendar)
         }
     }
 }
