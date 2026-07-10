@@ -76,6 +76,13 @@ struct RootTabView: View {
         .onOpenURL { url in
             route(url)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .wordingDailyInternalURL)) { notification in
+            guard let url = notification.object as? URL else {
+                return
+            }
+
+            route(url)
+        }
     }
 
     private func route(_ url: URL) {
