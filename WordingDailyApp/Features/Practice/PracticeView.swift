@@ -4,6 +4,7 @@ import SwiftUI
 
 struct DailyPracticePlan {
     let runID: String
+    let missingSeedItemIDs: [String]
     let learnItems: [VocabularySeedItem]
     let quizQuestions: [QuizQuestion]
 
@@ -18,6 +19,15 @@ struct DailyPracticePlan {
         let unansweredItems = session.items
             .filter { $0.answeredAt == nil }
             .sorted { $0.position < $1.position }
+        missingSeedItemIDs = unansweredItems
+            .map(\.itemID)
+            .filter { seedByID[$0] == nil }
+
+        guard missingSeedItemIDs.isEmpty else {
+            learnItems = []
+            quizQuestions = []
+            return
+        }
 
         learnItems = unansweredItems
             .filter { !$0.isReviewFill }
@@ -375,7 +385,14 @@ struct DailyPracticeView: View {
         )
 
         Group {
-            if plan.learnItems.indices.contains(learnIndex) {
+            if !plan.missingSeedItemIDs.isEmpty {
+                List {
+                    Section {
+                        Label("today.load.error", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(AppTheme.wrongRed)
+                    }
+                }
+            } else if plan.learnItems.indices.contains(learnIndex) {
                 learnView(item: plan.learnItems[learnIndex], total: plan.learnItems.count)
             } else {
                 QuizRunView(
@@ -485,7 +502,7 @@ struct DailyPracticeView: View {
         guard let sessionItem = session.items.first(where: {
             $0.itemID == attempt.question.itemID && $0.answeredAt == nil
         }), let seedItem = seedItems.first(where: { $0.id == attempt.question.itemID }) else {
-            return
+            throw CocoaError(.fileReadCorruptFile)
         }
 
         do {

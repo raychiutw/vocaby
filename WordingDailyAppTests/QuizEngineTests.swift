@@ -143,6 +143,25 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertEqual(resumedPlan.runID, plan.runID)
     }
 
+    func testDailyPracticePlanFailsClosedWhenUnansweredItemIsMissingFromSeed() {
+        let items = makeItems(count: 1)
+        let session = DailySession(dayKey: "2026-07-10", targetItemCount: 2)
+        session.items = [
+            DailySessionItem(itemID: items[0].id, position: 0),
+            DailySessionItem(itemID: "missing-seed", position: 1, isReviewFill: true)
+        ]
+
+        let plan = DailyPracticePlan(
+            session: session,
+            seedItems: items,
+            supportLanguageCode: "zh-Hant"
+        )
+
+        XCTAssertEqual(plan.missingSeedItemIDs, ["missing-seed"])
+        XCTAssertTrue(plan.learnItems.isEmpty)
+        XCTAssertTrue(plan.quizQuestions.isEmpty)
+    }
+
     func testQuestionGenerationUsesFewerUniqueOptionsWhenSeedIsExhausted() throws {
         let items = makeItems(count: 2)
         var random = IncrementingRandomNumberGenerator()
