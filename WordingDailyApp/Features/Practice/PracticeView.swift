@@ -1,5 +1,35 @@
 import AVFoundation
+import SwiftData
 import SwiftUI
+
+struct DailyPracticePlan {
+    let runID: String
+    let learnItems: [VocabularySeedItem]
+    let quizQuestions: [QuizQuestion]
+
+    init(
+        session: DailySession,
+        seedItems: [VocabularySeedItem],
+        supportLanguageCode: String
+    ) {
+        runID = session.dayKey
+
+        let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
+        let unansweredItems = session.items
+            .filter { $0.answeredAt == nil }
+            .sorted { $0.position < $1.position }
+
+        learnItems = unansweredItems
+            .filter { !$0.isReviewFill }
+            .compactMap { seedByID[$0.itemID] }
+        quizQuestions = QuizEngine().makeQuestions(
+            for: unansweredItems.compactMap { seedByID[$0.itemID] },
+            candidates: seedItems,
+            mode: .mixed,
+            supportLanguageCode: supportLanguageCode
+        )
+    }
+}
 
 struct QuizRunView<Completion: View>: View {
     let runID: AnyHashable
@@ -309,6 +339,199 @@ struct QuizRunView<Completion: View>: View {
         spellingText = ""
         errorMessage = nil
         resetDeadline()
+    }
+
+    private func speak(_ text: String) {
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        speechSynthesizer.speak(utterance)
+    }
+}
+
+struct DailyPracticeView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    let session: DailySession
+    let seedItems: [VocabularySeedItem]
+    let supportLanguageCode: String
+    let streakCount: Int
+    let scheduledReviewCount: Int
+    let dueReviewCount: Int
+    let onReview: () -> Void
+    let onUpdate: () -> Void
+
+    @State private var learnIndex = 0
+    @State private var speechSynthesizer = AVSpeechSynthesizer()
+
+    private let persistenceService = ProgressPersistenceService()
+    private let reviewScheduler = ReviewScheduler()
+
+    var body: some View {
+        let plan = DailyPracticePlan(
+            session: session,
+            seedItems: seedItems,
+            supportLanguageCode: supportLanguageCode
+        )
+
+        Group {
+            if plan.learnItems.indices.contains(learnIndex) {
+                learnView(item: plan.learnItems[learnIndex], total: plan.learnItems.count)
+            } else {
+                QuizRunView(
+                    runID: plan.runID,
+                    questions: plan.quizQuestions,
+                    configuration: .daily,
+                    tint: AppTheme.accent,
+                    onFirstAttempt: persistAnswer
+                ) {
+                    completionContent
+                }
+            }
+        }
+        .navigationTitle("practice.title")
+    }
+
+    private func learnView(item: VocabularySeedItem, total: Int) -> some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("\(learnIndex + 1)/\(total)")
+                        .font(.headline.monospacedDigit())
+
+                    Text(verbatim: item.upgradedExpression)
+                        .font(.title2.bold())
+
+                    Text(verbatim: item.plainExpression)
+                        .foregroundStyle(.secondary)
+
+                    Text(verbatim: localized(item.meaning))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(verbatim: item.example.text)
+                        Text(verbatim: localized(item.example.translation))
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.subheadline)
+
+                    Button {
+                        speak(item.pronunciationText)
+                    } label: {
+                        Label("practice.pronunciation.accessibility", systemImage: "speaker.wave.2")
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(Text("practice.pronunciation.accessibility"))
+                }
+                .padding(.vertical, 8)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                learnIndex += 1
+            } label: {
+                Group {
+                    if learnIndex + 1 == total {
+                        Text("practice.learn.startQuiz")
+                    } else {
+                        Text("practice.next")
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(AppTheme.accent)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(.regularMaterial)
+        }
+    }
+
+    @ViewBuilder
+    private var completionContent: some View {
+        Section {
+            Label("practice.completed", systemImage: "checkmark.circle.fill")
+                .font(.headline)
+                .foregroundStyle(AppTheme.accent)
+
+            LabeledContent("practice.completed.count", value: "\(session.completedItemCount)")
+            LabeledContent("practice.correct.count", value: "\(session.correctItemCount)")
+            LabeledContent("practice.review.scheduled", value: "\(scheduledReviewCount)")
+            LabeledContent("streak.label", value: "\(streakCount)")
+        }
+
+        Section {
+            if dueReviewCount > 0 {
+                Button {
+                    dismiss()
+                    onReview()
+                } label: {
+                    Label("practice.review.button", systemImage: "arrow.triangle.2.circlepath")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(AppTheme.accent)
+            }
+
+            Button("common.done") {
+                dismiss()
+            }
+        }
+    }
+
+    private func persistAnswer(_ attempt: QuizAttempt) throws {
+        guard let sessionItem = session.items.first(where: {
+            $0.itemID == attempt.question.itemID && $0.answeredAt == nil
+        }), let seedItem = seedItems.first(where: { $0.id == attempt.question.itemID }) else {
+            return
+        }
+
+        do {
+            let progress = try persistenceService.wordProgress(
+                for: seedItem.id,
+                level: seedItem.level,
+                in: modelContext
+            )
+            let now = Date()
+            let indices = attempt.question.persistenceIndices(
+                for: attempt.submittedAnswer,
+                wasCorrect: attempt.wasCorrect
+            )
+
+            sessionItem.selectedOptionIndex = indices.selected
+            sessionItem.wasCorrect = attempt.wasCorrect
+            sessionItem.answeredAt = now
+            reviewScheduler.applyAnswer(
+                to: progress,
+                wasCorrect: attempt.wasCorrect,
+                answeredAt: now,
+                context: sessionItem.reviewAnswerContext
+            )
+            if session.items.allSatisfy({ $0.answeredAt != nil }) {
+                session.completedAt = now
+            }
+
+            _ = try persistenceService.quizResult(
+                dayKey: session.dayKey,
+                itemID: seedItem.id,
+                selectedOptionIndex: indices.selected,
+                correctOptionIndex: indices.correct,
+                in: modelContext
+            )
+            if modelContext.hasChanges {
+                try modelContext.save()
+            }
+            onUpdate()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    private func localized(_ values: [String: String]) -> String {
+        values[supportLanguageCode] ?? values["en"] ?? values.values.first ?? ""
     }
 
     private func speak(_ text: String) {
