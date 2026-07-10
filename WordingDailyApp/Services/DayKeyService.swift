@@ -55,6 +55,15 @@ struct DayKeyService {
         return calendar.dateComponents([.day], from: previousStart, to: currentStart).day
     }
 
+    func dayKey(byAddingDays days: Int, to dayKey: String) -> String? {
+        guard let date = date(for: dayKey),
+              let shiftedDate = calendar.date(byAdding: .day, value: days, to: date) else {
+            return nil
+        }
+
+        return self.dayKey(for: shiftedDate)
+    }
+
     func streakRelationship(previousCompletedDayKey: String?, currentDayKey: String) -> StreakRelationship {
         guard let previousCompletedDayKey else {
             return .firstDay

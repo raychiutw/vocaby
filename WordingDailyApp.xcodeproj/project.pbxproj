@@ -23,10 +23,12 @@
 		00000000000000000000040D /* VocabularySeed.json in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030D /* VocabularySeed.json */; };
 		00000000000000000000040E /* ProgressPersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030E /* ProgressPersistenceService.swift */; };
 		00000000000000000000040F /* DailySelectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030F /* DailySelectionService.swift */; };
+		000000000000000000000410 /* ReviewScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000310 /* ReviewScheduler.swift */; };
 		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
 		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
 		000000000000000000000422 /* PersistenceGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000322 /* PersistenceGuardTests.swift */; };
 		000000000000000000000423 /* DailySelectionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000323 /* DailySelectionServiceTests.swift */; };
+		000000000000000000000424 /* ReviewSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000324 /* ReviewSchedulerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,10 +60,12 @@
 		00000000000000000000030D /* VocabularySeed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = VocabularySeed.json; sourceTree = "<group>"; };
 		00000000000000000000030E /* ProgressPersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressPersistenceService.swift; sourceTree = "<group>"; };
 		00000000000000000000030F /* DailySelectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySelectionService.swift; sourceTree = "<group>"; };
+		000000000000000000000310 /* ReviewScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewScheduler.swift; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
 		000000000000000000000322 /* PersistenceGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceGuardTests.swift; sourceTree = "<group>"; };
 		000000000000000000000323 /* DailySelectionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySelectionServiceTests.swift; sourceTree = "<group>"; };
+		000000000000000000000324 /* ReviewSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSchedulerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -207,6 +211,7 @@
 				00000000000000000000030C /* SeedLoader.swift */,
 				00000000000000000000030E /* ProgressPersistenceService.swift */,
 				00000000000000000000030F /* DailySelectionService.swift */,
+				000000000000000000000310 /* ReviewScheduler.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -218,6 +223,7 @@
 				000000000000000000000321 /* VocabularySeedValidationTests.swift */,
 				000000000000000000000322 /* PersistenceGuardTests.swift */,
 				000000000000000000000323 /* DailySelectionServiceTests.swift */,
+				000000000000000000000324 /* ReviewSchedulerTests.swift */,
 			);
 			path = WordingDailyAppTests;
 			sourceTree = "<group>";
@@ -336,6 +342,7 @@
 				00000000000000000000040C /* SeedLoader.swift in Sources */,
 				00000000000000000000040E /* ProgressPersistenceService.swift in Sources */,
 				00000000000000000000040F /* DailySelectionService.swift in Sources */,
+				000000000000000000000410 /* ReviewScheduler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -347,6 +354,7 @@
 				000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */,
 				000000000000000000000422 /* PersistenceGuardTests.swift in Sources */,
 				000000000000000000000423 /* DailySelectionServiceTests.swift in Sources */,
+				000000000000000000000424 /* ReviewSchedulerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

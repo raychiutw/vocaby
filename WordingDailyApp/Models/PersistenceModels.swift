@@ -8,6 +8,7 @@ final class WordProgress {
     var isSaved: Bool
     var correctCount: Int
     var dueDayKey: String?
+    var wrongCount: Int
     var masteredAt: Date?
     var updatedAt: Date
 
@@ -17,6 +18,7 @@ final class WordProgress {
         isSaved: Bool = false,
         correctCount: Int = 0,
         dueDayKey: String? = nil,
+        wrongCount: Int = 0,
         masteredAt: Date? = nil,
         updatedAt: Date = Date()
     ) {
@@ -25,6 +27,7 @@ final class WordProgress {
         self.isSaved = isSaved
         self.correctCount = correctCount
         self.dueDayKey = dueDayKey
+        self.wrongCount = wrongCount
         self.masteredAt = masteredAt
         self.updatedAt = updatedAt
     }
