@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 struct OnboardingView: View {
     private enum Step {
@@ -10,10 +11,12 @@ struct OnboardingView: View {
     let initialPreferences: UserPreferences
     let onComplete: (UserPreferences) -> Void
     private let calendar: Calendar
+    private let notificationScheduler = NotificationScheduler()
 
     @State private var step: Step = .welcome
     @State private var selectedLevel: VocabularyLevel?
     @State private var reminderTime: Date
+    @State private var isCompleting = false
 
     init(
         initialPreferences: UserPreferences = .defaults,
@@ -98,9 +101,12 @@ struct OnboardingView: View {
                     Button("onboarding.reminder.enable") {
                         complete(remindersEnabled: true)
                     }
+                    .disabled(isCompleting)
+
                     Button("onboarding.reminder.skip", role: .cancel) {
                         complete(remindersEnabled: false)
                     }
+                    .disabled(isCompleting)
                 }
             }
         }
@@ -126,6 +132,9 @@ struct OnboardingView: View {
     }
 
     private func complete(remindersEnabled: Bool) {
+        guard !isCompleting else { return }
+
+        isCompleting = true
         var preferences = initialPreferences
         preferences.completeOnboarding(
             selectedLevel: selectedLevel ?? .basic,
@@ -133,7 +142,57 @@ struct OnboardingView: View {
             reminderTime: remindersEnabled ? reminderTime : nil,
             calendar: calendar
         )
-        onComplete(preferences)
+
+        Task {
+            let updatedPreferences = await applyReminderPreference(preferences)
+
+            await MainActor.run {
+                isCompleting = false
+                onComplete(updatedPreferences)
+            }
+        }
+    }
+
+    private func applyReminderPreference(_ preferences: UserPreferences) async -> UserPreferences {
+        var updatedPreferences = preferences
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        let title = String(localized: "notifications.daily.title")
+        let body = String(localized: "notifications.daily.body")
+        var plan = notificationScheduler.dailyReminderPlan(
+            for: updatedPreferences,
+            authorizationStatus: ReminderAuthorizationStatus(settings.authorizationStatus),
+            title: title,
+            body: body
+        )
+
+        if plan == .requestAuthorization {
+            let granted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+            plan = notificationScheduler.dailyReminderPlan(
+                for: updatedPreferences,
+                authorizationStatus: granted ? .authorized : .denied,
+                title: title,
+                body: body
+            )
+        }
+
+        switch plan {
+        case .cancel:
+            updatedPreferences.remindersEnabled = false
+            notificationScheduler.cancelReminders(in: center)
+        case let .schedule(hour, minute, title, body):
+            try? await notificationScheduler.scheduleDailyReminder(
+                hour: hour,
+                minute: minute,
+                title: title,
+                body: body,
+                in: center
+            )
+        case .requestAuthorization:
+            break
+        }
+
+        return updatedPreferences
     }
 }
 

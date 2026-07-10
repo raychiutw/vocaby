@@ -17,6 +17,38 @@
         }
       }
     },
+    "notifications.daily.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take a few minutes to finish today's practice."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用幾分鐘完成今天的練習。"
+          }
+        }
+      }
+    },
+    "notifications.daily.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today's 10 expression upgrades are ready."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天的 10 個表達準備好了"
+          }
+        }
+      }
+    },
     "onboarding.continue" : {
       "localizations" : {
         "en" : {
@@ -461,6 +493,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "單字程度"
+          }
+        }
+      }
+    },
+    "settings.reminders.denied.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice still works without reminders. Turn on notifications in Settings to use daily reminders."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有提醒也可以繼續練習。若要使用每日提醒，請到設定開啟通知。"
+          }
+        }
+      }
+    },
+    "settings.reminders.openSettings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟設定"
           }
         }
       }
