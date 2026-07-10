@@ -337,6 +337,22 @@
         }
       }
     },
+    "review.completed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review complete"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "複習完成"
+          }
+        }
+      }
+    },
     "review.empty.message" : {
       "localizations" : {
         "en" : {
@@ -349,6 +365,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "目前沒有需要複習的項目。"
+          }
+        }
+      }
+    },
+    "review.load.error" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review items could not be loaded."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法載入複習項目。"
+          }
+        }
+      }
+    },
+    "review.session.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review Session"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "複習練習"
           }
         }
       }
