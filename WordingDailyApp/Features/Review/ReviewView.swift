@@ -1,4 +1,3 @@
-import AVFoundation
 import SwiftData
 import SwiftUI
 
@@ -45,18 +44,6 @@ struct ReviewView: View {
                     Text("review.empty.message")
                         .foregroundStyle(.secondary)
                 }
-            } else {
-                Section {
-                    ForEach(dueItems.prefix(5)) { item in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.upgradedExpression)
-                                .font(.headline)
-                            Text(item.plainExpression)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
             }
 
             if let statusMessage {
@@ -73,6 +60,8 @@ struct ReviewView: View {
         .navigationDestination(isPresented: $isShowingReview) {
             ReviewSessionView(
                 items: dueItems,
+                seedItems: seedItems,
+                dayKey: dayKeyService.dayKey(for: Date()),
                 supportLanguageCode: supportLanguageCode
             ) {
                 refreshReviewQueue()
@@ -110,201 +99,92 @@ private struct ReviewSessionView: View {
     @Environment(\.modelContext) private var modelContext
 
     let items: [VocabularySeedItem]
+    let seedItems: [VocabularySeedItem]
+    let dayKey: String
     let supportLanguageCode: String
     let onUpdate: () -> Void
-
-    @State private var currentIndex = 0
-    @State private var selectedOptionIndex: Int?
-    @State private var errorMessage: String?
-    @State private var speechSynthesizer = AVSpeechSynthesizer()
 
     private let dayKeyService = DayKeyService()
     private let persistenceService = ProgressPersistenceService()
     private let reviewScheduler = ReviewScheduler()
 
-    private var currentItem: VocabularySeedItem? {
-        guard currentIndex < items.count else {
-            return nil
-        }
-
-        return items[currentIndex]
-    }
-
-    private var isLastItem: Bool {
-        currentIndex + 1 >= items.count
-    }
-
     var body: some View {
-        List {
-            if let item = currentItem {
-                Section {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("\(currentIndex + 1)/\(max(items.count, 1))")
-                                .font(.headline.monospacedDigit())
-                            Spacer()
-                            Button {
-                                speak(item.pronunciationText)
-                            } label: {
-                                Label(item.pronunciationText, systemImage: "speaker.wave.2")
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityLabel(Text("practice.pronunciation.accessibility"))
-                        }
+        let plan = ReviewPracticePlan(
+            dayKey: dayKey,
+            items: items,
+            seedItems: seedItems,
+            supportLanguageCode: supportLanguageCode
+        )
 
-                        Text(item.upgradedExpression)
-                            .font(.title2.bold())
-
-                        Text(item.plainExpression)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-
-                        Text(localized(item.meaning))
-                            .font(.body)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.example.text)
-                            Text(localized(item.example.translation))
-                                .foregroundStyle(.secondary)
-                        }
-                        .font(.subheadline)
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                Section {
-                    Text(localized(item.quiz.prompt))
-                        .font(.headline)
-
-                    ForEach(Array(item.quiz.options.enumerated()), id: \.offset) { index, option in
-                        Button {
-                            selectedOptionIndex = index
-                        } label: {
-                            HStack {
-                                Text(option)
-                                    .multilineTextAlignment(.leading)
-                                Spacer()
-                                answerIcon(for: index, correctOptionIndex: item.quiz.correctOptionIndex)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(answerTint(for: index, correctOptionIndex: item.quiz.correctOptionIndex))
-                        .disabled(selectedOptionIndex != nil)
-                    }
-                }
-
-                if let selectedOptionIndex {
-                    Section {
-                        Text(String(localized: selectedOptionIndex == item.quiz.correctOptionIndex ? "practice.correct" : "practice.wrong"))
-                            .font(.headline)
-                    }
-                }
-            } else {
-                Section {
-                    Text("review.completed")
-                        .font(.headline)
-
-                    Button("common.done") {
-                        dismiss()
-                    }
-                }
-            }
-
-            if let errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .foregroundStyle(.secondary)
-                }
-            }
+        QuizRunView(
+            runID: plan.runID,
+            questions: plan.quizQuestions,
+            configuration: PracticeConfiguration(
+                mode: .mixed,
+                questionCount: plan.quizQuestions.count,
+                timeLimitSeconds: 15,
+                retriesWrongAnswers: true
+            ),
+            tint: AppTheme.reviewAmber,
+            onFirstAttempt: persistAnswer
+        ) {
+            completionContent
         }
         .navigationTitle("review.session.title")
-        .safeAreaInset(edge: .bottom) {
-            if selectedOptionIndex != nil, currentItem != nil {
-                VStack(spacing: 0) {
-                    Button {
-                        persistAnswer()
-                    } label: {
-                        Text(String(localized: isLastItem ? "common.done" : "practice.next"))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(AppTheme.reviewAmber)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.regularMaterial)
-            }
-        }
         .onDisappear {
             onUpdate()
         }
     }
 
     @ViewBuilder
-    private func answerIcon(for index: Int, correctOptionIndex: Int) -> some View {
-        if selectedOptionIndex != nil && index == correctOptionIndex {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(AppTheme.correctGreen)
-        } else if selectedOptionIndex == index {
-            Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(AppTheme.wrongRed)
+    private var completionContent: some View {
+        Section {
+            Text("review.completed")
+                .font(.headline)
+
+            Button("common.done") {
+                dismiss()
+            }
         }
     }
 
-    private func answerTint(for index: Int, correctOptionIndex: Int) -> Color? {
-        guard let selectedOptionIndex else {
-            return nil
-        }
-
-        if index == correctOptionIndex {
-            return AppTheme.correctGreen
-        }
-
-        return selectedOptionIndex == index ? AppTheme.wrongRed : nil
-    }
-
-    private func persistAnswer() {
-        guard let item = currentItem, let selectedOptionIndex else {
-            return
+    private func persistAnswer(_ attempt: QuizAttempt) throws {
+        guard attempt.isFirstAttempt,
+              let item = items.first(where: { $0.id == attempt.question.itemID }) else {
+            throw CocoaError(.fileReadCorruptFile)
         }
 
         do {
             let now = Date()
-            let wasCorrect = selectedOptionIndex == item.quiz.correctOptionIndex
-            let progress = try persistenceService.wordProgress(for: item.id, level: item.level, in: modelContext)
+            let indices = attempt.question.persistenceIndices(
+                for: attempt.submittedAnswer,
+                wasCorrect: attempt.wasCorrect
+            )
+            let progress = try persistenceService.wordProgress(
+                for: item.id,
+                level: item.level,
+                in: modelContext
+            )
             reviewScheduler.applyAnswer(
                 to: progress,
-                wasCorrect: wasCorrect,
+                wasCorrect: attempt.wasCorrect,
                 answeredAt: now,
                 context: .review
             )
             _ = try persistenceService.quizResult(
                 dayKey: dayKeyService.dayKey(for: now),
                 itemID: item.id,
-                selectedOptionIndex: selectedOptionIndex,
-                correctOptionIndex: item.quiz.correctOptionIndex,
+                selectedOptionIndex: indices.selected,
+                correctOptionIndex: indices.correct,
                 in: modelContext
             )
-
-            try modelContext.save()
-            self.selectedOptionIndex = nil
-            errorMessage = nil
-            currentIndex += 1
+            if modelContext.hasChanges {
+                try modelContext.save()
+            }
         } catch {
-            errorMessage = String(localized: "practice.save.error")
+            modelContext.rollback()
+            throw error
         }
-    }
-
-    private func localized(_ values: [String: String]) -> String {
-        values[supportLanguageCode] ?? values.values.first ?? ""
-    }
-
-    private func speak(_ text: String) {
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        speechSynthesizer.speak(utterance)
     }
 }
 

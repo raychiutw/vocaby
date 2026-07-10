@@ -162,6 +162,44 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertTrue(plan.quizQuestions.isEmpty)
     }
 
+    func testReviewPracticePlanPreservesDueOrderAndUsesFullSeedForMixedQuestions() {
+        let seedItems = makeItems(count: 6)
+        let dueItems = [seedItems[2], seedItems[0]]
+        var random = IncrementingRandomNumberGenerator()
+
+        let plan = ReviewPracticePlan(
+            dayKey: "2026-07-10",
+            items: dueItems,
+            seedItems: seedItems,
+            supportLanguageCode: "zh-Hant",
+            using: &random
+        )
+
+        XCTAssertEqual(plan.quizQuestions.map(\.itemID), dueItems.map(\.id))
+        XCTAssertTrue(plan.quizQuestions.allSatisfy { $0.mode != .mixed })
+        XCTAssertEqual(plan.quizQuestions.first?.options.count, 4)
+
+        var repeatedRandom = IncrementingRandomNumberGenerator()
+        let repeatedPlan = ReviewPracticePlan(
+            dayKey: "2026-07-10",
+            items: dueItems,
+            seedItems: seedItems,
+            supportLanguageCode: "zh-Hant",
+            using: &repeatedRandom
+        )
+        XCTAssertEqual(repeatedPlan.runID, plan.runID)
+
+        var reorderedRandom = IncrementingRandomNumberGenerator()
+        let reorderedPlan = ReviewPracticePlan(
+            dayKey: "2026-07-10",
+            items: Array(dueItems.reversed()),
+            seedItems: seedItems,
+            supportLanguageCode: "zh-Hant",
+            using: &reorderedRandom
+        )
+        XCTAssertNotEqual(reorderedPlan.runID, plan.runID)
+    }
+
     func testQuestionGenerationUsesFewerUniqueOptionsWhenSeedIsExhausted() throws {
         let items = makeItems(count: 2)
         var random = IncrementingRandomNumberGenerator()

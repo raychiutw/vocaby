@@ -41,6 +41,44 @@ struct DailyPracticePlan {
     }
 }
 
+struct ReviewPracticePlan {
+    let runID: String
+    let quizQuestions: [QuizQuestion]
+
+    init(
+        dayKey: String,
+        items: [VocabularySeedItem],
+        seedItems: [VocabularySeedItem],
+        supportLanguageCode: String
+    ) {
+        var random = SystemRandomNumberGenerator()
+        self.init(
+            dayKey: dayKey,
+            items: items,
+            seedItems: seedItems,
+            supportLanguageCode: supportLanguageCode,
+            using: &random
+        )
+    }
+
+    init<Random: RandomNumberGenerator>(
+        dayKey: String,
+        items: [VocabularySeedItem],
+        seedItems: [VocabularySeedItem],
+        supportLanguageCode: String,
+        using random: inout Random
+    ) {
+        runID = ([dayKey] + items.map(\.id)).joined(separator: "#")
+        quizQuestions = QuizEngine().makeQuestions(
+            for: items,
+            candidates: seedItems,
+            mode: .mixed,
+            supportLanguageCode: supportLanguageCode,
+            using: &random
+        )
+    }
+}
+
 struct QuizRunView<Completion: View>: View {
     let runID: AnyHashable
     let questions: [QuizQuestion]
