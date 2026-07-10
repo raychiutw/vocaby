@@ -131,11 +131,22 @@ final class QuizEngineTests: XCTestCase {
         var state = QuizRunState(questions: [first, second])
 
         let initialFeedback = try XCTUnwrap(state.submit("wrong first"))
-        let repeatedFeedback = try XCTUnwrap(state.submit(first.correctAnswer))
+        let repeatedFeedback = state.submit(first.correctAnswer)
 
         XCTAssertEqual(state.currentQuestion, first)
         XCTAssertEqual(state.currentFeedback, initialFeedback)
-        XCTAssertEqual(repeatedFeedback, initialFeedback)
+        XCTAssertNil(repeatedFeedback)
+        XCTAssertEqual(state.firstAttempts, [initialFeedback])
+    }
+
+    func testTimeoutAfterSubmissionDoesNotReturnAnotherAttempt() throws {
+        let question = makeQuestion("first")
+        var state = QuizRunState(questions: [question])
+
+        let initialFeedback = try XCTUnwrap(state.submit(question.correctAnswer))
+
+        XCTAssertNil(state.timeout())
+        XCTAssertEqual(state.currentFeedback, initialFeedback)
         XCTAssertEqual(state.firstAttempts, [initialFeedback])
     }
 

@@ -114,9 +114,7 @@ struct QuizRunState {
     }
 
     private mutating func record(submittedAnswer: String, timedOut: Bool) -> QuizAttempt? {
-        if let currentFeedback {
-            return currentFeedback
-        }
+        guard currentFeedback == nil else { return nil }
         guard let currentQuestion else { return nil }
 
         let attempt = QuizAttempt(
