@@ -337,6 +337,22 @@
         }
       }
     },
+    "library.detail.definition" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English Definition"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英文定義"
+          }
+        }
+      }
+    },
     "library.detail.saved" : {
       "localizations" : {
         "en" : {

@@ -210,7 +210,6 @@ private struct LibraryDetailView: View {
                         .font(.title2.weight(.semibold))
                     Text(item.seedItem.plainExpression)
                         .foregroundStyle(.secondary)
-                    Text(localized(item.seedItem.meaning))
                     Text(item.seedItem.example.text)
                         .foregroundStyle(.secondary)
                     Text(localized(item.seedItem.example.translation))
@@ -218,6 +217,14 @@ private struct LibraryDetailView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 8)
+            }
+
+            Section("library.detail.definition") {
+                Text(item.seedItem.meaning["en"] ?? "")
+                if supportLanguageCode != "en" {
+                    Text(localized(item.seedItem.meaning))
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section {

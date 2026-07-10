@@ -29,6 +29,15 @@ final class VocabularySeedValidationTests: XCTestCase {
         }
     }
 
+    func testValidationRejectsMissingRequiredField() throws {
+        var item = try XCTUnwrap(SeedLoader.sampleItems.first)
+        item.upgradedExpression = ""
+
+        XCTAssertThrowsError(try SeedValidator.validate([item])) { error in
+            XCTAssertEqual(error as? SeedValidationError, .missingRequiredField(item.id))
+        }
+    }
+
     func testValidationRejectsOutOfOrderSortOrderWithinLevel() throws {
         var first = try XCTUnwrap(SeedLoader.sampleItems.first)
         var second = try XCTUnwrap(SeedLoader.sampleItems.dropFirst().first)

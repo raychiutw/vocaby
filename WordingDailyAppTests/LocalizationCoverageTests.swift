@@ -38,6 +38,7 @@ final class LocalizationCoverageTests: XCTestCase {
             "today.resume.button": .init(en: 24, zhHant: 12),
             "today.completed.button": .init(en: 24, zhHant: 12),
             "review.start.button": .init(en: 24, zhHant: 12),
+            "library.detail.definition": .init(en: 20, zhHant: 8),
             "practice.learn.startQuiz": .init(en: 24, zhHant: 12),
             "practice.next": .init(en: 24, zhHant: 12),
             "practice.submit": .init(en: 24, zhHant: 12),
