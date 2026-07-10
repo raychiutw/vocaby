@@ -114,6 +114,18 @@ struct TodayView: View {
                 LabeledContent("today.preview.label", value: previewText)
             }
 
+            Section {
+                NavigationLink {
+                    PracticeCenterView(
+                        seedItems: seedItems,
+                        selectedLevel: preferencesStore.read().selectedLevel,
+                        supportLanguageCode: supportLanguageCode
+                    )
+                } label: {
+                    Label("practice.center.button", systemImage: "slider.horizontal.3")
+                }
+            }
+
             if let statusMessage {
                 Section {
                     Text(statusMessage)

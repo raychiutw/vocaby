@@ -79,6 +79,190 @@ struct ReviewPracticePlan {
     }
 }
 
+struct PracticeCenterPlan {
+    static let defaultConfiguration = PracticeConfiguration.daily
+
+    let runID: UUID
+    let configuration: PracticeConfiguration
+    let questions: [QuizQuestion]
+
+    init(
+        seedItems: [VocabularySeedItem],
+        selectedLevel: VocabularyLevel,
+        supportLanguageCode: String,
+        learnedItemIDs: [String],
+        configuration: PracticeConfiguration
+    ) {
+        var random = SystemRandomNumberGenerator()
+        self.init(
+            seedItems: seedItems,
+            selectedLevel: selectedLevel,
+            supportLanguageCode: supportLanguageCode,
+            learnedItemIDs: learnedItemIDs,
+            configuration: configuration,
+            using: &random
+        )
+    }
+
+    init<Random: RandomNumberGenerator>(
+        seedItems: [VocabularySeedItem],
+        selectedLevel: VocabularyLevel,
+        supportLanguageCode: String,
+        learnedItemIDs: [String],
+        configuration: PracticeConfiguration,
+        using random: inout Random
+    ) {
+        let pool = seedItems.filter {
+            $0.level == selectedLevel && $0.supportLanguageCodes.contains(supportLanguageCode)
+        }
+        let selectedItems = QuizEngine().selectPracticeItems(
+            from: pool,
+            learnedItemIDs: learnedItemIDs,
+            count: configuration.questionCount,
+            using: &random
+        )
+
+        runID = UUID()
+        self.configuration = configuration
+        questions = QuizEngine().makeQuestions(
+            for: selectedItems,
+            candidates: pool,
+            mode: configuration.mode,
+            supportLanguageCode: supportLanguageCode,
+            using: &random
+        )
+    }
+}
+
+struct PracticeCenterView: View {
+    @Environment(\.modelContext) private var modelContext
+
+    let seedItems: [VocabularySeedItem]
+    let selectedLevel: VocabularyLevel
+    let supportLanguageCode: String
+
+    @State private var configuration = PracticeCenterPlan.defaultConfiguration
+    @State private var activePlan: PracticeCenterPlan?
+    @State private var loadError: String?
+
+    private var hasEligibleItems: Bool {
+        seedItems.contains {
+            $0.level == selectedLevel && $0.supportLanguageCodes.contains(supportLanguageCode)
+        }
+    }
+
+    var body: some View {
+        Group {
+            if let activePlan {
+                QuizRunView(
+                    runID: activePlan.runID,
+                    questions: activePlan.questions,
+                    configuration: activePlan.configuration,
+                    tint: AppTheme.accent,
+                    onFirstAttempt: { _ in }
+                ) {
+                    Section {
+                        Button {
+                            self.activePlan = nil
+                        } label: {
+                            Text("practice.center.newRun")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            } else {
+                setupForm
+            }
+        }
+        .navigationTitle("practice.center.title")
+    }
+
+    private var setupForm: some View {
+        Form {
+            Section {
+                LabeledContent("settings.level.label") {
+                    Text(levelTitleKey)
+                }
+
+                Picker("practice.center.mode.label", selection: $configuration.mode) {
+                    ForEach(PracticeMode.allCases) { mode in
+                        Text(modeTitleKey(for: mode)).tag(mode)
+                    }
+                }
+
+                Picker("practice.center.questions.label", selection: $configuration.questionCount) {
+                    ForEach(PracticeConfiguration.questionCounts, id: \.self) { count in
+                        Text(verbatim: "\(count)").tag(count)
+                    }
+                }
+
+                Picker("practice.center.timer.label", selection: $configuration.timeLimitSeconds) {
+                    ForEach(PracticeConfiguration.timeLimits, id: \.self) { seconds in
+                        (Text(verbatim: "\(seconds) ") + Text("practice.timer.seconds"))
+                            .tag(seconds)
+                    }
+                }
+
+                Toggle("practice.center.retry.toggle", isOn: $configuration.retriesWrongAnswers)
+            }
+
+            Section {
+                Button {
+                    startRun()
+                } label: {
+                    Text("practice.center.start")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.accent)
+                .disabled(!hasEligibleItems)
+            }
+
+            if let loadError {
+                Section {
+                    Text(loadError)
+                        .foregroundStyle(AppTheme.wrongRed)
+                }
+            }
+        }
+    }
+
+    private var levelTitleKey: LocalizedStringKey {
+        switch selectedLevel {
+        case .basic: "settings.level.basic"
+        case .intermediate: "settings.level.intermediate"
+        case .advanced: "settings.level.advanced"
+        }
+    }
+
+    private func modeTitleKey(for mode: PracticeMode) -> LocalizedStringKey {
+        switch mode {
+        case .mixed: "practice.center.mode.mixed"
+        case .expressionChoice: "practice.center.mode.expression"
+        case .meaningChoice: "practice.center.mode.meaning"
+        case .listeningChoice: "practice.center.mode.listening"
+        case .spelling: "practice.center.mode.spelling"
+        }
+    }
+
+    private func startRun() {
+        do {
+            let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
+            activePlan = PracticeCenterPlan(
+                seedItems: seedItems,
+                selectedLevel: selectedLevel,
+                supportLanguageCode: supportLanguageCode,
+                learnedItemIDs: progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID },
+                configuration: configuration
+            )
+            loadError = nil
+        } catch {
+            loadError = String(localized: "practice.center.load.error")
+        }
+    }
+}
+
 struct QuizRunView<Completion: View>: View {
     let runID: AnyHashable
     let questions: [QuizQuestion]

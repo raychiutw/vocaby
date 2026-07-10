@@ -2,6 +2,101 @@ import XCTest
 @testable import WordingDailyApp
 
 final class QuizEngineTests: XCTestCase {
+    func testPracticeCenterPlanFiltersLevelAndSupportLanguageAndPrioritizesLearnedItems() {
+        var items = makeItems(count: 8)
+        items[5].level = .advanced
+        items[6].supportLanguageCodes = ["ja"]
+        items[7].level = .intermediate
+        let learnedIDs = [items[0].id, items[1].id, items[5].id, items[6].id]
+        let configuration = PracticeConfiguration(
+            mode: .expressionChoice,
+            questionCount: 3,
+            timeLimitSeconds: 15,
+            retriesWrongAnswers: true
+        )
+        var random = IncrementingRandomNumberGenerator()
+
+        let plan = PracticeCenterPlan(
+            seedItems: items,
+            selectedLevel: .basic,
+            supportLanguageCode: "zh-Hant",
+            learnedItemIDs: learnedIDs,
+            configuration: configuration,
+            using: &random
+        )
+
+        XCTAssertEqual(Set(plan.questions.prefix(2).map(\.itemID)), Set(learnedIDs.prefix(2)))
+        XCTAssertEqual(plan.questions.count, 3)
+        XCTAssertTrue(plan.questions.allSatisfy { Set(items.prefix(5).map(\.id)).contains($0.itemID) })
+        XCTAssertFalse(plan.questions.flatMap(\.options).contains(items[5].upgradedExpression))
+        XCTAssertFalse(plan.questions.flatMap(\.options).contains(items[6].upgradedExpression))
+    }
+
+    func testPracticeCenterPlanUsesConfiguredModeCountAndFullLocalPoolForDistractors() throws {
+        let items = makeItems(count: 6)
+        let configuration = PracticeConfiguration(
+            mode: .meaningChoice,
+            questionCount: 1,
+            timeLimitSeconds: 30,
+            retriesWrongAnswers: false
+        )
+        var random = IncrementingRandomNumberGenerator()
+
+        let plan = PracticeCenterPlan(
+            seedItems: items,
+            selectedLevel: .basic,
+            supportLanguageCode: "zh-Hant",
+            learnedItemIDs: [],
+            configuration: configuration,
+            using: &random
+        )
+        let question = try XCTUnwrap(plan.questions.first)
+
+        XCTAssertEqual(plan.configuration, configuration)
+        XCTAssertEqual(plan.questions.count, 1)
+        XCTAssertEqual(question.mode, .meaningChoice)
+        XCTAssertEqual(question.options.count, 4)
+    }
+
+    func testPracticeCenterPlanCreatesFreshRunIdentity() {
+        let items = makeItems(count: 1)
+        var firstRandom = IncrementingRandomNumberGenerator()
+        var secondRandom = IncrementingRandomNumberGenerator()
+
+        let first = PracticeCenterPlan(
+            seedItems: items,
+            selectedLevel: .basic,
+            supportLanguageCode: "zh-Hant",
+            learnedItemIDs: [],
+            configuration: .daily,
+            using: &firstRandom
+        )
+        let second = PracticeCenterPlan(
+            seedItems: items,
+            selectedLevel: .basic,
+            supportLanguageCode: "zh-Hant",
+            learnedItemIDs: [],
+            configuration: .daily,
+            using: &secondRandom
+        )
+
+        XCTAssertNotEqual(first.runID, second.runID)
+    }
+
+    func testPracticeCenterOptionsAndDefaultsMatchSetup() {
+        XCTAssertEqual(PracticeConfiguration.questionCounts, [5, 10, 15, 20])
+        XCTAssertEqual(PracticeConfiguration.timeLimits, [10, 15, 20, 30])
+        XCTAssertEqual(
+            PracticeCenterPlan.defaultConfiguration,
+            PracticeConfiguration(
+                mode: .mixed,
+                questionCount: 10,
+                timeLimitSeconds: 15,
+                retriesWrongAnswers: true
+            )
+        )
+    }
+
     func testPracticeSelectionUsesLearnedItemsThenFillsFromLocalSeed() {
         let items = makeItems(count: 6)
         var random = IncrementingRandomNumberGenerator()
