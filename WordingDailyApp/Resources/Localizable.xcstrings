@@ -705,6 +705,22 @@
         }
       }
     },
+    "practice.completed.count" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words completed"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成項目"
+          }
+        }
+      }
+    },
     "practice.correct" : {
       "localizations" : {
         "en" : {
@@ -717,6 +733,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "答對了"
+          }
+        }
+      }
+    },
+    "practice.correct.count" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correct"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "答對"
           }
         }
       }
@@ -749,6 +781,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "播放發音"
+          }
+        }
+      }
+    },
+    "practice.review.button" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review due words"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "複習到期項目"
+          }
+        }
+      }
+    },
+    "practice.review.scheduled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scheduled for review"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已排程複習"
           }
         }
       }
@@ -989,6 +1053,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "設定"
+          }
+        }
+      }
+    },
+    "streak.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current streak"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前連續天數"
           }
         }
       }

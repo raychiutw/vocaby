@@ -48,7 +48,9 @@ struct RootTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
-                TodayView()
+                TodayView {
+                    selectedTab = .review
+                }
             }
             .tabItem {
                 Label("today.tab.title", systemImage: "sun.max")

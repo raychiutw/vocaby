@@ -53,6 +53,42 @@ final class PersistenceGuardTests: XCTestCase {
         XCTAssertEqual(items.map(\.itemID), ["basic-001", "basic-002"])
     }
 
+    func testCompletionCountsAnsweredAndCorrectSessionItems() {
+        let answeredAt = date("2026-07-10T02:00:00Z")
+        let session = DailySession(dayKey: "2026-07-10", targetItemCount: 3, completedAt: answeredAt)
+        session.items = [
+            DailySessionItem(itemID: "basic-001", position: 0, answeredAt: answeredAt, wasCorrect: true),
+            DailySessionItem(itemID: "basic-002", position: 1, answeredAt: answeredAt, wasCorrect: false),
+            DailySessionItem(itemID: "basic-003", position: 2)
+        ]
+
+        XCTAssertEqual(session.completedItemCount, 2)
+        XCTAssertEqual(session.correctItemCount, 1)
+    }
+
+    func testScheduledReviewCountIncludesOnlyAnsweredUnmasteredSessionItemsWithDueDates() {
+        let answeredAt = date("2026-07-10T02:00:00Z")
+        let session = DailySession(dayKey: "2026-07-10", targetItemCount: 3, completedAt: answeredAt)
+        session.items = [
+            DailySessionItem(itemID: "basic-001", position: 0, answeredAt: answeredAt, wasCorrect: true),
+            DailySessionItem(itemID: "basic-002", position: 1, answeredAt: answeredAt, wasCorrect: true),
+            DailySessionItem(itemID: "basic-003", position: 2)
+        ]
+        let progressRows = [
+            WordProgress(itemID: "basic-001", level: .basic, dueDayKey: "2026-07-11"),
+            WordProgress(
+                itemID: "basic-002",
+                level: .basic,
+                dueDayKey: "2026-07-11",
+                masteredAt: answeredAt
+            ),
+            WordProgress(itemID: "basic-003", level: .basic, dueDayKey: "2026-07-11"),
+            WordProgress(itemID: "outside-session", level: .basic, dueDayKey: "2026-07-11")
+        ]
+
+        XCTAssertEqual(session.scheduledReviewCount(from: progressRows), 1)
+    }
+
     func testWordProgressGuardReusesExistingItemID() throws {
         let context = try makeContext()
         let service = ProgressPersistenceService()

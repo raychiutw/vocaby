@@ -10,7 +10,11 @@ struct TodayView: View {
     @State private var todaySession: DailySession?
     @State private var seedItems: [VocabularySeedItem] = []
     @State private var dueReviewCount = 0
+    @State private var scheduledReviewCount = 0
+    @State private var streakCount = 0
     @State private var statusMessage: String?
+
+    let onReview: () -> Void
 
     private let contentLanguageCode = "en"
     private let supportLanguageCode = "zh-Hant"
@@ -21,6 +25,7 @@ struct TodayView: View {
     private let preferencesStore = UserPreferencesStore()
     private let reviewScheduler = ReviewScheduler()
     private let seedLoader = SeedLoader()
+    private let streakService = StreakService()
     private let widgetSnapshotWriter = WidgetSnapshotWriter.appGroupWriter()
 
     private var orderedSessionItems: [DailySessionItem] {
@@ -28,7 +33,7 @@ struct TodayView: View {
     }
 
     private var completedCount: Int {
-        orderedSessionItems.filter { $0.answeredAt != nil }.count
+        todaySession?.completedItemCount ?? 0
     }
 
     private var totalCount: Int {
@@ -67,6 +72,15 @@ struct TodayView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
+                    Text(Date.now, style: .date)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    LabeledContent("streak.label", value: "\(streakCount)")
+                        .monospacedDigit()
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
                     HStack(alignment: .firstTextBaseline) {
                         Text("today.progress.title")
                             .font(.headline)
@@ -117,7 +131,11 @@ struct TodayView: View {
                 TodayPracticeView(
                     session: todaySession,
                     seedItems: seedItems,
-                    supportLanguageCode: supportLanguageCode
+                    supportLanguageCode: supportLanguageCode,
+                    streakCount: streakCount,
+                    scheduledReviewCount: scheduledReviewCount,
+                    dueReviewCount: dueReviewCount,
+                    onReview: onReview
                 ) {
                     refreshToday()
                 }
@@ -144,13 +162,13 @@ struct TodayView: View {
         do {
             try loadSeedIfNeeded()
             let dayKey = dayKeyService.dayKey(for: Date())
-            let sessionDescriptor = FetchDescriptor<DailySession>(
-                predicate: #Predicate { $0.dayKey == dayKey }
-            )
-            todaySession = try modelContext.fetch(sessionDescriptor).first
+            let sessions = try modelContext.fetch(FetchDescriptor<DailySession>())
+            todaySession = sessions.first { $0.dayKey == dayKey }
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
             dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
+            scheduledReviewCount = todaySession?.scheduledReviewCount(from: progressRows) ?? 0
+            streakCount = streakService.streakCount(from: sessions, currentDayKey: dayKey)
             if let todaySession {
                 statusMessage = todaySession.targetItemCount < dailyTargetCount
                     ? selectionStatusMessage(for: .fewerThanTarget(
@@ -288,7 +306,7 @@ struct TodayView: View {
             dayKey: dayKey,
             progressCompleted: completedCount,
             progressTotal: totalCount,
-            streakCount: 0,
+            streakCount: streakCount,
             displayExpression: nextSeedItem.map {
                 WidgetSnapshotExpression(
                     itemID: $0.id,
@@ -311,6 +329,10 @@ private struct TodayPracticeView: View {
     let session: DailySession
     let seedItems: [VocabularySeedItem]
     let supportLanguageCode: String
+    let streakCount: Int
+    let scheduledReviewCount: Int
+    let dueReviewCount: Int
+    let onReview: () -> Void
     let onUpdate: () -> Void
 
     @State private var selectedOptionIndex: Int?
@@ -412,8 +434,29 @@ private struct TodayPracticeView: View {
                 }
             } else {
                 Section {
-                    Text("practice.completed")
+                    Label("practice.completed", systemImage: "checkmark.circle.fill")
                         .font(.headline)
+                        .foregroundStyle(AppTheme.accent)
+
+                    LabeledContent("practice.completed.count", value: "\(session.completedItemCount)")
+                    LabeledContent("practice.correct.count", value: "\(session.correctItemCount)")
+                    LabeledContent("practice.review.scheduled", value: "\(scheduledReviewCount)")
+                    LabeledContent("streak.label", value: "\(streakCount)")
+                }
+
+                Section {
+                    if dueReviewCount > 0 {
+                        Button {
+                            dismiss()
+                            onReview()
+                        } label: {
+                            Label("practice.review.button", systemImage: "arrow.triangle.2.circlepath")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .tint(AppTheme.accent)
+                    }
 
                     Button("common.done") {
                         dismiss()
@@ -525,7 +568,7 @@ private struct TodayPracticeView: View {
 
 #Preview {
     NavigationStack {
-        TodayView()
+        TodayView {}
     }
     .modelContainer(for: [
         WordProgress.self,
