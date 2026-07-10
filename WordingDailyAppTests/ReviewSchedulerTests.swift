@@ -39,14 +39,46 @@ final class ReviewSchedulerTests: XCTestCase {
 
     func testWrongReviewAnswerSchedulesNextDay() {
         let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
-        let progress = WordProgress(itemID: "basic-001", level: .basic, correctCount: 2)
+        let firstSeenAt = date("2026-07-01T02:00:00Z")
+        let answeredAt = date("2026-07-10T02:00:00Z")
+        let progress = WordProgress(
+            itemID: "basic-001",
+            level: .basic,
+            firstSeenAt: firstSeenAt,
+            correctCount: 2
+        )
 
-        scheduler.applyAnswer(to: progress, wasCorrect: false, answeredAt: date("2026-07-10T02:00:00Z"), context: .review)
+        scheduler.applyAnswer(to: progress, wasCorrect: false, answeredAt: answeredAt, context: .review)
 
         XCTAssertEqual(progress.correctCount, 2)
         XCTAssertEqual(progress.wrongCount, 1)
         XCTAssertEqual(progress.dueDayKey, "2026-07-11")
+        XCTAssertEqual(progress.firstSeenAt, firstSeenAt)
+        XCTAssertEqual(progress.lastReviewedAt, answeredAt)
         XCTAssertNil(progress.masteredAt)
+    }
+
+    func testPersistedSessionItemContextSchedulesReviewFillForNextDay() {
+        let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
+        let answeredAt = date("2026-07-10T02:00:00Z")
+        let newProgress = WordProgress(itemID: "basic-001", level: .basic)
+        let reviewProgress = WordProgress(itemID: "basic-002", level: .basic)
+
+        scheduler.applyAnswer(
+            to: newProgress,
+            wasCorrect: false,
+            answeredAt: answeredAt,
+            context: DailySessionItem(itemID: "basic-001", position: 0).reviewAnswerContext
+        )
+        scheduler.applyAnswer(
+            to: reviewProgress,
+            wasCorrect: false,
+            answeredAt: answeredAt,
+            context: DailySessionItem(itemID: "basic-002", position: 1, isReviewFill: true).reviewAnswerContext
+        )
+
+        XCTAssertEqual(newProgress.dueDayKey, "2026-07-10")
+        XCTAssertEqual(reviewProgress.dueDayKey, "2026-07-11")
     }
 
     func testDueItemsExcludeMasteredAndFutureThenSortByDueDayWrongCountAndID() {
@@ -73,6 +105,15 @@ final class ReviewSchedulerTests: XCTestCase {
         }
 
         XCTAssertEqual(scheduler.dueItems(from: dueItems, on: "2026-07-10", limit: 20).count, 20)
+    }
+
+    func testDueCountReportsAllItemsBeyondQueueLimit() {
+        let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
+        let dueItems = (1...25).map { index in
+            progress(String(format: "basic-%03d", index), dueDayKey: "2026-07-10", wrongCount: 0)
+        }
+
+        XCTAssertEqual(scheduler.dueCount(from: dueItems, on: "2026-07-10"), 25)
     }
 
     private func progress(

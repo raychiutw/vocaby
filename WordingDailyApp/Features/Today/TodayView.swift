@@ -14,6 +14,7 @@ struct TodayView: View {
 
     private let contentLanguageCode = "en"
     private let supportLanguageCode = "zh-Hant"
+    private let dailyTargetCount = 10
     private let dayKeyService = DayKeyService()
     private let dailySelectionService = DailySelectionService()
     private let persistenceService = ProgressPersistenceService()
@@ -32,7 +33,7 @@ struct TodayView: View {
 
     private var totalCount: Int {
         let itemCount = orderedSessionItems.count
-        return itemCount > 0 ? itemCount : 10
+        return itemCount > 0 ? itemCount : dailyTargetCount
     }
 
     private var progressText: String {
@@ -149,9 +150,20 @@ struct TodayView: View {
             todaySession = try modelContext.fetch(sessionDescriptor).first
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueItems(from: progressRows, on: dayKey, limit: 10).count
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
+            if let todaySession {
+                statusMessage = todaySession.targetItemCount < dailyTargetCount
+                    ? selectionStatusMessage(for: .fewerThanTarget(
+                        availableCount: todaySession.targetItemCount,
+                        targetCount: dailyTargetCount
+                    ))
+                    : nil
+            } else {
+                statusMessage = selectionStatusMessage(
+                    for: dailySelection(from: progressRows, on: dayKey).status
+                )
+            }
             writeWidgetSnapshot(dayKey: dayKey)
-            statusMessage = nil
         } catch {
             statusMessage = String(localized: "today.load.error")
         }
@@ -161,56 +173,96 @@ struct TodayView: View {
         do {
             try loadSeedIfNeeded()
             let dayKey = dayKeyService.dayKey(for: Date())
+            let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
 
             if let existingSession = try existingSession(for: dayKey), !existingSession.items.isEmpty {
+                try markNewItemsFirstSeen(in: existingSession)
+                try modelContext.save()
                 todaySession = existingSession
+                statusMessage = existingSession.targetItemCount < dailyTargetCount
+                    ? selectionStatusMessage(for: .fewerThanTarget(
+                        availableCount: existingSession.targetItemCount,
+                        targetCount: dailyTargetCount
+                    ))
+                    : nil
                 writeWidgetSnapshot(dayKey: dayKey)
                 isShowingPractice = true
                 return
             }
 
-            let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            let dueReviewItemIDs = reviewScheduler
-                .dueItems(from: progressRows, on: dayKey, limit: 10)
-                .map(\.itemID)
-            let result = dailySelectionService.selectItems(
-                from: seedItems,
-                selectedLevel: preferencesStore.read().selectedLevel,
-                contentLanguageCode: contentLanguageCode,
-                supportLanguageCode: supportLanguageCode,
-                seenItemIDs: Set(progressRows.map(\.itemID)),
-                dueReviewItemIDs: dueReviewItemIDs
-            )
+            let result = dailySelection(from: progressRows, on: dayKey)
 
             guard !result.itemIDs.isEmpty else {
-                statusMessage = String(localized: "today.seed.empty")
+                statusMessage = selectionStatusMessage(for: result.status)
                 return
             }
 
             let session = try persistenceService.session(
                 for: dayKey,
                 itemIDs: result.itemIDs,
-                targetItemCount: 10,
+                reviewItemIDs: Set(result.reviewItemIDs),
                 in: modelContext
             )
-            let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
-
-            for itemID in result.itemIDs {
-                guard let item = seedByID[itemID] else {
-                    continue
-                }
-
-                _ = try persistenceService.wordProgress(for: itemID, level: item.level, in: modelContext)
-            }
+            try markNewItemsFirstSeen(in: session)
 
             try modelContext.save()
             todaySession = session
-            dueReviewCount = dueReviewItemIDs.count
             writeWidgetSnapshot(dayKey: dayKey)
-            statusMessage = nil
+            statusMessage = selectionStatusMessage(for: result.status)
             isShowingPractice = true
         } catch {
             statusMessage = String(localized: "today.load.error")
+        }
+    }
+
+    private func dailySelection(from progressRows: [WordProgress], on dayKey: String) -> DailySelectionResult {
+        let dueReviewItemIDs = reviewScheduler
+            .dueItems(from: progressRows, on: dayKey, limit: dailyTargetCount)
+            .map(\.itemID)
+
+        return dailySelectionService.selectItems(
+            from: seedItems,
+            selectedLevel: preferencesStore.read().selectedLevel,
+            contentLanguageCode: contentLanguageCode,
+            supportLanguageCode: supportLanguageCode,
+            firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
+            dueReviewItemIDs: dueReviewItemIDs,
+            targetCount: dailyTargetCount
+        )
+    }
+
+    private func markNewItemsFirstSeen(in session: DailySession) throws {
+        let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
+
+        for sessionItem in session.items where !sessionItem.isReviewFill {
+            guard let seedItem = seedByID[sessionItem.itemID] else {
+                continue
+            }
+
+            let progress = try persistenceService.wordProgress(
+                for: seedItem.id,
+                level: seedItem.level,
+                in: modelContext
+            )
+            if progress.firstSeenAt == nil {
+                progress.firstSeenAt = session.createdAt
+            }
+        }
+    }
+
+    private func selectionStatusMessage(for status: DailySelectionStatus) -> String? {
+        switch status {
+        case .full:
+            return nil
+        case .fewerThanTarget(availableCount: 0, targetCount: _):
+            return String(localized: "today.seed.empty")
+        case let .fewerThanTarget(availableCount, targetCount):
+            return String.localizedStringWithFormat(
+                String(localized: "today.seed.fewer"),
+                availableCount,
+                targetCount
+            )
         }
     }
 
@@ -437,7 +489,7 @@ private struct TodayPracticeView: View {
                 to: progress,
                 wasCorrect: wasCorrect,
                 answeredAt: now,
-                context: .dailyPractice
+                context: currentSessionItem.reviewAnswerContext
             )
             _ = try persistenceService.quizResult(
                 dayKey: session.dayKey,

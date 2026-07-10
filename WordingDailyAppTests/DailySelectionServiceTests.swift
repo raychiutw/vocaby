@@ -16,7 +16,7 @@ final class DailySelectionServiceTests: XCTestCase {
             selectedLevel: .basic,
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
-            seenItemIDs: ["basic-002"],
+            firstSeenItemIDs: ["basic-002"],
             dueReviewItemIDs: [],
             targetCount: 2
         )
@@ -40,7 +40,7 @@ final class DailySelectionServiceTests: XCTestCase {
             selectedLevel: .basic,
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
-            seenItemIDs: ["basic-002", "basic-003", "basic-004"],
+            firstSeenItemIDs: ["basic-002", "basic-003", "basic-004"],
             dueReviewItemIDs: ["basic-004", "basic-002", "missing"],
             targetCount: 3
         )
@@ -62,7 +62,7 @@ final class DailySelectionServiceTests: XCTestCase {
             selectedLevel: .basic,
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
-            seenItemIDs: [],
+            firstSeenItemIDs: [],
             dueReviewItemIDs: [],
             targetCount: 10
         )
@@ -84,7 +84,7 @@ final class DailySelectionServiceTests: XCTestCase {
             selectedLevel: .basic,
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
-            seenItemIDs: ["basic-002", "advanced-001", "basic-ja-001"],
+            firstSeenItemIDs: ["basic-002", "advanced-001", "basic-ja-001"],
             dueReviewItemIDs: ["basic-001", "basic-002", "advanced-001", "basic-ja-001", "basic-002"],
             targetCount: 3
         )
@@ -93,6 +93,33 @@ final class DailySelectionServiceTests: XCTestCase {
         XCTAssertEqual(selection.newItemIDs, ["basic-001"])
         XCTAssertEqual(selection.reviewItemIDs, ["basic-002"])
         XCTAssertEqual(selection.status, .fewerThanTarget(availableCount: 2, targetCount: 3))
+    }
+
+    func testSavedOnlyProgressRemainsUnseenUntilFirstSeenTimestampIsSet() {
+        let items = [
+            item("basic-001", level: .basic, sortOrder: 1),
+            item("basic-002", level: .basic, sortOrder: 2)
+        ]
+        let progressRows = [
+            WordProgress(itemID: "basic-001", level: .basic, isSaved: true),
+            WordProgress(
+                itemID: "basic-002",
+                level: .basic,
+                firstSeenAt: Date(timeIntervalSince1970: 100)
+            )
+        ]
+
+        let selection = DailySelectionService().selectItems(
+            from: items,
+            selectedLevel: .basic,
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant",
+            firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
+            dueReviewItemIDs: [],
+            targetCount: 10
+        )
+
+        XCTAssertEqual(selection.newItemIDs, ["basic-001"])
     }
 
     private func item(

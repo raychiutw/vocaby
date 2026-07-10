@@ -1126,13 +1126,29 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No practice items are available for this level."
+            "value" : "All caught up. There are no new items or eligible review fills for this level today."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "目前這個程度沒有可練習的內容。"
+            "value" : "全部完成了。今天這個程度沒有新內容或可排入的到期複習。"
+          }
+        }
+      }
+    },
+    "today.seed.fewer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today has %1$ld of %2$ld practice items; no more new items or eligible review fills are available for this level."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天可練習 %1$ld 個（目標 %2$ld 個）；這個程度目前沒有更多新內容或可排入的到期複習。"
           }
         }
       }

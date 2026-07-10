@@ -5,6 +5,12 @@ enum ReviewAnswerContext {
     case review
 }
 
+extension DailySessionItem {
+    var reviewAnswerContext: ReviewAnswerContext {
+        isReviewFill ? .review : .dailyPractice
+    }
+}
+
 struct ReviewScheduler {
     private let dayKeyService: DayKeyService
 
@@ -19,6 +25,10 @@ struct ReviewScheduler {
         context: ReviewAnswerContext
     ) {
         let answeredDayKey = dayKeyService.dayKey(for: answeredAt)
+        if progress.firstSeenAt == nil {
+            progress.firstSeenAt = answeredAt
+        }
+        progress.lastReviewedAt = answeredAt
         progress.updatedAt = answeredAt
 
         if wasCorrect {
@@ -52,6 +62,10 @@ struct ReviewScheduler {
                 return lhs.itemID < rhs.itemID
             }
             .prefix(max(0, limit)))
+    }
+
+    func dueCount(from progressRows: [WordProgress], on dayKey: String) -> Int {
+        dueItems(from: progressRows, on: dayKey, limit: progressRows.count).count
     }
 
     private func applyCorrectAnswer(to progress: WordProgress, answeredAt: Date, answeredDayKey: String) {

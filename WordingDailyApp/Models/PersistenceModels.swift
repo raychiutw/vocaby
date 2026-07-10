@@ -6,6 +6,8 @@ final class WordProgress {
     @Attribute(.unique) var itemID: String
     var levelRawValue: String
     var isSaved: Bool
+    var firstSeenAt: Date?
+    var lastReviewedAt: Date?
     var correctCount: Int
     var dueDayKey: String?
     var wrongCount: Int
@@ -16,6 +18,8 @@ final class WordProgress {
         itemID: String,
         level: VocabularyLevel,
         isSaved: Bool = false,
+        firstSeenAt: Date? = nil,
+        lastReviewedAt: Date? = nil,
         correctCount: Int = 0,
         dueDayKey: String? = nil,
         wrongCount: Int = 0,
@@ -25,6 +29,8 @@ final class WordProgress {
         self.itemID = itemID
         self.levelRawValue = level.rawValue
         self.isSaved = isSaved
+        self.firstSeenAt = firstSeenAt
+        self.lastReviewedAt = lastReviewedAt
         self.correctCount = correctCount
         self.dueDayKey = dueDayKey
         self.wrongCount = wrongCount
@@ -54,6 +60,7 @@ final class DailySession {
 final class DailySessionItem {
     var itemID: String
     var position: Int
+    var isReviewFill: Bool = false
     var answeredAt: Date?
     var selectedOptionIndex: Int?
     var wasCorrect: Bool?
@@ -61,12 +68,14 @@ final class DailySessionItem {
     init(
         itemID: String,
         position: Int,
+        isReviewFill: Bool = false,
         answeredAt: Date? = nil,
         selectedOptionIndex: Int? = nil,
         wasCorrect: Bool? = nil
     ) {
         self.itemID = itemID
         self.position = position
+        self.isReviewFill = isReviewFill
         self.answeredAt = answeredAt
         self.selectedOptionIndex = selectedOptionIndex
         self.wasCorrect = wasCorrect
