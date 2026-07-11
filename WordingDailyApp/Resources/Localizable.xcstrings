@@ -1654,13 +1654,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ready after the first seed load"
+            "value" : "Shown after practice starts"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "匯入第一批內容後顯示"
+            "value" : "開始練習後顯示"
           }
         }
       }

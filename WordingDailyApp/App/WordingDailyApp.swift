@@ -3,6 +3,11 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
+#if DEBUG && GSTACK_IOS_QA
+import DebugBridgeCore
+import DebugBridgeUI
+#endif
+
 extension Notification.Name {
     static let wordingDailyInternalURL = Notification.Name("wording-daily.internal-url")
 }
@@ -42,6 +47,16 @@ final class WordingDailyAppDelegate: NSObject, UIApplicationDelegate, UNUserNoti
 @main
 struct WordingDailyApp: App {
     @UIApplicationDelegateAdaptor(WordingDailyAppDelegate.self) private var appDelegate
+
+    init() {
+        #if DEBUG && GSTACK_IOS_QA
+        StateServer.shared.start()
+        DebugBridgeUIWiring.installAll()
+        if ProcessInfo.processInfo.arguments.contains("--gstack-recording") {
+            DebugOverlayWindow.shared.install(recording: true)
+        }
+        #endif
+    }
 
     var body: some Scene {
         WindowGroup {
