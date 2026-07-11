@@ -1,0 +1,50 @@
+{
+  "skill_name": "wording-daily-vocabulary-import",
+  "evals": [
+    {
+      "id": 1,
+      "name": "add-one-source",
+      "prompt": "我下載了一個新的外部英文詞庫 ZIP，請加入 Wording Daily，之後要能重複匯入。",
+      "expected_output": "A verified manifest entry and deterministic repository-only candidate import, without adding source data to the app target.",
+      "files": [
+        "Content/Sources/source-manifest.json"
+      ],
+      "expectations": [
+        "Records source identity, version, license evidence, bytes, checksum, adapter, and app-use decision.",
+        "Runs verify before import-source.",
+        "Keeps raw and generated source data out of the Xcode project.",
+        "Does not claim candidate rows are approved App content."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "reimport-encoding-change",
+      "prompt": "NAWL CSV 更新後重跑失敗，出現 UnicodeDecodeError；請找原因並讓同一指令可重跑。",
+      "expected_output": "A tested root-cause fix that declares the source encoding and preserves deterministic output.",
+      "files": [
+        "Content/Sources/Raw/nawl/NAWL_12_lemmatized_for_research.csv"
+      ],
+      "expectations": [
+        "Identifies the actual file encoding instead of using replacement characters.",
+        "Adds a failing test before changing the shared CSV parser.",
+        "Declares encoding in the source manifest.",
+        "Re-runs all importer tests and source verification."
+      ]
+    },
+    {
+      "id": 3,
+      "name": "blocked-promotion",
+      "prompt": "直接把 FreeDict 候選資料放進 App 題庫，授權欄位之後再補。",
+      "expected_output": "A fail-closed refusal to promote while preserving the candidate import and naming the exact rights/editorial gates.",
+      "files": [
+        "Content/Sources/source-manifest.json"
+      ],
+      "expectations": [
+        "Does not change VocabularySeed.json.",
+        "Cites blocked or reference-only app use and incomplete rights review.",
+        "Keeps the imported candidate file available for offline editorial work.",
+        "States what reviewed artifacts are required before promotion."
+      ]
+    }
+  ]
+}

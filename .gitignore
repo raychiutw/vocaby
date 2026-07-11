@@ -1,0 +1,4 @@
+Content/Sources/Imported/
+Content/Sources/Reports/
+__pycache__/
+*.pyc

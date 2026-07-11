@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "retrievedAt": "2026-07-11",
+  "sources": [
+    {
+      "id": "bsl-1.2",
+      "name": "Business Service List 1.2",
+      "version": "1.2",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.newgeneralservicelist.com/business-service-list",
+      "adapter": "lemma_csv",
+      "rawFile": {
+        "path": "Content/Sources/Raw/bsl/BSL_120_lemmatized_for_research.csv",
+        "sha256": "c29d181e7916250d21b5c41d63bdcfa67c992f66ae1dbaa207db82728f16d54d",
+        "bytes": 52302
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/bsl/source-page.html",
+          "sha256": "0c108b0bd92b9a41ddacbe207f5f1ad01e6a76541cff84635b3899fc3108a9fd",
+          "bytes": 191093
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Reference only; share-alike treatment is not approved for the shipping bank."
+    },
+    {
+      "id": "cefr-j-1.6",
+      "name": "CEFR-J Wordlist",
+      "version": "1.6",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.cefr-j.org/download.html",
+      "adapter": "cefr_j_xlsx_zip",
+      "rawFile": {
+        "path": "Content/Sources/Raw/cefr-j/CEFRJ_wordlist_ver1.6.zip",
+        "sha256": "c837d2c00ab8954ed8db48e79afd8ef37099570295fec36950dbf9322303a37a",
+        "bytes": 1089155
+      },
+      "license": "CEFR-J download terms",
+      "licenseURL": "https://www.cefr-j.org/download.html",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/cefr-j/source-page.html",
+          "sha256": "b44caaefa496adde0ef122bbea95dcaabbef5fee77d26de2c9611d2bb6284cdd",
+          "bytes": 70960
+        }
+      ],
+      "repositoryRedistribution": "review_required",
+      "appUse": "reference_only",
+      "decision": "Level calibration only until redistribution terms receive legal review."
+    },
+    {
+      "id": "cmudict-7479086",
+      "name": "CMU Pronouncing Dictionary",
+      "version": "git 74790861f652b15e4ac49015a90074ad62a27690",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://github.com/cmusphinx/cmudict",
+      "adapter": "cmudict",
+      "rawFile": {
+        "path": "Content/Sources/Raw/cmudict/cmudict.dict",
+        "sha256": "81917843c7f44ce2b094ac63873c2c7a4cf802040792c455ba3ca406891c3d22",
+        "bytes": 3618488
+      },
+      "license": "CMUdict permissive license",
+      "licenseURL": "https://github.com/cmusphinx/cmudict/blob/master/LICENSE",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/cmudict/LICENSE",
+          "sha256": "bd4ce8e44170a5f9f481310ca85c51de3c4f851a65e679b40e603b143bd3542a",
+          "bytes": 1754
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "reference_only",
+      "decision": "Pronunciation validation only; the app uses system TTS."
+    },
+    {
+      "id": "cow-0.9",
+      "name": "Chinese Open WordNet",
+      "version": "0.9",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://bond-lab.github.io/cow/",
+      "adapter": "cow_tsv",
+      "rawFile": {
+        "path": "Content/Sources/Raw/cow/wn-data-cmn-0.9.tab",
+        "sha256": "ba11514279f48963d5a83aeef17de3c53b06bce6a1a50e599a88beb81388534b",
+        "bytes": 2547919
+      },
+      "license": "Chinese Open WordNet license",
+      "licenseURL": "https://bond-lab.github.io/cow/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/cow/LICENSE",
+          "sha256": "81a3cb1f97e120581d67c71424f2de5dd96325d951f991e8a092147a2a4b2321",
+          "bytes": 1441
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "reference_only",
+      "decision": "Simplified-Chinese sense cross-check only; never ship as Taiwan Traditional Chinese."
+    },
+    {
+      "id": "freedict-eng-zho-2025.11.23",
+      "name": "FreeDict English-Chinese",
+      "version": "2025.11.23",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://freedict.org/downloads/",
+      "adapter": "freedict_tei_tar",
+      "rawFile": {
+        "path": "Content/Sources/Raw/freedict-eng-zho/freedict-eng-zho-2025.11.23.src.tar.xz",
+        "sha256": "78f6909786861809886201827e5e3d55dbf8e12f753d7a7183e785dbc574de8b",
+        "bytes": 1600448
+      },
+      "license": "CC BY-SA 3.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/freedict-eng-zho/source-page.html",
+          "sha256": "05042982f52c38002f4ca0b7674c4a01b61db79bb73aacc56a743bd76aaff56d",
+          "bytes": 506284
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Automatically generated Simplified-Chinese data and share-alike obligations make it unsuitable for direct app import."
+    },
+    {
+      "id": "gcide-0.54",
+      "name": "GNU Collaborative International Dictionary of English",
+      "version": "0.54",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://gcide.gnu.org.ua/",
+      "adapter": "gcide_tar",
+      "rawFile": {
+        "path": "Content/Sources/Raw/gcide/gcide-0.54.tar.xz",
+        "sha256": "22416f6f36175b160dc388b7547512514d464473cf7d7c898d738efb26c51d42",
+        "bytes": 14803080
+      },
+      "license": "GPL-3.0-or-later",
+      "licenseURL": "https://gcide.gnu.org.ua/license",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/gcide/source-page.html",
+          "sha256": "e512476bc694b90ec82f46b70719f50fb4f5a568dc2840af171f498b476ce959",
+          "bytes": 3047
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Historical/GPL reference only; do not copy definitions or examples into the app."
+    },
+    {
+      "id": "nawl-1.2",
+      "name": "New Academic Word List 1.2",
+      "version": "1.2",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.newgeneralservicelist.com/new-academic-word-list",
+      "adapter": "lemma_csv",
+      "encoding": "iso-8859-1",
+      "rawFile": {
+        "path": "Content/Sources/Raw/nawl/NAWL_12_lemmatized_for_research.csv",
+        "sha256": "c28ef95623d79c08a4060d6d6d51d3331115e75a18ee247caa4cc3ae5506b92e",
+        "bytes": 25980
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/nawl/source-page.html",
+          "sha256": "3c71db5de30fadd86315ab2ddc44d0b8b277750cd52f615a645da26cc85ef3eb",
+          "bytes": 196095
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Reference only; share-alike treatment is not approved for the shipping bank."
+    },
+    {
+      "id": "ngsl-1.2",
+      "name": "New General Service List 1.2",
+      "version": "1.2",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.newgeneralservicelist.com/new-general-service-list",
+      "adapter": "lemma_csv",
+      "rawFile": {
+        "path": "Content/Sources/Raw/ngsl/NGSL_12_lemmatized_for_research.csv",
+        "sha256": "d814f2a0a3c61479a2c5ad037661719a0cc6e7dbcde31f181b54f12d0f1e11a4",
+        "bytes": 89485
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/ngsl/source-page.html",
+          "sha256": "a39be121275dabe2e9186fe1a4cb2f2e58e40f0e4dbec8a0ab1772b1730f29db",
+          "bytes": 266482
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Frequency reference only; share-alike treatment is not approved for the shipping bank."
+    },
+    {
+      "id": "oewn-2025",
+      "name": "Open English WordNet",
+      "version": "2025 edition, git dc343f2683279ecbb13fab4e2fd778d7b162d287",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://github.com/globalwordnet/english-wordnet",
+      "adapter": "oewn_json_zip",
+      "rawFile": {
+        "path": "Content/Sources/Raw/oewn/english-wordnet-2025-json.zip",
+        "sha256": "7d749f6e2c39e6970e4997839dcf6e42fd281f3c2fae0171d2192bae8cfa4b51",
+        "bytes": 9986555
+      },
+      "license": "Princeton WordNet license and CC BY 4.0",
+      "licenseURL": "https://github.com/globalwordnet/english-wordnet/blob/main/LICENSE.md",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/oewn/LICENSE.md",
+          "sha256": "672cc8b5663e8dc74c4b07a9dcf477193853575b119908fd3dc0aeeb60a9dbbb",
+          "bytes": 19863
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "reference_only",
+      "decision": "Preferred English lexical reference; direct app use remains blocked until notices and per-item provenance are approved."
+    },
+    {
+      "id": "tsl-1.2",
+      "name": "TOEIC Service List 1.2",
+      "version": "1.2",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.newgeneralservicelist.com/toeic-service-list",
+      "adapter": "lemma_csv",
+      "encoding": "iso-8859-1",
+      "rawFile": {
+        "path": "Content/Sources/Raw/tsl/TSL_12_lemmatized_for_research.csv",
+        "sha256": "466070128772a356e73135c7a49b6b179b7e4a3c0f5951ecc79f4f871c2b9db7",
+        "bytes": 37150
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/tsl/source-page.html",
+          "sha256": "0d93c366f41b0c723eb2352aa811b60b3ec50348f03ca3f2df5adc6227677747",
+          "bytes": 330741
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Reference only; share-alike treatment is not approved for the shipping bank."
+    }
+  ]
+}
