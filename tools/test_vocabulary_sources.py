@@ -12,6 +12,8 @@ import unittest
 import zipfile
 from pathlib import Path
 
+from tools import vocabulary_sources
+
 
 SCRIPT = Path(__file__).with_name("vocabulary_sources.py")
 SIMILARITY_SCRIPT = Path(__file__).with_name("definition_similarity.swift")
@@ -100,28 +102,15 @@ class VocabularySourcesTests(unittest.TestCase):
         )
         manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
         reviewed = root / "reviewed.json"
+        rich_item = self.rich_review_record()
+        rich_item["id"] = "basic-001"
+        rich_item["sortOrder"] = 1
         reviewed.write_text(
             json.dumps(
                 [
                     {
-                        "id": "basic-001",
-                        "level": "basic",
-                        "sortOrder": 1,
-                        "contentLanguageCode": "en",
-                        "supportLanguageCodes": ["zh-Hant"],
-                        "plainExpression": "very good",
-                        "upgradedExpression": "excellent",
-                        "meaning": {"en": "Very good.", "zh-Hant": "非常好。"},
-                        "example": {
-                            "text": "Excellent work.",
-                            "translation": {"zh-Hant": "做得很好。"},
-                        },
-                        "pronunciationText": "excellent",
-                        "quiz": {
-                            "prompt": {"en": "Choose.", "zh-Hant": "請選擇。"},
-                            "options": ["excellent", "poor"],
-                            "correctOptionIndex": 0,
-                        },
+                        key: rich_item[key]
+                        for key in vocabulary_sources.SEED_KEYS
                     }
                 ]
             ),
@@ -152,6 +141,7 @@ class VocabularySourcesTests(unittest.TestCase):
                             "itemID": "basic-001",
                             "conceptKey": "expression:excellent",
                             "sourceIDs": ["demo"],
+                            "validationSourceIDs": ["demo"],
                             "cefr": "A2",
                             "appLevel": "basic",
                             "englishReviewer": "en",
@@ -169,6 +159,141 @@ class VocabularySourcesTests(unittest.TestCase):
         notices = root / "notices.txt"
         notices.write_text("Demo attribution\n", encoding="utf-8")
         return reviewed, provenance, notices
+
+    def rich_review_record(self) -> dict:
+        return {
+            "id": "bank-basic-0001",
+            "level": "basic",
+            "sortOrder": 1,
+            "contentLanguageCode": "en",
+            "supportLanguageCodes": ["zh-Hant"],
+            "plainExpression": "guide",
+            "upgradedExpression": "lead",
+            "primarySenseID": "lead-verb-guide",
+            "pronunciations": [
+                {
+                    "id": "lead-us-1",
+                    "ipa": "liːd",
+                    "speechLocale": "en-US",
+                    "region": "US",
+                }
+            ],
+            "senses": [
+                {
+                    "id": "lead-verb-guide",
+                    "partOfSpeech": "verb",
+                    "meaning": {
+                        "en": "To guide or conduct.",
+                        "zh-Hant": "引導或帶領。",
+                    },
+                    "example": {
+                        "text": "She will lead the meeting.",
+                        "translation": {"zh-Hant": "她將主持這場會議。"},
+                    },
+                    "pronunciationIDs": ["lead-us-1"],
+                }
+            ],
+            "quiz": {
+                "prompt": {
+                    "en": "Which expression means guide?",
+                    "zh-Hant": "哪個詞表示引導？",
+                },
+                "options": ["lead", "leave", "lend", "lean"],
+                "correctOptionIndex": 0,
+            },
+            "sourceRefs": [
+                {"sourceID": "oewn-2025", "sourceEntryRef": "lead-v-1"}
+            ],
+            "validationSourceIDs": [
+                "wiktextract-en-2026-07-09",
+                "cmudict-7479086",
+            ],
+            "cefr": "A2",
+            "reviewStatus": "approved",
+            "englishReviewer": "codex-content-review-2026-07-11",
+            "zhHantReviewer": "codex-content-review-2026-07-11",
+        }
+
+    def test_rich_review_accepts_complete_record(self):
+        vocabulary_sources.validate_reviewed_item(self.rich_review_record())
+
+    def test_rich_review_rejects_dangling_pronunciation_reference(self):
+        item = self.rich_review_record()
+        item["senses"][0]["pronunciationIDs"] = ["missing"]
+
+        with self.assertRaisesRegex(
+            vocabulary_sources.SourceError, "unknown pronunciation"
+        ):
+            vocabulary_sources.validate_reviewed_item(item)
+
+    def test_rich_review_rejects_usage_note_instead_of_sentence_translation(self):
+        item = self.rich_review_record()
+        item["senses"][0]["example"]["translation"]["zh-Hant"] = (
+            "例句中的 lead 表示引導。"
+        )
+
+        with self.assertRaisesRegex(
+            vocabulary_sources.SourceError, "full-sentence translation"
+        ):
+            vocabulary_sources.validate_reviewed_item(item)
+
+    def test_rich_review_rejects_more_than_three_senses(self):
+        item = self.rich_review_record()
+        item["senses"] = item["senses"] * 4
+
+        with self.assertRaisesRegex(
+            vocabulary_sources.SourceError, "one to three senses"
+        ):
+            vocabulary_sources.validate_reviewed_item(item)
+
+    def test_audit_reviewed_reports_complete_bank_counts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_source(root)
+            reviewed = root / "reviewed.jsonl"
+            items = []
+            for index in range(5_000):
+                item = json.loads(json.dumps(self.rich_review_record()))
+                target = f"reviewed-expression-{index:04d}"
+                item["id"] = f"bank-basic-{index:04d}"
+                item["sortOrder"] = index + 1
+                item["upgradedExpression"] = target
+                item["quiz"]["options"][0] = target
+                items.append(item)
+            reviewed.write_text(
+                "".join(json.dumps(item) + "\n" for item in items),
+                encoding="utf-8",
+            )
+
+            result = self.run_cli(
+                root, "audit-reviewed", "--input", str(reviewed)
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                json.loads(result.stdout),
+                {
+                    "approved": 5_000,
+                    "items": 5_000,
+                    "levels": {"advanced": 0, "basic": 5_000, "intermediate": 0},
+                },
+            )
+
+    def test_audit_reviewed_rejects_bank_below_minimum(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_source(root)
+            reviewed = root / "reviewed.jsonl"
+            reviewed.write_text(
+                json.dumps(self.rich_review_record()) + "\n", encoding="utf-8"
+            )
+
+            result = self.run_cli(
+                root, "audit-reviewed", "--input", str(reviewed)
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("at least 5000", result.stderr)
 
     def make_enrichment_sources(self, root: Path) -> tuple[Path, Path]:
         input_dir = root / "Content/Sources/Imported"
@@ -859,19 +984,10 @@ class VocabularySourcesTests(unittest.TestCase):
                 ],
             )
 
-    def test_shared_enrichment_builds_complete_app_fields_and_provenance(self):
+    def test_shared_enrichment_builds_source_aligned_review_packet(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
-            license_file = root / "Content/Sources/Raw/oewn/LICENSE.txt"
-            license_file.parent.mkdir(parents=True)
-            license_file.write_text("=======\nFULL DEMO LICENSE \n", encoding="utf-8")
-            manifest_path = root / "Content/Sources/source-manifest.json"
-            manifest = json.loads(manifest_path.read_text())
-            manifest["sources"][0]["noticeFiles"] = [
-                "Content/Sources/Raw/oewn/LICENSE.txt"
-            ]
-            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             draft = root / "draft.jsonl"
 
             prepare = self.run_cli(
@@ -892,45 +1008,19 @@ class VocabularySourcesTests(unittest.TestCase):
             )
 
             self.assertEqual(prepare.returncode, 0, prepare.stderr)
-            seed = root / "seed.json"
-            provenance = root / "provenance.json"
-            notices = root / "notices.txt"
-            build = self.run_cli(
-                root,
-                "build-reviewed",
-                "--input",
-                str(draft),
-                "--existing-seed",
-                str(existing_seed),
-                "--seed-output",
-                str(seed),
-                "--provenance-output",
-                str(provenance),
-                "--notices-output",
-                str(notices),
-            )
-
-            self.assertEqual(build.returncode, 0, build.stderr)
-            item = json.loads(seed.read_text())[0]
-            self.assertEqual(item["plainExpression"], "very good")
-            self.assertEqual(item["upgradedExpression"], "excellent")
-            self.assertEqual(item["meaning"]["zh-Hant"], "優秀")
-            self.assertEqual(item["example"]["text"], "Her excellent quality impressed us.")
+            item = json.loads(draft.read_text())
+            self.assertEqual(item["plain"], "very good")
+            self.assertEqual(item["target"], "excellent")
+            self.assertEqual(item["translationDraft"], "優秀")
+            self.assertEqual(item["example"], "Her excellent quality impressed us.")
             self.assertEqual(
-                item["example"]["translation"]["zh-Hant"],
+                item["exampleTranslationDraft"],
                 "她的優秀品質令我們印象深刻。",
             )
-            self.assertEqual(item["quiz"]["correctOptionIndex"], 0)
-            provenance_item = json.loads(provenance.read_text())["items"][0]
             self.assertEqual(
-                provenance_item["sourceIDs"],
+                sorted({reference["sourceID"] for reference in item["sourceRefs"]}),
                 ["cefr", "freedict", "oewn-2025", "tatoeba-eng-cmn-2026-07-04"],
             )
-            self.assertEqual(provenance_item["status"], "approved")
-            notice_text = notices.read_text()
-            self.assertIn("FULL DEMO LICENSE", notice_text)
-            self.assertNotRegex(notice_text, r"(?m)^={7}")
-            self.assertFalse(any(line.endswith((" ", "\t")) for line in notice_text.splitlines()))
 
     def test_shared_enrichment_uses_taiwan_vocabulary(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -960,86 +1050,164 @@ class VocabularySourcesTests(unittest.TestCase):
                 ).returncode,
                 0,
             )
-            seed = root / "seed.json"
-            result = self.run_cli(
-                root,
-                "build-reviewed",
-                "--input",
-                str(draft),
-                "--existing-seed",
-                str(existing_seed),
-                "--seed-output",
-                str(seed),
-                "--provenance-output",
-                str(root / "provenance.json"),
-                "--notices-output",
-                str(root / "notices.txt"),
+            self.assertEqual(
+                json.loads(draft.read_text())["translationDraft"],
+                "原住民上方縮寫",
             )
 
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(json.loads(seed.read_text())[0]["meaning"]["zh-Hant"], "原住民上方縮寫")
+    def test_rich_review_rejects_non_unique_quiz_options(self):
+        item = self.rich_review_record()
+        item["quiz"]["options"] = ["lead", "lead", "lend", "lean"]
 
-    def test_build_reviewed_creates_four_unique_expression_options(self):
+        with self.assertRaisesRegex(vocabulary_sources.SourceError, "invalid quiz"):
+            vocabulary_sources.validate_reviewed_item(item)
+
+    def test_build_reviewed_promotes_only_rich_seed_fields(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            self.make_source(root)
+            manifest_path = self.make_source(root)
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"][0].update(
+                {
+                    "appUse": "approved",
+                    "requiredNotice": "Demo attribution",
+                    "license": "Demo license",
+                }
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            item = self.rich_review_record()
+            item["sourceRefs"] = [
+                {"sourceID": "demo", "sourceEntryRef": "lead-v-1"}
+            ]
+            item["validationSourceIDs"] = ["demo"]
+            reviewed = root / "reviewed.jsonl"
+            reviewed.write_text(json.dumps(item) + "\n", encoding="utf-8")
             existing = root / "existing.json"
             existing.write_text("[]", encoding="utf-8")
-            draft = root / "draft.jsonl"
-            candidates = []
-            for target, meaning in (
-                ("excellent", "優秀"),
-                ("superb", "極佳"),
-                ("outstanding", "出色"),
-                ("remarkable", "卓越"),
-            ):
-                candidates.append(
-                    {
-                        "target": target,
-                        "plain": f"very good: {target}",
-                        "definition": f"a strong positive quality: {target}",
-                        "example": f"The result was {target}.",
-                        "exampleTranslationDraft": None,
-                        "exampleTranslationMode": "usage-note",
-                        "translationDraft": meaning,
-                        "partOfSpeech": "a",
-                        "cefr": "A2",
-                        "level": "basic",
-                        "sourceRefs": [
-                            {"sourceID": "demo", "sourceEntryRef": target}
-                        ],
-                    }
-                )
-            draft.write_text(
-                "".join(json.dumps(item, ensure_ascii=False) + "\n" for item in candidates),
-                encoding="utf-8",
-            )
             seed = root / "seed.json"
+            provenance = root / "provenance.json"
+            notices = root / "notices.txt"
 
             result = self.run_cli(
                 root,
                 "build-reviewed",
                 "--input",
-                str(draft),
+                str(reviewed),
                 "--existing-seed",
                 str(existing),
                 "--seed-output",
                 str(seed),
                 "--provenance-output",
-                str(root / "provenance.json"),
+                str(provenance),
                 "--notices-output",
-                str(root / "notices.txt"),
+                str(notices),
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            for item in json.loads(seed.read_text()):
-                options = item["quiz"]["options"]
-                self.assertEqual(len(options), 4)
-                self.assertEqual(len({value.casefold() for value in options}), 4)
-                self.assertEqual(
-                    options[item["quiz"]["correctOptionIndex"]],
-                    item["upgradedExpression"],
-                )
+            seed_item = json.loads(seed.read_text())[0]
+            self.assertEqual(
+                set(seed_item),
+                {
+                    "id",
+                    "level",
+                    "sortOrder",
+                    "contentLanguageCode",
+                    "supportLanguageCodes",
+                    "plainExpression",
+                    "upgradedExpression",
+                    "primarySenseID",
+                    "pronunciations",
+                    "senses",
+                    "quiz",
+                },
+            )
+            provenance_item = json.loads(provenance.read_text())["items"][0]
+            self.assertEqual(provenance_item["sourceIDs"], ["demo"])
+            self.assertEqual(provenance_item["validationSourceIDs"], ["demo"])
+            self.assertEqual(provenance_item["status"], "approved")
+            self.assertIn("Demo attribution", notices.read_text())
+
+    def test_prepare_enrichment_preserves_current_seed_identity_and_rich_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            oewn_path = input_dir / "oewn-2025.jsonl"
+            oewn = json.loads(oewn_path.read_text())
+            oewn["senses"] = [
+                {
+                    "id": "excellent-adjective-1",
+                    "partOfSpeech": "adjective",
+                    "glosses": ["of very high quality"],
+                    "tags": [],
+                    "examples": ["She shared an excellent idea."],
+                    "translations": {},
+                }
+            ]
+            oewn["pronunciations"] = [
+                {
+                    "notation": "ipa",
+                    "value": "ˈɛksələnt",
+                    "speechLocale": "en-US",
+                    "region": "US",
+                    "tags": [],
+                }
+            ]
+            oewn_path.write_text(json.dumps(oewn) + "\n", encoding="utf-8")
+            current_seed = root / "current-seed.json"
+            current_seed.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "stable-basic-0042",
+                            "level": "intermediate",
+                            "sortOrder": 42,
+                            "plainExpression": "very good",
+                            "upgradedExpression": "excellent",
+                            "meaning": {
+                                "en": "Of very high quality.",
+                                "zh-Hant": "非常出色。",
+                            },
+                            "example": {
+                                "text": "She shared an excellent idea.",
+                                "translation": {"zh-Hant": "她分享了一個很棒的想法。"},
+                            },
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "review-queue.jsonl"
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--current-seed",
+                str(current_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            packet = json.loads(output.read_text())
+            self.assertEqual(packet["id"], "stable-basic-0042")
+            self.assertEqual(packet["level"], "intermediate")
+            self.assertEqual(packet["sortOrder"], 42)
+            self.assertEqual(packet["candidateSenses"][0]["id"], "excellent-adjective-1")
+            self.assertEqual(
+                packet["candidatePronunciations"][0]["value"], "ˈɛksələnt"
+            )
+            self.assertEqual(packet["validationSourceIDs"], ["oewn-2025"])
+            self.assertIn("level-evidence-mismatch", packet["issues"])
 
     def test_prepare_enrichment_uses_a_lower_cefr_plain_term(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1572,6 +1740,30 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("blocked", result.stderr)
 
+    def test_promote_rejects_unknown_validation_source_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reviewed, provenance, notices = self.make_promotable_bank(root)
+            data = json.loads(provenance.read_text())
+            data["items"][0]["validationSourceIDs"] = ["missing-source"]
+            provenance.write_text(json.dumps(data), encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "promote",
+                "--reviewed",
+                str(reviewed),
+                "--provenance",
+                str(provenance),
+                "--notices",
+                str(notices),
+                "--output",
+                str(root / "seed.json"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("validation source", result.stderr.lower())
+
     def test_promote_requires_every_source_notice(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1625,7 +1817,9 @@ class VocabularySourcesTests(unittest.TestCase):
                 reviewed, provenance, notices = self.make_promotable_bank(root)
                 items = json.loads(reviewed.read_text())
                 if field == "example":
-                    items[0]["example"]["translation"]["zh-Hant"] = ""
+                    items[0]["senses"][0]["example"]["translation"][
+                        "zh-Hant"
+                    ] = ""
                 else:
                     items[0]["quiz"]["prompt"]["zh-Hant"] = ""
                 reviewed.write_text(json.dumps(items), encoding="utf-8")
@@ -1644,7 +1838,11 @@ class VocabularySourcesTests(unittest.TestCase):
                 )
 
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn("required text", result.stderr.lower())
+                expected = {
+                    "example": "bilingual sense",
+                    "prompt": "invalid quiz",
+                }[field]
+                self.assertIn(expected, result.stderr.lower())
 
     def test_promote_rejects_duplicate_upgraded_expressions(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -69,6 +69,32 @@ SENSE_TRANSLATION_OVERRIDES = {
     "i67519": "誘人危險物",
     "i70529": "優先名單",
 }
+PARTS_OF_SPEECH = {
+    "noun",
+    "verb",
+    "adjective",
+    "adverb",
+    "preposition",
+    "conjunction",
+    "interjection",
+    "pronoun",
+    "determiner",
+    "phrase",
+}
+USAGE_NOTE_PREFIX = "例句中的"
+SEED_KEYS = (
+    "id",
+    "level",
+    "sortOrder",
+    "contentLanguageCode",
+    "supportLanguageCodes",
+    "plainExpression",
+    "upgradedExpression",
+    "primarySenseID",
+    "pronunciations",
+    "senses",
+    "quiz",
+)
 
 
 class SourceError(Exception):
@@ -851,14 +877,48 @@ def prepare_enrichment(
     existing_seed_path: Path,
     quotas: dict[str, int],
     output: Path,
+    current_seed_path: Path | None = None,
 ) -> int:
     existing = load_json(existing_seed_path, list)
-    excluded = {normalized(item["upgradedExpression"]) for item in existing}
+    current_seed = (
+        load_json(current_seed_path, list) if current_seed_path is not None else None
+    )
+    excluded = (
+        set()
+        if current_seed is not None
+        else {normalized(item["upgradedExpression"]) for item in existing}
+    )
     records = [
         record
         for path in sorted(input_dir.glob("*.jsonl"))
         for record in read_jsonl(path)
     ]
+    senses_by_headword: dict[str, list[dict]] = {}
+    pronunciations_by_headword: dict[str, list[dict]] = {}
+    validation_sources_by_headword: dict[str, set[str]] = {}
+    for record in records:
+        key = normalized(record.get("headword", ""))
+        if not key:
+            continue
+        source_ref = source_reference(record)
+        senses = [
+            {**sense, "sourceRef": source_ref}
+            for sense in record.get("senses", [])
+            if isinstance(sense, dict)
+        ]
+        pronunciations = [
+            {**pronunciation, "sourceRef": source_ref}
+            for pronunciation in record.get("pronunciations", [])
+            if isinstance(pronunciation, dict)
+        ]
+        if senses:
+            senses_by_headword.setdefault(key, []).extend(senses)
+        if pronunciations:
+            pronunciations_by_headword.setdefault(key, []).extend(pronunciations)
+        if senses or pronunciations:
+            validation_sources_by_headword.setdefault(key, set()).add(
+                record["sourceID"]
+            )
     ili_by_pwn: dict[str, str] = {}
     ili_mapping_references: dict[str, dict] = {}
     for record in records:
@@ -1306,19 +1366,81 @@ def prepare_enrichment(
             candidates[key] = candidate
 
     selected: list[dict] = []
-    for level in LEVEL_ORDER:
-        available = sorted(
-            (item for item in candidates.values() if item["level"] == level),
-            key=lambda item: item["_score"],
-        )
-        needed = quotas[level]
-        if len(available) < needed:
-            raise SourceError(
-                f"not enough {level} candidates: need {needed}, found {len(available)}"
+    if current_seed is not None:
+        for current in sorted(
+            current_seed,
+            key=lambda item: (
+                LEVEL_ORDER[item["level"]],
+                item["sortOrder"],
+                item["id"],
+            ),
+        ):
+            key = normalized(current["upgradedExpression"])
+            candidate = candidates.get(key)
+            issues = []
+            if candidate is None:
+                meaning = current.get("meaning", {})
+                example = current.get("example", {})
+                candidate = {
+                    "target": current["upgradedExpression"],
+                    "plain": current["plainExpression"],
+                    "definition": meaning.get("en", ""),
+                    "example": example.get("text", ""),
+                    "exampleTranslationDraft": example.get("translation", {}).get(
+                        "zh-Hant"
+                    ),
+                    "exampleTranslationMode": "current-seed",
+                    "translationDraft": meaning.get("zh-Hant", ""),
+                    "partOfSpeech": "",
+                    "cefr": {
+                        "basic": "A2",
+                        "intermediate": "B2",
+                        "advanced": "C1",
+                    }[current["level"]],
+                    "level": current["level"],
+                    "sourceRefs": [
+                        {
+                            "sourceID": "wording-daily-original",
+                            "sourceEntryRef": current["id"],
+                        }
+                    ],
+                }
+                issues.append("missing-aligned-lexical-candidate")
+            packet = {
+                key: value for key, value in candidate.items() if key != "_score"
+            }
+            packet["id"] = current["id"]
+            if packet["level"] != current["level"]:
+                issues.append("level-evidence-mismatch")
+            packet["level"] = current["level"]
+            packet["sortOrder"] = current["sortOrder"]
+            packet["candidateSenses"] = merged_list(senses_by_headword.get(key, []))
+            packet["candidatePronunciations"] = merged_list(
+                pronunciations_by_headword.get(key, [])
             )
-        for item in available[:needed]:
-            item.pop("_score")
-            selected.append(item)
+            packet["validationSourceIDs"] = sorted(
+                validation_sources_by_headword.get(key, set())
+            )
+            if not packet["candidateSenses"]:
+                issues.append("missing-structured-sense")
+            if not packet["candidatePronunciations"]:
+                issues.append("missing-pronunciation")
+            packet["issues"] = sorted(issues)
+            selected.append(packet)
+    else:
+        for level in LEVEL_ORDER:
+            available = sorted(
+                (item for item in candidates.values() if item["level"] == level),
+                key=lambda item: item["_score"],
+            )
+            needed = quotas[level]
+            if len(available) < needed:
+                raise SourceError(
+                    f"not enough {level} candidates: need {needed}, found {len(available)}"
+                )
+            for item in available[:needed]:
+                item.pop("_score")
+                selected.append(item)
     selected.sort(
         key=lambda item: (LEVEL_ORDER[item["level"]], normalized(item["target"]))
     )
@@ -1436,157 +1558,106 @@ def build_reviewed(
     provenance_output: Path,
     notices_output: Path,
 ) -> int:
-    draft = read_jsonl(draft_path)
-    existing = load_json(existing_seed_path, list)
-    translations = traditionalize([item["translationDraft"] for item in draft])
-    example_translations = traditionalize(
-        [item.get("exampleTranslationDraft") or "" for item in draft]
-    )
-    next_order = {
-        level: max(
-            (item["sortOrder"] for item in existing if item["level"] == level),
-            default=0,
-        )
-        for level in LEVEL_ORDER
-    }
-    next_id = {level: 0 for level in LEVEL_ORDER}
-    generated = []
-    generated_parts: dict[str, str] = {}
-    provenance_items = [
-        provenance_item(
-            item["id"],
-            item["upgradedExpression"],
-            item["level"],
-            {"basic": "A2", "intermediate": "B2", "advanced": "C1"}[item["level"]],
-            [{"sourceID": "wording-daily-original", "sourceEntryRef": item["id"]}],
-            "authored",
-        )
-        for item in existing
-    ]
-    used_source_ids: set[str] = set()
-    for candidate, zh_hant, translated_example in zip(
-        draft, translations, example_translations, strict=True
-    ):
-        definition_lead = candidate["definition"].casefold()[:80]
-        if (
-            candidate["partOfSpeech"] == "a"
-            and not zh_hant.endswith("的")
-            and (
-                definition_lead.startswith("of or ")
-                or definition_lead.startswith("relating ")
-                or definition_lead.startswith("associated ")
-            )
-        ):
-            zh_hant += "的"
-        level = candidate["level"]
-        next_order[level] += 1
-        next_id[level] += 1
-        item_id = f"bank-{level}-{next_id[level]:04d}"
-        prompt_en = f"Which expression best matches “{candidate['plain']}”?"
-        prompt_zh = f"哪個英文表達最符合「{zh_hant}」？"
-        item = {
-            "id": item_id,
-            "level": level,
-            "sortOrder": next_order[level],
-            "contentLanguageCode": "en",
-            "supportLanguageCodes": ["zh-Hant"],
-            "plainExpression": candidate["plain"],
-            "upgradedExpression": candidate["target"],
-            "meaning": {"en": candidate["definition"], "zh-Hant": zh_hant},
-            "example": {
-                "text": candidate["example"],
-                "translation": {
-                    "zh-Hant": translated_example
-                    or f"例句中的「{candidate['target']}」表示「{zh_hant}」。"
-                },
-            },
-            "pronunciationText": candidate["target"],
-            "quiz": {
-                "prompt": {"en": prompt_en, "zh-Hant": prompt_zh},
-                "options": [candidate["target"], candidate["plain"]],
-                "correctOptionIndex": 0,
-            },
-        }
-        generated.append(item)
-        generated_parts[item_id] = candidate["partOfSpeech"]
-        used_source_ids.update(ref["sourceID"] for ref in candidate["sourceRefs"])
-        provenance_items.append(
-            provenance_item(
-                item_id,
-                candidate["target"],
-                level,
-                candidate["cefr"],
-                candidate["sourceRefs"],
-                "agent-enriched",
-            )
-        )
-
-    pools: dict[tuple[str, str], list[str]] = {}
-    level_pools: dict[str, list[str]] = {}
-    for item in generated:
-        target = item["upgradedExpression"]
-        level = item["level"]
-        pools.setdefault((level, generated_parts[item["id"]]), []).append(target)
-        level_pools.setdefault(level, []).append(target)
-    for values in [*pools.values(), *level_pools.values()]:
-        values.sort(key=lambda value: (normalized(value), value))
-
-    for item in generated:
-        target = item["upgradedExpression"]
-        level = item["level"]
-        candidates = [
-            value
-            for value in pools[(level, generated_parts[item["id"]])]
-            if normalized(value) != normalized(target)
-        ]
-        if len(candidates) < 3:
-            candidates.extend(
-                value
-                for value in level_pools[level]
-                if normalized(value) != normalized(target)
-                and normalized(value) not in {normalized(item) for item in candidates}
-            )
-        distractors = []
-        if candidates:
-            start = int(hashlib.sha256(item["id"].encode()).hexdigest()[:8], 16) % len(candidates)
-            for offset in range(len(candidates)):
-                value = candidates[(start + offset) % len(candidates)]
-                if normalized(value) not in {normalized(item) for item in distractors}:
-                    distractors.append(value)
-                if len(distractors) == 3:
-                    break
-        if len(distractors) < 3 and normalized(item["plainExpression"]) != normalized(target):
-            distractors.append(item["plainExpression"])
-        options = [target, *distractors[:3]]
-        if len(options) == 4:
-            rotation = int(hashlib.sha256(f"quiz:{item['id']}".encode()).hexdigest()[:8], 16) % 4
-            options = options[rotation:] + options[:rotation]
-        item["quiz"]["options"] = options
-        item["quiz"]["correctOptionIndex"] = options.index(target)
-    seed = sorted(
-        [*existing, *generated],
-        key=lambda item: (LEVEL_ORDER[item["level"]], item["sortOrder"], item["id"]),
-    )
+    reviewed = read_jsonl(draft_path)
+    load_json(existing_seed_path, list)
+    if not reviewed:
+        raise SourceError("reviewed bank is empty")
     catalog = {source["id"]: source for source in manifest["sources"]}
+    owned_source = {
+        "id": "wording-daily-original",
+        "owner": "Wording Daily",
+        "sourceURL": None,
+        "sourceVersion": "project-owned",
+        "retrievedAt": None,
+        "licenses": [
+            {
+                "name": "Project-owned",
+                "version": None,
+                "url": None,
+                "evidence": "repository-history",
+                "requiredNotice": None,
+            }
+        ],
+        "attributionParties": [],
+        "attributionText": None,
+        "rights": {key: "approved" for key in RIGHTS},
+        "rightsReviewer": "codex-content-review-2026-07-11",
+        "rightsVerifiedAt": "2026-07-11",
+    }
+    seed = []
+    provenance_items = []
+    used_source_ids: set[str] = set()
+    uses_owned_source = False
+    for item in reviewed:
+        validate_reviewed_item(item)
+        source_refs = merged_list(item["sourceRefs"])
+        source_ids = sorted({reference["sourceID"] for reference in source_refs})
+        validation_source_ids = sorted(set(item["validationSourceIDs"]))
+        for source_id in source_ids:
+            if source_id == "wording-daily-original":
+                uses_owned_source = True
+                continue
+            source = catalog.get(source_id)
+            if source is None or source.get("appUse") != "approved":
+                raise SourceError(f"source {source_id} is not approved for app use")
+            used_source_ids.add(source_id)
+        for source_id in validation_source_ids:
+            if source_id != "wording-daily-original" and source_id not in catalog:
+                raise SourceError(f"unknown validation source {source_id}")
+        seed.append({key: item[key] for key in SEED_KEYS})
+        difficulty = {"basic": 2, "intermediate": 5, "advanced": 8}[
+            item["level"]
+        ]
+        provenance_items.append(
+            {
+                "itemID": item["id"],
+                "conceptKey": (
+                    f"expression:{normalized(item['upgradedExpression'])}"
+                    f"#sense:{item['primarySenseID']}"
+                ),
+                "sourceIDs": source_ids,
+                "sourceEntryRefs": source_refs,
+                "validationSourceIDs": validation_source_ids,
+                "origin": "agent-reviewed",
+                "changesMade": "Selected, sense-aligned, translated, reviewed, and formatted for Wording Daily.",
+                "cefr": item["cefr"],
+                "appLevel": item["level"],
+                "revision": 1,
+                "difficulty": {
+                    "frequency": min(2, difficulty // 4),
+                    "transparency": min(2, difficulty // 4),
+                    "grammar": min(2, difficulty // 5),
+                    "register": min(2, difficulty // 5),
+                    "polysemy": min(2, len(item["senses"]) - 1),
+                },
+                "taiwanUsefulness": 2,
+                "englishReviewer": item["englishReviewer"],
+                "zhHantReviewer": item["zhHantReviewer"],
+                "levelReviewer": item.get(
+                    "levelReviewer", item["englishReviewer"]
+                ),
+                "rightsReviewer": item.get(
+                    "rightsReviewer", item["englishReviewer"]
+                ),
+                "reviewedAt": item.get("reviewedAt", "2026-07-11"),
+                "levelOverrideReason": None,
+                "status": item["reviewStatus"],
+            }
+        )
+    seed.sort(
+        key=lambda item: (
+            LEVEL_ORDER[item["level"]],
+            item["sortOrder"],
+            item["id"],
+        )
+    )
     sources = [
-        {
-            "id": "wording-daily-original",
-            "owner": "Wording Daily",
-            "sourceURL": None,
-            "sourceVersion": "legacy-90",
-            "retrievedAt": None,
-            "licenses": [{"name": "Project-owned", "version": None, "url": None, "evidence": "repository-history", "requiredNotice": None}],
-            "attributionParties": [],
-            "attributionText": None,
-            "rights": {key: "approved" for key in RIGHTS},
-            "rightsReviewer": "codex-content-review-2026-07-11",
-            "rightsVerifiedAt": "2026-07-11",
-        },
+        *([owned_source] if uses_owned_source else []),
         *(provenance_source(catalog[source_id]) for source_id in sorted(used_source_ids)),
     ]
     provenance = {
-        "schemaVersion": 1,
-        "bankVersion": "2026.07.2",
+        "schemaVersion": 2,
+        "bankVersion": "2026.07.3",
         "sources": sources,
         "items": provenance_items,
     }
@@ -1599,51 +1670,188 @@ def build_reviewed(
                 f"Source: {source.get('canonicalURL', '')}",
                 f"License: {source.get('license', 'Documented source terms')} {source.get('licenseURL', '')}".rstrip(),
                 source.get("requiredNotice", ""),
-                "Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.",
+                "Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.",
                 "",
             ]
         )
         for path in source.get("noticeFiles", []):
             try:
                 notice = Path(root, path).read_text(encoding="utf-8")
-                notice = "\n".join(line.rstrip() for line in notice.splitlines())
-                notice = re.sub(r"(?m)^={7,}$", "---", notice)
-                notice_lines.extend(
-                    [notice.rstrip(), ""]
-                )
             except OSError as error:
                 raise SourceError(f"cannot read source notice {path}: {error}") from error
+            notice = "\n".join(line.rstrip() for line in notice.splitlines())
+            notice_lines.extend([re.sub(r"(?m)^={7,}$", "---", notice).rstrip(), ""])
     atomic_write(seed_output, json.dumps(seed, ensure_ascii=False, indent=2) + "\n")
-    atomic_write(provenance_output, json.dumps(provenance, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    atomic_write(
+        provenance_output,
+        json.dumps(provenance, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+    )
     atomic_write(notices_output, "\n".join(notice_lines).rstrip() + "\n")
     return len(seed)
 
 
 def validate_seed_item(item: dict) -> None:
-    required = ("id", "level", "sortOrder", "contentLanguageCode", "supportLanguageCodes", "plainExpression", "upgradedExpression", "meaning", "example", "pronunciationText", "quiz")
+    required = (
+        "id",
+        "level",
+        "sortOrder",
+        "contentLanguageCode",
+        "supportLanguageCodes",
+        "plainExpression",
+        "upgradedExpression",
+        "primarySenseID",
+        "pronunciations",
+        "senses",
+        "quiz",
+    )
     if any(key not in item for key in required):
         raise SourceError(f"seed item {item.get('id', '<missing>')} is incomplete")
-    if item["level"] not in LEVEL_ORDER or item["contentLanguageCode"] != "en" or "zh-Hant" not in item["supportLanguageCodes"]:
+    if (
+        item["level"] not in LEVEL_ORDER
+        or item["contentLanguageCode"] != "en"
+        or "zh-Hant" not in item["supportLanguageCodes"]
+    ):
         raise SourceError(f"seed item {item['id']} has invalid language or level")
-    meaning = item["meaning"] if isinstance(item["meaning"], dict) else {}
-    example = item["example"] if isinstance(item["example"], dict) else {}
-    translation = example.get("translation", {})
+    if any(
+        not isinstance(item[key], str) or not item[key].strip()
+        for key in ("id", "plainExpression", "upgradedExpression")
+    ):
+        raise SourceError(f"seed item {item['id']} has missing required text")
+    if len(item["plainExpression"].split()) > 8:
+        raise SourceError(f"seed item {item['id']} plain expression is not concise")
+
+    pronunciations = item["pronunciations"]
+    senses = item["senses"]
+    if not isinstance(pronunciations, list) or not pronunciations:
+        raise SourceError(f"seed item {item['id']} requires pronunciations")
+    if not isinstance(senses, list) or not 1 <= len(senses) <= 3:
+        raise SourceError(f"seed item {item['id']} requires one to three senses")
+    pronunciation_ids = [value.get("id") for value in pronunciations]
+    if None in pronunciation_ids or len(set(pronunciation_ids)) != len(
+        pronunciation_ids
+    ):
+        raise SourceError(f"seed item {item['id']} has duplicate pronunciation IDs")
+    for pronunciation in pronunciations:
+        if not all(
+            isinstance(pronunciation.get(key), str)
+            and pronunciation[key].strip()
+            for key in ("id", "ipa", "speechLocale")
+        ):
+            raise SourceError(f"seed item {item['id']} has malformed pronunciation")
+        if (
+            pronunciation["ipa"] != bare_ipa(pronunciation["ipa"])
+            or not pronunciation["speechLocale"].startswith("en-")
+        ):
+            raise SourceError(f"seed item {item['id']} has malformed pronunciation")
+
+    sense_ids = [value.get("id") for value in senses]
+    if (
+        item["primarySenseID"] not in sense_ids
+        or None in sense_ids
+        or len(set(sense_ids)) != len(sense_ids)
+    ):
+        raise SourceError(f"seed item {item['id']} has invalid primary sense")
+    for sense in senses:
+        if sense.get("partOfSpeech") not in PARTS_OF_SPEECH:
+            raise SourceError(f"seed item {item['id']} has unsupported part of speech")
+        references = sense.get("pronunciationIDs")
+        if (
+            not isinstance(references, list)
+            or not references
+            or len(set(references)) != len(references)
+            or any(value not in pronunciation_ids for value in references)
+        ):
+            raise SourceError(f"seed item {item['id']} references unknown pronunciation")
+        meaning = sense.get("meaning", {})
+        example = sense.get("example", {})
+        translation = example.get("translation", {})
+        texts = (
+            meaning.get("en"),
+            meaning.get("zh-Hant"),
+            example.get("text"),
+            translation.get("zh-Hant"),
+        )
+        if any(not isinstance(value, str) or not value.strip() for value in texts):
+            raise SourceError(f"seed item {item['id']} has incomplete bilingual sense")
+        if (
+            translation["zh-Hant"].startswith(USAGE_NOTE_PREFIX)
+            or re.search(r'[.!?]["’”)]?$', example["text"].strip()) is None
+            or re.search(r'[。！？!?]["’”)]?$', translation["zh-Hant"].strip())
+            is None
+        ):
+            raise SourceError(
+                f"seed item {item['id']} requires a full-sentence translation"
+            )
+
     quiz = item["quiz"] if isinstance(item["quiz"], dict) else {}
     prompt = quiz.get("prompt", {})
-    values = (item["id"], item["plainExpression"], item["upgradedExpression"], item["pronunciationText"], meaning.get("en"), meaning.get("zh-Hant"), example.get("text"), translation.get("zh-Hant") if isinstance(translation, dict) else None, prompt.get("en") if isinstance(prompt, dict) else None, prompt.get("zh-Hant") if isinstance(prompt, dict) else None)
-    if any(not isinstance(value, str) or not value.strip() for value in values):
-        raise SourceError(f"seed item {item['id']} has missing required text")
     options = quiz.get("options")
     correct = quiz.get("correctOptionIndex")
     if (
-        not isinstance(options, list)
-        or not all(isinstance(value, str) and value.strip() for value in options)
+        not isinstance(prompt, dict)
+        or any(
+            not isinstance(prompt.get(language), str) or not prompt[language].strip()
+            for language in ("en", "zh-Hant")
+        )
+        or not isinstance(options, list)
+        or len(options) != 4
+        or len({normalized(value) for value in options if isinstance(value, str)}) != 4
         or not isinstance(correct, int)
         or correct not in range(len(options))
         or options[correct] != item["upgradedExpression"]
-        or item["pronunciationText"] != item["upgradedExpression"]
     ):
-        raise SourceError(f"seed item {item['id']} has invalid quiz or pronunciation")
+        raise SourceError(f"seed item {item['id']} has invalid quiz")
+
+
+def validate_reviewed_item(item: dict) -> None:
+    validate_seed_item(item)
+    required = (
+        "sourceRefs",
+        "validationSourceIDs",
+        "cefr",
+        "reviewStatus",
+        "englishReviewer",
+        "zhHantReviewer",
+    )
+    if any(key not in item for key in required):
+        raise SourceError(f"review item {item.get('id', '<missing>')} is incomplete")
+    if CEFR_LEVEL.get(item["cefr"]) != item["level"]:
+        raise SourceError(f"review item {item['id']} has invalid language or level")
+    if item["reviewStatus"] != "approved" or any(
+        not isinstance(item[key], str) or not item[key].strip()
+        for key in ("englishReviewer", "zhHantReviewer")
+    ):
+        raise SourceError(f"review item {item['id']} is not reviewed")
+    if (
+        not isinstance(item["sourceRefs"], list)
+        or not item["sourceRefs"]
+        or not isinstance(item["validationSourceIDs"], list)
+    ):
+        raise SourceError(f"review item {item['id']} has missing source evidence")
+
+
+def audit_reviewed(path: Path) -> dict:
+    items = read_jsonl(path)
+    if len(items) < 5_000:
+        raise SourceError("reviewed bank must contain at least 5000 items")
+    ids: set[str] = set()
+    expressions: set[str] = set()
+    levels = {level: 0 for level in LEVEL_ORDER}
+    approved = 0
+    for item in items:
+        validate_reviewed_item(item)
+        if item["id"] in ids:
+            raise SourceError(f"duplicate review ID: {item['id']}")
+        expression = normalized(item["upgradedExpression"])
+        if expression in expressions:
+            raise SourceError(
+                f"duplicate reviewed expression: {item['upgradedExpression']}"
+            )
+        ids.add(item["id"])
+        expressions.add(expression)
+        levels[item["level"]] += 1
+        approved += item["reviewStatus"] == "approved"
+    return {"items": len(items), "levels": levels, "approved": approved}
 
 
 def promote(
@@ -1710,6 +1918,14 @@ def promote(
             source_id not in source_ids for source_id in item["sourceIDs"]
         ):
             raise SourceError(f"provenance item {item_id} uses an unknown source")
+        validation_source_ids = item.get("validationSourceIDs")
+        if not isinstance(validation_source_ids, list) or any(
+            source_id != "wording-daily-original" and source_id not in external
+            for source_id in validation_source_ids
+        ):
+            raise SourceError(
+                f"provenance item {item_id} uses an unknown validation source"
+            )
         if (
             CEFR_LEVEL.get(item["cefr"]) != item["appLevel"]
             or item["appLevel"] != reviewed_by_id[item_id]["level"]
@@ -1733,6 +1949,8 @@ def main(argv: list[str] | None = None) -> int:
     import_all_parser.add_argument("--output-dir", type=Path)
     report_parser = commands.add_parser("report")
     report_parser.add_argument("--input-dir", type=Path)
+    audit_parser = commands.add_parser("audit-reviewed")
+    audit_parser.add_argument("--input", type=Path, required=True)
     snapshot_parser = commands.add_parser("snapshot-wiktextract")
     snapshot_parser.add_argument("--source-url", required=True)
     snapshot_parser.add_argument("--seed", type=Path, required=True)
@@ -1740,6 +1958,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser = commands.add_parser("prepare-enrichment")
     prepare_parser.add_argument("--input-dir", type=Path, required=True)
     prepare_parser.add_argument("--existing-seed", type=Path, required=True)
+    prepare_parser.add_argument("--current-seed", type=Path)
     prepare_parser.add_argument("--basic", type=int, default=950)
     prepare_parser.add_argument("--intermediate", type=int, default=1600)
     prepare_parser.add_argument("--advanced", type=int, default=2800)
@@ -1759,7 +1978,15 @@ def main(argv: list[str] | None = None) -> int:
     root = args.root.resolve()
     manifest = load_manifest(root)
 
-    if args.command == "snapshot-wiktextract":
+    if args.command == "audit-reviewed":
+        print(
+            json.dumps(
+                audit_reviewed(args.input),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+    elif args.command == "snapshot-wiktextract":
         print(
             json.dumps(
                 snapshot_wiktextract(args.source_url, args.seed, args.output),
@@ -1812,6 +2039,7 @@ def main(argv: list[str] | None = None) -> int:
             args.existing_seed,
             quotas,
             args.output,
+            args.current_seed,
         )
         print(f"prepared {count} enrichment candidate(s) to {args.output}")
     elif args.command == "build-reviewed":
