@@ -18,6 +18,8 @@ import sys
 import tarfile
 import tempfile
 import unicodedata
+import urllib.error
+import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
@@ -159,6 +161,7 @@ def empty_record(source_id: str, reference: str, headword: str) -> dict:
         "relatedTerms": [],
         "translations": {},
         "pronunciations": [],
+        "senses": [],
         "forms": [],
         "senseRefs": [],
         "iliRefs": [],
@@ -182,9 +185,20 @@ def parse_cmudict(path: Path, source_id: str) -> Iterable[dict]:
             if not line.strip() or line.startswith(";;; "):
                 continue
             word, pronunciation = line.rstrip().split(maxsplit=1)
+            pronunciation = pronunciation.partition(" #")[0].strip()
+            if not pronunciation:
+                continue
             headword = re.sub(r"\(\d+\)$", "", word)
             record = empty_record(source_id, normalized(headword), headword)
-            record["pronunciations"] = [pronunciation]
+            record["pronunciations"] = [
+                {
+                    "notation": "arpabet",
+                    "value": pronunciation,
+                    "speechLocale": "en-US",
+                    "region": "US",
+                    "tags": [],
+                }
+            ]
             yield record
 
 
@@ -466,6 +480,138 @@ def parse_ili_map(path: Path, source_id: str) -> Iterable[dict]:
             yield record
 
 
+def bare_ipa(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and (value[0], value[-1]) in {("/", "/"), ("[", "]")}:
+        value = value[1:-1].strip()
+    return value
+
+
+def wiktextract_sense(word: str, part_of_speech: str | None, sense: dict) -> dict:
+    glosses = [value.strip() for value in sense.get("glosses", []) if value.strip()]
+    identity = next(iter(sense.get("senseid", [])), None)
+    if identity is None:
+        material = "|".join(
+            (normalized(word), part_of_speech or "", glosses[0] if glosses else "")
+        )
+        identity = hashlib.sha256(material.encode()).hexdigest()[:16]
+    translations: dict[str, list[str]] = {}
+    for translation in sense.get("translations", []):
+        code = translation.get("code")
+        value = translation.get("word")
+        if code and value and value.strip():
+            translations.setdefault(code, []).append(value.strip())
+    return {
+        "id": identity,
+        "partOfSpeech": part_of_speech,
+        "glosses": glosses,
+        "tags": sorted(set(sense.get("tags", []))),
+        "examples": sorted(
+            example["text"].strip()
+            for example in sense.get("examples", [])
+            if example.get("type", "example") == "example"
+            and example.get("text", "").strip()
+        ),
+        "translations": {
+            code: sorted(set(values), key=lambda value: (normalized(value), value))
+            for code, values in sorted(translations.items())
+        },
+    }
+
+
+def parse_wiktextract(path: Path, source_id: str) -> Iterable[dict]:
+    with gzip.open(path, "rt", encoding="utf-8") as stream:
+        for line_number, line in enumerate(stream, start=1):
+            item = json.loads(line)
+            if item.get("lang_code") != "en" or not item.get("word"):
+                continue
+            record = empty_record(
+                source_id,
+                f"{normalized(item['word'])}#{item.get('pos') or ''}#{line_number}",
+                item["word"],
+            )
+            record["partOfSpeech"] = item.get("pos")
+            record["pronunciations"] = [
+                {
+                    "notation": "ipa",
+                    "value": bare_ipa(sound["ipa"]),
+                    "speechLocale": (
+                        "en-GB" if "UK" in sound.get("tags", []) else "en-US"
+                    ),
+                    "region": next(iter(sound.get("tags", [])), None),
+                    "tags": sorted(sound.get("tags", [])),
+                }
+                for sound in item.get("sounds", [])
+                if bare_ipa(sound.get("ipa", ""))
+            ]
+            record["senses"] = [
+                wiktextract_sense(item["word"], item.get("pos"), sense)
+                for sense in item.get("senses", [])
+            ]
+            record["definitions"] = [
+                gloss for sense in record["senses"] for gloss in sense["glosses"]
+            ]
+            record["examples"] = [
+                example for sense in record["senses"] for example in sense["examples"]
+            ]
+            record["senseRefs"] = [sense["id"] for sense in record["senses"]]
+            for sense in record["senses"]:
+                for language, values in sense["translations"].items():
+                    record["translations"].setdefault(language, []).extend(values)
+            yield record
+
+
+def snapshot_wiktextract(source_url: str, seed_path: Path, output: Path) -> dict:
+    targets = {
+        normalized(item["upgradedExpression"])
+        for item in load_json(seed_path, list)
+    }
+    request = urllib.request.Request(
+        source_url,
+        headers={"User-Agent": "WordingDailyVocabularyBuilder/1.0"},
+    )
+    kept: list[bytes] = []
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response, gzip.GzipFile(
+            fileobj=response
+        ) as stream:
+            for line_number, raw_line in enumerate(stream, start=1):
+                try:
+                    item = json.loads(raw_line)
+                except json.JSONDecodeError as error:
+                    raise SourceError(
+                        f"invalid Wiktextract JSON at line {line_number}: {error}"
+                    ) from error
+                if (
+                    item.get("lang_code") == "en"
+                    and normalized(item.get("word", "")) in targets
+                ):
+                    kept.append(
+                        json.dumps(
+                            item,
+                            ensure_ascii=False,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ).encode()
+                        + b"\n"
+                    )
+    except (OSError, urllib.error.URLError) as error:
+        raise SourceError(f"cannot read Wiktextract source {source_url}: {error}") from error
+    kept.sort()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("wb", dir=output.parent, delete=False) as destination:
+        temporary = Path(destination.name)
+        with gzip.GzipFile(fileobj=destination, mode="wb", mtime=0) as compressed:
+            compressed.writelines(kept)
+    os.replace(temporary, output)
+    return {
+        "path": str(output),
+        "sha256": sha256(output),
+        "bytes": output.stat().st_size,
+        "records": len(kept),
+    }
+
+
 PARSERS = {
     "lemma_csv": parse_lemma_csv,
     "cmudict": parse_cmudict,
@@ -477,7 +623,16 @@ PARSERS = {
     "cedict_gzip": parse_cedict,
     "tatoeba_parallel_bz2": parse_tatoeba,
     "ili_map_tab": parse_ili_map,
+    "wiktextract_jsonl_gz": parse_wiktextract,
 }
+
+
+def merged_list(values: Iterable[object]) -> list:
+    unique = {
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")): value
+        for value in values
+    }
+    return [unique[key] for key in sorted(unique)]
 
 
 def merge_records(records: Iterable[dict]) -> list[dict]:
@@ -500,14 +655,12 @@ def merge_records(records: Iterable[dict]) -> list[dict]:
             "examples",
             "relatedTerms",
             "pronunciations",
+            "senses",
             "forms",
             "senseRefs",
             "iliRefs",
         ):
-            current[field] = sorted(
-                set(current[field]) | set(record[field]),
-                key=lambda value: (normalized(value), value),
-            )
+            current[field] = merged_list([*current[field], *record[field]])
         for language, values in record["translations"].items():
             if isinstance(values, list):
                 current["translations"][language] = sorted(
@@ -1580,6 +1733,10 @@ def main(argv: list[str] | None = None) -> int:
     import_all_parser.add_argument("--output-dir", type=Path)
     report_parser = commands.add_parser("report")
     report_parser.add_argument("--input-dir", type=Path)
+    snapshot_parser = commands.add_parser("snapshot-wiktextract")
+    snapshot_parser.add_argument("--source-url", required=True)
+    snapshot_parser.add_argument("--seed", type=Path, required=True)
+    snapshot_parser.add_argument("--output", type=Path, required=True)
     prepare_parser = commands.add_parser("prepare-enrichment")
     prepare_parser.add_argument("--input-dir", type=Path, required=True)
     prepare_parser.add_argument("--existing-seed", type=Path, required=True)
@@ -1602,7 +1759,15 @@ def main(argv: list[str] | None = None) -> int:
     root = args.root.resolve()
     manifest = load_manifest(root)
 
-    if args.command == "verify":
+    if args.command == "snapshot-wiktextract":
+        print(
+            json.dumps(
+                snapshot_wiktextract(args.source_url, args.seed, args.output),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+    elif args.command == "verify":
         sources = selected_sources(manifest, args.source)
         for source in sources:
             verify_source(root, source)

@@ -303,6 +303,204 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["headword"], "café")
 
+    def test_wiktextract_snapshot_keeps_only_seed_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_source(root)
+            source = root / "all.jsonl.gz"
+            rows = [
+                {
+                    "word": "lead",
+                    "lang_code": "en",
+                    "pos": "noun",
+                    "senses": [{"glosses": ["A metal."]}],
+                },
+                {
+                    "word": "lead",
+                    "lang_code": "en",
+                    "pos": "verb",
+                    "senses": [{"glosses": ["To guide."]}],
+                },
+                {
+                    "word": "other",
+                    "lang_code": "en",
+                    "pos": "noun",
+                    "senses": [{"glosses": ["Another."]}],
+                },
+                {
+                    "word": "lead",
+                    "lang_code": "fr",
+                    "pos": "noun",
+                    "senses": [{"glosses": ["French row."]}],
+                },
+            ]
+            with gzip.open(source, "wt", encoding="utf-8") as stream:
+                for row in rows:
+                    stream.write(json.dumps(row) + "\n")
+            seed = root / "seed.json"
+            seed.write_text(
+                json.dumps([{"upgradedExpression": "lead"}]), encoding="utf-8"
+            )
+            output = root / "targets.jsonl.gz"
+
+            result = self.run_cli(
+                root,
+                "snapshot-wiktextract",
+                "--source-url",
+                source.as_uri(),
+                "--seed",
+                str(seed),
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with gzip.open(output, "rt", encoding="utf-8") as stream:
+                kept = [json.loads(line) for line in stream]
+            self.assertEqual(
+                [(row["word"], row["pos"]) for row in kept],
+                [("lead", "noun"), ("lead", "verb")],
+            )
+            metadata = json.loads(result.stdout)
+            self.assertEqual(metadata["sha256"], hashlib.sha256(output.read_bytes()).hexdigest())
+            self.assertEqual(metadata["bytes"], output.stat().st_size)
+            self.assertEqual(metadata["records"], 2)
+
+    def test_wiktextract_adapter_preserves_pos_senses_and_ipa(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw = root / "Content/Sources/Raw/wiktextract/targets.jsonl.gz"
+            raw.parent.mkdir(parents=True)
+            row = {
+                "word": "lead",
+                "lang_code": "en",
+                "pos": "verb",
+                "sounds": [
+                    {"ipa": "/liːd/", "tags": ["General-American"]},
+                    {"ipa": "[lɛd]", "tags": ["UK"]},
+                ],
+                "senses": [
+                    {
+                        "senseid": ["lead-verb-guide"],
+                        "glosses": ["To guide or conduct."],
+                        "tags": ["transitive"],
+                        "examples": [
+                            {
+                                "text": "She will lead the meeting.",
+                                "type": "example",
+                            },
+                            {
+                                "text": "A quoted example.",
+                                "type": "quotation",
+                            },
+                        ],
+                        "translations": [{"code": "zh", "word": "引導"}],
+                    }
+                ],
+            }
+            with gzip.open(raw, "wt", encoding="utf-8") as stream:
+                stream.write(json.dumps(row) + "\n")
+            manifest = {
+                "schemaVersion": 1,
+                "sources": [
+                    {
+                        "id": "wiktextract-test",
+                        "adapter": "wiktextract_jsonl_gz",
+                        "rawFile": {
+                            "path": str(raw.relative_to(root)),
+                            "sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                            "bytes": raw.stat().st_size,
+                        },
+                        "licenseEvidence": [],
+                        "repositoryRedistribution": "allowed",
+                    }
+                ],
+            }
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            output = root / "output.jsonl"
+
+            result = self.run_cli(
+                root,
+                "import-source",
+                "wiktextract-test",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = json.loads(output.read_text())
+            self.assertEqual(record["partOfSpeech"], "verb")
+            self.assertEqual(
+                [item["value"] for item in record["pronunciations"]],
+                ["liːd", "lɛd"],
+            )
+            self.assertEqual(record["senses"][0]["id"], "lead-verb-guide")
+            self.assertEqual(
+                record["senses"][0]["examples"],
+                ["She will lead the meeting."],
+            )
+            self.assertEqual(
+                record["senses"][0]["translations"], {"zh": ["引導"]}
+            )
+
+    def test_cmudict_adapter_strips_inline_comments_and_preserves_variants(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw = root / "Content/Sources/Raw/cmudict/cmudict.dict"
+            raw.parent.mkdir(parents=True)
+            raw.write_text(
+                "word W ER1 D # common noun\nword(2) W AO1 R D\n",
+                encoding="utf-8",
+            )
+            manifest = {
+                "schemaVersion": 1,
+                "sources": [
+                    {
+                        "id": "cmudict-test",
+                        "adapter": "cmudict",
+                        "rawFile": {
+                            "path": str(raw.relative_to(root)),
+                            "sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                            "bytes": raw.stat().st_size,
+                        },
+                        "licenseEvidence": [],
+                        "repositoryRedistribution": "allowed",
+                    }
+                ],
+            }
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            output = root / "output.jsonl"
+
+            result = self.run_cli(
+                root, "import-source", "cmudict-test", "--output", str(output)
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = json.loads(output.read_text())
+            self.assertEqual(
+                record["pronunciations"],
+                [
+                    {
+                        "notation": "arpabet",
+                        "region": "US",
+                        "speechLocale": "en-US",
+                        "tags": [],
+                        "value": "W AO1 R D",
+                    },
+                    {
+                        "notation": "arpabet",
+                        "region": "US",
+                        "speechLocale": "en-US",
+                        "tags": [],
+                        "value": "W ER1 D",
+                    },
+                ],
+            )
+
     def test_cedict_adapter_inverts_traditional_chinese_entries(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

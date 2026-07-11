@@ -100,9 +100,13 @@
           "bytes": 1754
         }
       ],
+      "noticeFiles": [
+        "Content/Sources/Raw/cmudict/LICENSE"
+      ],
       "repositoryRedistribution": "allowed",
-      "appUse": "reference_only",
-      "decision": "Pronunciation validation only; the app uses system TTS."
+      "appUse": "approved",
+      "requiredNotice": "Pronunciation data is adapted from the CMU Pronouncing Dictionary, Copyright (C) 1993-2015 Carnegie Mellon University, under its permissive redistribution license.",
+      "decision": "Approved for pronunciation evidence and deterministic IPA preparation; the App still uses only on-device system TTS."
     },
     {
       "id": "cow-0.9",
@@ -364,6 +368,37 @@
       "repositoryRedistribution": "allowed",
       "appUse": "blocked",
       "decision": "Reference only; share-alike treatment is not approved for the shipping bank."
+    },
+    {
+      "id": "wiktextract-en-2026-07-09",
+      "name": "English Wiktionary data extracted by Wiktextract",
+      "version": "enwiktionary dump 2026-07-06, extracted 2026-07-09 with wiktextract e62056b and wikitextprocessor e7887d5",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://kaikki.org/dictionary/rawdata.html",
+      "adapter": "wiktextract_jsonl_gz",
+      "rawFile": {
+        "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09.jsonl.gz",
+        "sha256": "1b6e3fab54497483e7a81ea71909a659c68c59851ddcd4ff26af0ffe7239895b",
+        "bytes": 36206593
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/wiktextract-en/source-page.html",
+          "sha256": "de6e5cb541d8e6d978fe56f11e340da34f321e56403dadf6ad4d787fc3b62280",
+          "bytes": 27247
+        },
+        {
+          "path": "Content/Sources/Raw/wiktextract-en/Wiktionary-Copyrights.html",
+          "sha256": "03cfe3e64ab78cde13ad9ee70b3bc4b1a30afa397813b18d152bbea0c6b25a74",
+          "bytes": 85540
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Contains adapted English Wiktionary data extracted by Wiktextract from the 2026-07-06 enwiktionary dump, used under CC BY-SA 4.0. Wording Daily selected, normalized, translated, and reformatted the data; the adapted vocabulary data remains available under CC BY-SA 4.0.",
+      "decision": "Approved only for cleaned parts of speech, glosses, translations, and IPA. Quotations, audio, images, and externally licensed or fair-use media are excluded."
     }
   ]
 }
