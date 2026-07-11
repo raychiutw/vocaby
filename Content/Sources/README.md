@@ -36,12 +36,17 @@ research input, not shipping content. An entry can reach
 reviewed seed, provenance, and notices pass every fail-closed gate. A source
 marked `reference_only` or `blocked` cannot contribute shipping fields.
 
-Shipping content currently uses only Open English WordNet 2025 for English
-definitions/examples/relations, FreeDict English-Chinese 2025.11.23 for reviewed
-Chinese meaning drafts, and CEFR-J 1.6 for level calibration. The bundled notice
-preserves the Open English WordNet and FreeDict license text, the CEFR-J citation,
-the adaptation statement, and FreeDict's CC BY-SA 3.0 share-alike notice. Other
-tracked sources remain reference-only or blocked.
+The current reviewed bank aligns Chinese Open WordNet senses to Open English
+WordNet through the exact Open Multilingual Wordnet ILI map. CEFR-J calibrates
+levels, CC-CEDICT supplies secondary gloss-review evidence, and selected Tatoeba
+English-Mandarin pairs supply context-aligned example translations. The bundled
+notice is generated from every source that actually contributes to the bank.
+FreeDict remains an approved retained source but does not contribute to this
+release; reference-only and blocked sources cannot contribute shipping fields.
+
+The maintainer pipeline requires Python 3, `opencc` with `s2twp.json`, and Xcode's
+macOS Swift toolchain for the offline `NaturalLanguage` sense-similarity check.
+None of these tools or source snapshots is linked into the iOS app.
 
 See `.agents/skills/wording-daily-vocabulary-import/SKILL.md` for the repeatable
 one-source workflow. Licensing decisions in the manifest are engineering gates,

@@ -2,13 +2,14 @@ import XCTest
 @testable import WordingDailyApp
 
 final class VocabularySeedValidationTests: XCTestCase {
-    func testBundledSeedHas5400ItemsAndPassesValidation() throws {
+    func testBundledSeedHas5440ItemsAndPassesValidation() throws {
         let items = try SeedLoader().loadBundledSeed()
 
-        XCTAssertEqual(items.count, 5_400)
-        XCTAssertEqual(items.filter { $0.level == .basic }.count, 1_030)
+        XCTAssertEqual(items.count, 5_440)
+        XCTAssertEqual(items.filter { $0.id.hasPrefix("bank-") }.count, 5_350)
+        XCTAssertEqual(items.filter { $0.level == .basic }.count, 980)
         XCTAssertEqual(items.filter { $0.level == .intermediate }.count, 1_630)
-        XCTAssertEqual(items.filter { $0.level == .advanced }.count, 2_740)
+        XCTAssertEqual(items.filter { $0.level == .advanced }.count, 2_830)
         XCTAssertTrue(VocabularyLevel.allCases.allSatisfy { level in
             items.filter { $0.level == level }.count >= 4
         })
@@ -18,6 +19,9 @@ final class VocabularySeedValidationTests: XCTestCase {
                 && !$0.example.translation["zh-Hant", default: ""].isEmpty
                 && !$0.quiz.prompt["en", default: ""].isEmpty
                 && !$0.quiz.prompt["zh-Hant", default: ""].isEmpty
+        })
+        XCTAssertTrue(items.filter { $0.id.hasPrefix("bank-") }.allSatisfy {
+            $0.quiz.options.count == 4 && Set($0.quiz.options).count == 4
         })
         XCTAssertNoThrow(try SeedValidator.validate(items))
     }

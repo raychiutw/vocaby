@@ -7,10 +7,10 @@
 - Blocking issues: none
 - Baseline: the pre-skill workflow had no executable importer or manifest, and the prior skill stopped before common enrichment/review; see `../assets/evals/baseline.md`.
 - Functional evidence:
-  - `python3 -m unittest tools/test_vocabulary_sources.py`: 21 tests passed, including normalized-value tie ordering across 16 Python hash seeds.
-  - `python3 tools/vocabulary_sources.py verify`: 10 sources passed checksum, size, evidence, and Xcode-exclusion checks.
-  - Two full `import-all` runs: 10 of 10 JSONL checksums identical; 532,363 canonical records.
-  - Shared enrichment/review/promotion: 5,400 seed and provenance items; 1,030 basic, 1,630 intermediate, and 2,740 advanced.
+  - `python3 -m unittest tools/test_vocabulary_sources.py`: 31 tests passed, including normalized-value tie ordering across 16 Python hash seeds, multi-file sources, exact ILI alignment, reviewed sense overrides, target-bearing examples, and offline definition similarity.
+  - `python3 tools/vocabulary_sources.py verify`: 13 sources passed checksum, size, evidence, and Xcode-exclusion checks.
+  - Full import report: 863,197 canonical records and 583,073 normalized unique headwords; changed adapters produced byte-identical JSONL on repeated runs.
+  - Shared enrichment/review/promotion: 5,440 seed and provenance items; 980 basic, 1,630 intermediate, and 2,830 advanced.
   - Generated seed, provenance, and notices are deterministic; the built App excludes raw/import/report/manifest/provenance data.
 - Skill evidence:
   - strict format check: 0 errors, 0 warnings.
@@ -49,7 +49,7 @@
 - [x] Normalized duplicate source rows merge deterministically.
 - [x] Rights not fully approved fail before output.
 - [x] A fully reviewed approved fixture promotes successfully.
-- [x] All retained CSV, TSV, dict, XLSX ZIP, JSON ZIP, TEI TAR, and GCIDE TAR snapshots import.
+- [x] All retained CSV, TSV, dict, XLSX ZIP, JSON ZIP, gzip, bzip2, TEI TAR, GCIDE TAR, ILI-map, and multi-file snapshots import.
 - [x] Candidate records remain distinct from shipping seed content.
 - [x] Two different source formats rejoin one common `prepare-enrichment`, `build-reviewed`, and `promote` path.
 - [x] Promotion requires reviewed seed, one-to-one provenance, and complete notices.
@@ -70,5 +70,5 @@
 - [x] Baseline and GREEN evidence are retained.
 - [x] The long workflow is split into identity, declaration, verification, adapter import, shared enrichment, shared review, promotion, and QA gates.
 - [x] The skill reuses one repository program instead of duplicating parser code.
-- [x] ROI is positive: the prior manual process became one repeatable command path; added runtime dependencies: zero.
+- [x] ROI is positive: the prior manual process became one repeatable command path; added iOS runtime dependencies: zero.
 - [x] Paired agent benchmark is intentionally omitted because this run disallowed delegated/subagent work; deterministic functional and static gates cover release behavior.

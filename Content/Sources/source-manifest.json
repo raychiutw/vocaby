@@ -54,6 +54,32 @@
       "decision": "Approved for level calibration with the source acknowledgement required by the publisher."
     },
     {
+      "id": "cc-cedict-2026-07-11",
+      "name": "CC-CEDICT",
+      "version": "2026-07-11 download",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://cc-cedict.org/editor/editor.php?handler=Download",
+      "adapter": "cedict_gzip",
+      "rawFile": {
+        "path": "Content/Sources/Raw/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+        "sha256": "d521f4b3b17bf44539455e7b91ed739063245f48f72b306bd6ade3209fbf944e",
+        "bytes": 3966430
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/cc-cedict/source-page.html",
+          "sha256": "631bc8a4dccaf163683316080c56abb422f0911dfb2d9f5eea095ac22bd64558",
+          "bytes": 6206
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Contains adapted data from CC-CEDICT, published by MDBG and community contributors under CC BY-SA 4.0. The adapted vocabulary data remains available under the same license.",
+      "decision": "Approved for reviewed Traditional Chinese sense alignment with attribution and CC BY-SA 4.0 share-alike terms."
+    },
+    {
       "id": "cmudict-7479086",
       "name": "CMU Pronouncing Dictionary",
       "version": "git 74790861f652b15e4ac49015a90074ad62a27690",
@@ -99,9 +125,13 @@
           "bytes": 1441
         }
       ],
+      "noticeFiles": [
+        "Content/Sources/Raw/cow/LICENSE"
+      ],
       "repositoryRedistribution": "allowed",
-      "appUse": "reference_only",
-      "decision": "Simplified-Chinese sense cross-check only; never ship as Taiwan Traditional Chinese."
+      "appUse": "approved",
+      "requiredNotice": "Chinese Open Wordnet Copyright 2013, 2014 by Francis Bond and Shan Wang. Adapted by Wording Daily with the required copyright and license notice preserved.",
+      "decision": "Approved only through exact ILI sense alignment, OpenCC Taiwan conversion, and the shared content review gates."
     },
     {
       "id": "freedict-eng-zho-2025.11.23",
@@ -214,6 +244,35 @@
       "decision": "Frequency reference only; share-alike treatment is not approved for the shipping bank."
     },
     {
+      "id": "omw-ili-map-e3b5ac1",
+      "name": "Open Multilingual Wordnet ILI Map",
+      "version": "git e3b5ac103f86b743a1c0e3079675aaf0ef2cbf88",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://github.com/globalwordnet/OMW",
+      "adapter": "ili_map_tab",
+      "rawFile": {
+        "path": "Content/Sources/Raw/omw-ili/ili-map.tab",
+        "sha256": "13b6741395a8bdf20e5a19686ffa49167653696d4f523db17a79dce3211a6627",
+        "bytes": 2124416
+      },
+      "license": "MIT",
+      "licenseURL": "https://github.com/globalwordnet/OMW/blob/e3b5ac103f86b743a1c0e3079675aaf0ef2cbf88/LICENSE",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/omw-ili/LICENSE",
+          "sha256": "f5d45e0539566ef4932d29df114e911e1ac30bd4862d3b89348a81c7bf063f31",
+          "bytes": 1098
+        }
+      ],
+      "noticeFiles": [
+        "Content/Sources/Raw/omw-ili/LICENSE"
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Uses the Open Multilingual Wordnet ILI mapping, Copyright (c) 2016-2020 Global WordNet Association, under the MIT License.",
+      "decision": "Approved as the deterministic PWN 3.0 to ILI bridge for exact Chinese Open Wordnet sense alignment."
+    },
+    {
       "id": "oewn-2025",
       "name": "Open English WordNet",
       "version": "2025 edition, git dc343f2683279ecbb13fab4e2fd778d7b162d287",
@@ -241,6 +300,44 @@
       "appUse": "approved",
       "requiredNotice": "Based on Princeton WordNet and Open English WordNet. Copyright (c) 2019-present, The Open English WordNet Team. Adapted under CC BY 4.0.",
       "decision": "Approved for English definitions, examples, and synonym relations with per-item provenance and bundled license notices."
+    },
+    {
+      "id": "tatoeba-eng-cmn-2026-07-04",
+      "name": "Tatoeba English-Mandarin Parallel Sentences",
+      "version": "2026-07-04 export",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://tatoeba.org/en/downloads",
+      "adapter": "tatoeba_parallel_bz2",
+      "rawFiles": [
+        {
+          "path": "Content/Sources/Raw/tatoeba-eng-cmn/eng_sentences.tsv.bz2",
+          "sha256": "90611c4bfacf08c3e5da1b31f694d386b12a5626cddc40ed02de5a08bdb83c87",
+          "bytes": 24779170
+        },
+        {
+          "path": "Content/Sources/Raw/tatoeba-eng-cmn/cmn_sentences.tsv.bz2",
+          "sha256": "f0afc919db43f2ccb869aa56f151b1baea056177e95307491701daca04e26ab3",
+          "bytes": 1237040
+        },
+        {
+          "path": "Content/Sources/Raw/tatoeba-eng-cmn/cmn-eng_links.tsv.bz2",
+          "sha256": "a39e9fbc8181fb986b6cc5bef1f957f9f77cff72c9e64cf0c9ada720923f9ac9",
+          "bytes": 476675
+        }
+      ],
+      "license": "CC BY 2.0 FR",
+      "licenseURL": "https://creativecommons.org/licenses/by/2.0/fr/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/tatoeba-eng-cmn/source-page.html",
+          "sha256": "55f8ac621bb0c13bf7ce04e700d6c08118ca3b29ba7c61187b9cf79c5e7cad98",
+          "bytes": 315465
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Selected English and Mandarin sentence pairs are from Tatoeba (https://tatoeba.org) and are used under CC BY 2.0 FR.",
+      "decision": "Approved for aligned example sentences with Tatoeba attribution and per-pair provenance."
     },
     {
       "id": "tsl-1.2",

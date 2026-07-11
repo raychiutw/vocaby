@@ -43,7 +43,7 @@ Do not use when:
 
 Inputs:
 - repository root containing `tools/vocabulary_sources.py`;
-- one raw source file plus canonical source/version/license evidence;
+- one or more raw source files plus canonical source/version/license evidence;
 - for enrichment, canonical JSONL plus the committed legacy baseline;
 - for promotion, reviewed seed JSON, provenance JSON, and notices text.
 
@@ -99,7 +99,8 @@ Step 1: Establish source identity and rights
 - Stop on unknown, account-gated, non-commercial, no-derivatives, or conflicting terms.
 
 Step 2: Declare the source
-- Compute SHA-256 and byte count for the raw file and every evidence file.
+- Compute SHA-256 and byte count for every raw file and evidence file. Use
+  `rawFiles` when one logical source requires several linked archives.
 - Add exactly one unique entry to `Content/Sources/source-manifest.json`.
 - Reuse an existing adapter when its real file format matches. Add the smallest parser branch and one failing test first only when no adapter matches.
 - Declare non-UTF-8 encodings explicitly; do not guess silently.
@@ -123,7 +124,10 @@ Step 5: Report and review
 Step 6: Prepare the shared enrichment batch
 - Only when shipping-bank work was requested, run `prepare-enrichment` with `Content/Sources/Imported` and `Content/Baselines/legacy-90.json`.
 - Select quotas by App level through command arguments; do not encode source-specific field generation in an adapter.
-- Review the draft for intended English sense, source references, CEFR, translation match, duplicates, and Taiwan learner usefulness. Reject ambiguous candidates before continuing.
+- Require `opencc` with `s2twp.json` and Xcode's macOS Swift toolchain. The shared
+  stage uses Apple's offline `NaturalLanguage` embeddings to reject mismatched
+  sense evidence; these maintainer tools never enter the App target.
+- Review the draft for intended English sense, exact ILI alignment, source references, CEFR, translation match, duplicates, and Taiwan learner usefulness. Reject ambiguous candidates before continuing.
 
 Step 7: Build shared reviewed artifacts
 - Run `build-reviewed` once for the complete draft. It is the common Agent-assisted pass for Taiwan Traditional Chinese, examples, prompts, quiz fields, provenance, reviewer fields, and third-party notices.
@@ -155,7 +159,9 @@ failed gate and leave shipping files unchanged.
 
 <tool_rules>
 - Use `tools/vocabulary_sources.py` as the single executable source of truth; do not duplicate importer logic inside this skill.
-- Use Python standard library only unless a new format proves impossible to parse safely.
+- Keep source adapters on the Python standard library. Shared enrichment may call
+  the approved system `opencc` executable and the repository's macOS Swift
+  `NaturalLanguage` helper; do not add either as an iOS runtime dependency.
 - Keep adapters limited to raw-format parsing and canonical normalization. Route every canonical record through the same `prepare-enrichment`, `build-reviewed`, review, and `promote` commands.
 - Source downloads are maintainer-time actions. App code and build resources must contain no downloader, endpoint, token, or credential.
 - The App never reads `Content/Sources/Raw`, `Imported`, `Reports`, `source-manifest.json`, or `Content/VocabularyProvenance.json`.
@@ -198,7 +204,7 @@ Functional gates:
 - declared Latin-1 input imports without replacement characters;
 - same input creates byte-identical JSONL;
 - unapproved rights fail before seed output;
-- all ten retained snapshots verify and import;
+- all thirteen retained sources verify and import;
 - different raw formats use separate adapters but identical post-adapter enrichment/review/promotion stages;
 - Xcode project contains no `Content/Sources` path.
 

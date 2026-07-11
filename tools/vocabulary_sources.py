@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import bz2
 import csv
+import gzip
 import hashlib
 import io
 import json
@@ -54,6 +56,17 @@ MEANING_STOP_WORDS = {
     "through",
     "with",
 }
+SENSE_TRANSLATION_OVERRIDES = {
+    "i109294": "大量",
+    "i110144": "陪伴",
+    "i11061": "有節奏",
+    "i15746": "呈現的",
+    "i16205": "已婚",
+    "i18090": "人畜共通",
+    "i40766": "流程",
+    "i67519": "誘人危險物",
+    "i70529": "優先名單",
+}
 
 
 class SourceError(Exception):
@@ -98,18 +111,28 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def verify_source(root: Path, source: dict) -> Path:
-    raw = source.get("rawFile", {})
+def verify_raw_file(root: Path, source_id: str, raw: dict) -> Path:
     required = ("path", "sha256", "bytes")
     if any(key not in raw for key in required):
-        raise SourceError(f"{source['id']}: rawFile is incomplete")
+        raise SourceError(f"{source_id}: raw file is incomplete")
     path = root / raw["path"]
     if not path.is_file():
-        raise SourceError(f"{source['id']}: missing raw file {raw['path']}")
+        raise SourceError(f"{source_id}: missing raw file {raw['path']}")
     if path.stat().st_size != raw["bytes"]:
-        raise SourceError(f"{source['id']}: byte count mismatch")
+        raise SourceError(f"{source_id}: byte count mismatch")
     if sha256(path) != raw["sha256"]:
-        raise SourceError(f"{source['id']}: checksum mismatch")
+        raise SourceError(f"{source_id}: checksum mismatch")
+    return path
+
+
+def verify_source(root: Path, source: dict) -> Path | list[Path]:
+    if "rawFiles" in source:
+        raw_files = source["rawFiles"]
+        if not isinstance(raw_files, list) or not raw_files:
+            raise SourceError(f"{source['id']}: rawFiles must be a non-empty list")
+        paths = [verify_raw_file(root, source["id"], raw) for raw in raw_files]
+    else:
+        paths = [verify_raw_file(root, source["id"], source.get("rawFile", {}))]
     for evidence in source.get("licenseEvidence", []):
         record = {"path": evidence} if isinstance(evidence, str) else evidence
         evidence_path = root / record.get("path", "")
@@ -121,7 +144,7 @@ def verify_source(root: Path, source: dict) -> Path:
             raise SourceError(f"{source['id']}: license evidence checksum mismatch")
     if source.get("repositoryRedistribution") not in {"allowed", "review_required"}:
         raise SourceError(f"{source['id']}: repository redistribution is not declared")
-    return path
+    return paths if len(paths) > 1 else paths[0]
 
 
 def empty_record(source_id: str, reference: str, headword: str) -> dict:
@@ -138,6 +161,7 @@ def empty_record(source_id: str, reference: str, headword: str) -> dict:
         "pronunciations": [],
         "forms": [],
         "senseRefs": [],
+        "iliRefs": [],
     }
 
 
@@ -170,7 +194,7 @@ def parse_cow(path: Path, source_id: str) -> Iterable[dict]:
             if not line.strip() or line.startswith("#"):
                 continue
             synset, _, lemma = line.rstrip("\n").split("\t", 2)
-            record = empty_record(source_id, normalized(lemma), lemma)
+            record = empty_record(source_id, f"{synset}:{normalized(lemma)}", lemma)
             record["senseRefs"] = [synset]
             record["translations"] = {"language": "cmn"}
             yield record
@@ -196,6 +220,7 @@ def parse_oewn(path: Path, source_id: str) -> Iterable[dict]:
                             if isinstance(value, str) or value.get("text")
                         ],
                         "relatedTerms": data.get("members", []),
+                        "iliRefs": [data["ili"]] if data.get("ili") else [],
                     }
         for name in sorted(value for value in archive.namelist() if value.startswith("entries-") and value.endswith(".json")):
             with archive.open(name) as stream:
@@ -218,6 +243,7 @@ def parse_oewn(path: Path, source_id: str) -> Iterable[dict]:
                         record["definitions"].extend(synset.get("definitions", []))
                         record["examples"].extend(synset.get("examples", []))
                         record["relatedTerms"].extend(synset.get("relatedTerms", []))
+                        record["iliRefs"].extend(synset.get("iliRefs", []))
                         yield record
 
 
@@ -328,6 +354,118 @@ def parse_gcide(path: Path, source_id: str) -> Iterable[dict]:
                     yield empty_record(source_id, normalized(headword), headword)
 
 
+CEDICT_LINE = re.compile(r"^(\S+)\s+(\S+)\s+\[[^]]*\]\s+/(.*)/$")
+CEDICT_GLOSS = re.compile(r"[A-Za-z][A-Za-z '\-]*")
+CEDICT_NOISE_PREFIXES = (
+    "abbr. for ",
+    "also written ",
+    "classifier for ",
+    "erhua variant ",
+    "old variant of ",
+    "see ",
+    "surname ",
+    "used in ",
+    "variant of ",
+)
+
+
+def parse_cedict(path: Path, source_id: str) -> Iterable[dict]:
+    with gzip.open(path, "rt", encoding="utf-8") as stream:
+        for line_number, line in enumerate(stream, 1):
+            if line.startswith("#"):
+                continue
+            match = CEDICT_LINE.match(line.rstrip("\n"))
+            if match is None:
+                continue
+            traditional, _, body = match.groups()
+            glosses = []
+            for raw_gloss in body.split("/"):
+                gloss = re.sub(r"^to\s+", "", raw_gloss.strip(), flags=re.IGNORECASE)
+                lowered = gloss.casefold()
+                if (
+                    not gloss
+                    or any(lowered.startswith(prefix) for prefix in CEDICT_NOISE_PREFIXES)
+                    or "|" in gloss
+                    or "[" in gloss
+                    or "CL:" in gloss
+                    or len(gloss) > 60
+                    or len(gloss.split()) > 7
+                    or CEDICT_GLOSS.fullmatch(gloss) is None
+                ):
+                    continue
+                glosses.append(gloss.casefold())
+            glosses = sorted(set(glosses), key=lambda value: (normalized(value), value))
+            for gloss in glosses:
+                record = empty_record(
+                    source_id,
+                    f"line-{line_number}:{normalized(gloss)}",
+                    gloss,
+                )
+                record["definitions"] = glosses
+                record["translations"] = {"zh-Hant": [traditional]}
+                yield record
+
+
+def parse_tatoeba(paths: list[Path], source_id: str) -> Iterable[dict]:
+    by_name = {path.name: path for path in paths}
+    required = {
+        "eng_sentences.tsv.bz2",
+        "cmn_sentences.tsv.bz2",
+        "cmn-eng_links.tsv.bz2",
+    }
+    missing = required - set(by_name)
+    if missing:
+        raise SourceError(
+            f"{source_id}: missing Tatoeba file(s): {', '.join(sorted(missing))}"
+        )
+
+    links: dict[int, list[int]] = {}
+    with bz2.open(by_name["cmn-eng_links.tsv.bz2"], "rt", encoding="utf-8") as stream:
+        for line in stream:
+            chinese_id, english_id = line.rstrip("\n").split("\t")
+            links.setdefault(int(english_id), []).append(int(chinese_id))
+
+    chinese_ids = {value for values in links.values() for value in values}
+    chinese: dict[int, str] = {}
+    with bz2.open(by_name["cmn_sentences.tsv.bz2"], "rt", encoding="utf-8") as stream:
+        for line in stream:
+            sentence_id, _, sentence = line.rstrip("\n").split("\t", 2)
+            numeric_id = int(sentence_id)
+            if numeric_id in chinese_ids:
+                chinese[numeric_id] = sentence
+
+    with bz2.open(by_name["eng_sentences.tsv.bz2"], "rt", encoding="utf-8") as stream:
+        for line in stream:
+            sentence_id, _, sentence = line.rstrip("\n").split("\t", 2)
+            english_id = int(sentence_id)
+            if english_id not in links or not 8 <= len(sentence) <= 160:
+                continue
+            for chinese_id in sorted(links[english_id]):
+                translated = chinese.get(chinese_id)
+                if translated is None or not 2 <= len(translated) <= 100:
+                    continue
+                record = empty_record(
+                    source_id,
+                    f"eng-{english_id}:cmn-{chinese_id}",
+                    sentence,
+                )
+                record["examples"] = [sentence]
+                record["translations"] = {"zh-Hant": [translated]}
+                yield record
+
+
+def parse_ili_map(path: Path, source_id: str) -> Iterable[dict]:
+    with path.open(encoding="utf-8") as stream:
+        for line in stream:
+            if not line.strip() or line.startswith("#"):
+                continue
+            ili, pwn = line.rstrip("\n").split("\t")
+            record = empty_record(source_id, pwn, pwn)
+            record["senseRefs"] = [pwn]
+            record["iliRefs"] = [ili]
+            yield record
+
+
 PARSERS = {
     "lemma_csv": parse_lemma_csv,
     "cmudict": parse_cmudict,
@@ -336,6 +474,9 @@ PARSERS = {
     "cefr_j_xlsx_zip": parse_cefr_j,
     "freedict_tei_tar": parse_freedict,
     "gcide_tar": parse_gcide,
+    "cedict_gzip": parse_cedict,
+    "tatoeba_parallel_bz2": parse_tatoeba,
+    "ili_map_tab": parse_ili_map,
 }
 
 
@@ -361,6 +502,7 @@ def merge_records(records: Iterable[dict]) -> list[dict]:
             "pronunciations",
             "forms",
             "senseRefs",
+            "iliRefs",
         ):
             current[field] = sorted(
                 set(current[field]) | set(record[field]),
@@ -393,11 +535,16 @@ def import_source(root: Path, source: dict, output: Path) -> int:
     parser = PARSERS.get(source.get("adapter"))
     if parser is None:
         raise SourceError(f"{source['id']}: unknown adapter {source.get('adapter')}")
-    parsed = (
-        parser(path, source["id"], source.get("encoding", "utf-8-sig"))
-        if source.get("adapter") == "lemma_csv"
-        else parser(path, source["id"])
-    )
+    if source.get("adapter") == "tatoeba_parallel_bz2":
+        if not isinstance(path, list):
+            raise SourceError(f"{source['id']}: Tatoeba adapter requires rawFiles")
+        parsed = parser(path, source["id"])
+    elif isinstance(path, list):
+        raise SourceError(f"{source['id']}: adapter accepts only one raw file")
+    elif source.get("adapter") == "lemma_csv":
+        parsed = parser(path, source["id"], source.get("encoding", "utf-8-sig"))
+    else:
+        parsed = parser(path, source["id"])
     records = merge_records(parsed)
     content = "".join(json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n" for record in records)
     atomic_write(output, content)
@@ -464,6 +611,88 @@ def meaning_words(values: list[str]) -> set[str]:
     }
 
 
+SENTENCE_WORD = re.compile(r"[a-z]+(?:'[a-z]+)?")
+
+
+def target_forms(target: str) -> set[str]:
+    value = normalized(target)
+    forms = {value}
+    if " " in value:
+        return forms
+    forms.update({f"{value}s", f"{value}es", f"{value}ed", f"{value}ing"})
+    if value.endswith("e"):
+        forms.update({f"{value}d", f"{value[:-1]}ing"})
+    if len(value) > 1 and value.endswith("y") and value[-2] not in "aeiou":
+        forms.update({f"{value[:-1]}ies", f"{value[:-1]}ied"})
+    if (
+        len(value) > 2
+        and value[-1] not in "aeiouy"
+        and value[-2] in "aeiou"
+        and value[-3] not in "aeiou"
+    ):
+        forms.update({f"{value}{value[-1]}ed", f"{value}{value[-1]}ing"})
+    return forms
+
+
+def contains_target_form(target: str, sentence: str) -> bool:
+    return any(
+        re.search(rf"(?<![a-z]){re.escape(form)}(?![a-z])", sentence.casefold())
+        for form in target_forms(target)
+    )
+
+
+def definition_similarities(queries: dict[str, tuple[str, str]]) -> dict[str, float]:
+    if not queries:
+        return {}
+    executable = shutil.which("xcrun")
+    script = Path(__file__).with_name("definition_similarity.swift")
+    if executable is None or not script.is_file():
+        raise SourceError(
+            "Xcode Swift and tools/definition_similarity.swift are required for sense review"
+        )
+    payload = "".join(
+        json.dumps(
+            {"id": key, "left": values[0], "right": values[1]},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+        for key, values in sorted(queries.items())
+    )
+    result = subprocess.run(
+        [executable, "swift", str(script)],
+        input=payload,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise SourceError(f"definition similarity failed: {result.stderr.strip()}")
+    try:
+        scores = {
+            item["id"]: float(item["distance"])
+            for item in (
+                json.loads(line) for line in result.stdout.splitlines() if line.strip()
+            )
+        }
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise SourceError(f"definition similarity returned invalid output: {error}") from error
+    if set(scores) != set(queries):
+        raise SourceError("definition similarity returned an incomplete result set")
+    return scores
+
+
+def similarity_key(record: dict, entry: dict) -> str:
+    return "\u001f".join(
+        (
+            record["sourceEntryRef"],
+            entry["reference"]["sourceEntryRef"],
+            entry["value"],
+        )
+    )
+
+
 def prepare_enrichment(
     input_dir: Path,
     existing_seed_path: Path,
@@ -477,70 +706,314 @@ def prepare_enrichment(
         for path in sorted(input_dir.glob("*.jsonl"))
         for record in read_jsonl(path)
     ]
-    translations: dict[str, list[tuple[str, dict, list[str]]]] = {}
+    ili_by_pwn: dict[str, str] = {}
+    ili_mapping_references: dict[str, dict] = {}
+    for record in records:
+        if "omw-ili" not in record.get("sourceID", "").casefold():
+            continue
+        for pwn in record.get("senseRefs", []):
+            if record.get("iliRefs"):
+                ili_by_pwn[pwn] = record["iliRefs"][0]
+                ili_mapping_references[pwn] = source_reference(record)
+
+    word_translation_records: list[tuple[dict, str]] = []
+    sense_translation_records: list[tuple[str, dict, str, dict]] = []
+    parallel_records: list[tuple[dict, str, str]] = []
     cefr_exact: dict[tuple[str, str], tuple[str, dict]] = {}
     cefr_any: dict[str, tuple[str, dict]] = {}
+    reference_sources: dict[str, set[str]] = {}
     lexical: list[dict] = []
     for record in records:
         key = normalized(record.get("headword", ""))
         if not key:
             continue
         values = translation_values(record)
-        if values:
-            translations.setdefault(key, []).append(
-                (values[0], source_reference(record), record.get("definitions", []))
-            )
+        is_parallel = "tatoeba" in record.get("sourceID", "").casefold()
+        if record.get("sourceID", "").casefold().startswith("cow"):
+            cleaned = re.sub(r"\+的$", "", record["headword"]).replace("+", "")
+            for pwn in record.get("senseRefs", []):
+                ili = ili_by_pwn.get(pwn)
+                mapping_reference = ili_mapping_references.get(pwn)
+                if ili and mapping_reference:
+                    sense_translation_records.append(
+                        (ili, record, cleaned, mapping_reference)
+                    )
+        elif is_parallel and values and record.get("examples"):
+            parallel_records.append((record, record["examples"][0], values[0]))
+        elif values:
+            word_translation_records.extend((record, value) for value in values)
         if record.get("cefr") in CEFR_LEVEL:
             value = (record["cefr"], source_reference(record))
             cefr_exact.setdefault((key, part_of_speech_code(record.get("partOfSpeech"))), value)
             cefr_any.setdefault(key, value)
-        if record.get("definitions") and record.get("examples"):
+        if record.get("sourceID", "").split("-", 1)[0] in {"bsl", "nawl", "ngsl", "tsl"}:
+            reference_sources.setdefault(key, set()).add(record["sourceID"])
+        if record.get("sourceID", "").startswith("oewn") and record.get("definitions"):
             lexical.append(record)
+
+    converted_word_values = traditionalize([value for _, value in word_translation_records])
+    requires_cedict = any(
+        "cedict" in record.get("sourceID", "").casefold()
+        for record, _ in word_translation_records
+    )
+    translations: dict[str, list[dict]] = {}
+    cedict_definitions_by_translation: dict[str, set[str]] = {}
+    cedict_references_by_translation: dict[str, dict[tuple[str, str], dict]] = {}
+    for (record, _), converted in zip(
+        word_translation_records, converted_word_values, strict=True
+    ):
+        if "cedict" in record["sourceID"].casefold():
+            cedict_definitions_by_translation.setdefault(converted, set()).update(
+                record.get("definitions", [])
+            )
+            reference = source_reference(record)
+            cedict_references_by_translation.setdefault(converted, {})[
+                (reference["sourceID"], reference["sourceEntryRef"])
+            ] = reference
+        if (
+            len(converted) < 2
+            or len(converted) > 16
+            or re.search(r"[A-Za-z]", converted)
+        ):
+            continue
+        translations.setdefault(normalized(record["headword"]), []).append(
+            {
+                "value": converted,
+                "reference": source_reference(record),
+                "definitions": record.get("definitions", []),
+                "sourceID": record["sourceID"],
+            }
+        )
+
+    converted_sense_values = traditionalize(
+        [value for _, _, value, _ in sense_translation_records]
+    )
+    sense_translations: dict[str, list[dict]] = {}
+    for (ili, record, _, mapping_reference), converted in zip(
+        sense_translation_records, converted_sense_values, strict=True
+    ):
+        if (
+            len(converted) < 1
+            or len(converted) > 16
+            or re.search(r"[A-Za-z0-9]", converted)
+        ):
+            continue
+        sense_translations.setdefault(ili, []).append(
+            {
+                "value": converted,
+                "reference": source_reference(record),
+                "mappingReference": mapping_reference,
+                "definitions": sorted(
+                    cedict_definitions_by_translation.get(converted, set()),
+                    key=lambda value: (normalized(value), value),
+                ),
+                "reviewReference": next(
+                    iter(
+                        sorted(
+                            cedict_references_by_translation.get(converted, {}).values(),
+                            key=lambda value: (
+                                value["sourceID"],
+                                value["sourceEntryRef"],
+                            ),
+                        )
+                    ),
+                    None,
+                ),
+                "sourceID": record["sourceID"],
+            }
+        )
+    requires_sense_translation = bool(sense_translations)
+
+    converted_parallel_values = traditionalize([value for _, _, value in parallel_records])
+    translation_values_for_frequency = {
+        entry["value"]
+        for entries in sense_translations.values()
+        for entry in entries
+        if len(entry["value"]) <= 8
+    }
+    translation_usage: dict[str, int] = {}
+    frequency_lengths = sorted({len(value) for value in translation_values_for_frequency})
+    for sentence in converted_parallel_values:
+        for length in frequency_lengths:
+            for start in range(max(0, len(sentence) - length + 1)):
+                value = sentence[start : start + length]
+                if value in translation_values_for_frequency:
+                    translation_usage[value] = translation_usage.get(value, 0) + 1
+
+    parallel_by_word: dict[str, list[dict]] = {}
+    for (record, sentence, _), converted in zip(
+        parallel_records, converted_parallel_values, strict=True
+    ):
+        pair = {
+            "sentence": sentence,
+            "translation": converted,
+            "reference": source_reference(record),
+        }
+        for word in set(SENTENCE_WORD.findall(sentence.casefold())):
+            parallel_by_word.setdefault(word, []).append(pair)
+
+    similarity_queries: dict[str, tuple[str, str]] = {}
+    if requires_sense_translation:
+        for record in lexical:
+            target = record["headword"].replace("_", " ").strip()
+            if (
+                normalized(target) in excluded
+                or ENGLISH_TERM.fullmatch(target) is None
+                or not any(
+                    isinstance(example, str)
+                    and contains_target_form(target, example)
+                    for example in record.get("examples", [])
+                )
+            ):
+                continue
+            left = " ".join(
+                [*record.get("definitions", []), *record.get("relatedTerms", [])]
+            )
+            for ili in record.get("iliRefs", []):
+                for entry in sense_translations.get(ili, []):
+                    if entry["definitions"]:
+                        similarity_queries[similarity_key(record, entry)] = (
+                            left,
+                            " ".join(entry["definitions"]),
+                        )
+    similarity_scores = definition_similarities(similarity_queries)
 
     candidates: dict[str, dict] = {}
     for record in lexical:
         target = record["headword"].replace("_", " ").strip()
         key = normalized(target)
-        target_words = meaning_words(record.get("definitions", []))
-        translation_options = sorted(
-            [
-                (*value, priority)
-                for priority, term in enumerate(
-                    [target, *record.get("relatedTerms", [])]
-                )
-                if isinstance(term, str)
-                for value in translations.get(normalized(term), [])
-            ],
+        if key in excluded or not ENGLISH_TERM.fullmatch(target):
+            continue
+        definitions = [
+            value.strip()
+            for value in record["definitions"]
+            if isinstance(value, str) and value.strip()
+        ]
+        examples = sorted(
+            {
+                value.strip()
+                for value in record.get("examples", [])
+                if isinstance(value, str)
+                and value.strip()
+                and contains_target_form(target, value)
+                and len(value.strip()) <= 160
+            },
             key=lambda value: (
-                -len(target_words & meaning_words(value[2])),
-                value[3],
-                value[1]["sourceEntryRef"],
+                0 if 12 <= len(value) <= 100 else 1,
+                len(value),
+                normalized(value),
             ),
         )
-        if translation_options:
-            translation, translation_ref, matched_definitions, _ = translation_options[0]
-            translation_match = len(target_words & meaning_words(matched_definitions))
-        else:
-            translation = translation_ref = None
-            translation_match = 0
-        translation_entry = (
-            (translation, translation_ref) if translation is not None else None
-        )
-        if (
-            key in excluded
-            or translation_entry is None
-            or translation_match == 0
-            or not ENGLISH_TERM.fullmatch(target)
-        ):
+        if not definitions or not examples or len(definitions[0]) > 220:
             continue
+
         pos = part_of_speech_code(record.get("partOfSpeech"))
+        target_words = meaning_words(record.get("definitions", []))
+        related_terms = [
+            value.replace("_", " ").strip()
+            for value in [target, *record.get("relatedTerms", [])]
+            if isinstance(value, str) and value.strip()
+        ]
+        related_keys = {normalized(value) for value in related_terms}
+        aligned_options = [
+            {
+                **entry,
+                "termPriority": 0,
+                "definitionMatch": len(
+                    target_words & meaning_words(entry["definitions"])
+                ),
+                "synonymMatch": len(
+                    (
+                        {
+                            normalized(value)
+                            for value in entry["definitions"]
+                            if isinstance(value, str)
+                        }
+                        & related_keys
+                    )
+                    - {key}
+                ),
+                "semanticDistance": similarity_scores.get(
+                    similarity_key(record, entry), 2.0
+                ),
+            }
+            for ili in record.get("iliRefs", [])
+            for entry in sense_translations.get(ili, [])
+        ]
+        translation_options = sorted(
+            [
+                {
+                    **entry,
+                    "termPriority": priority,
+                    "definitionMatch": len(
+                        target_words & meaning_words(entry["definitions"])
+                    ),
+                    "synonymMatch": len(
+                        (
+                            {
+                                normalized(value)
+                                for value in entry["definitions"]
+                                if isinstance(value, str)
+                            }
+                            & related_keys
+                        )
+                        - {key}
+                    ),
+                }
+                for priority, term in enumerate(related_terms)
+                for entry in translations.get(normalized(term), [])
+            ],
+            key=lambda item: (
+                -item["definitionMatch"],
+                -item["synonymMatch"],
+                item["termPriority"],
+                0 if "cedict" in item["sourceID"].casefold() else 1,
+                -translation_usage.get(item["value"], 0),
+                0 if 2 <= len(item["value"]) <= 6 else 1,
+                abs(len(item["value"]) - 3),
+                item["reference"]["sourceEntryRef"],
+            ),
+        )
+        translation_options = [
+            item
+            for item in translation_options
+            if item["definitionMatch"] or item["synonymMatch"]
+        ]
+        cedict_options = [
+            item
+            for item in translation_options
+            if "cedict" in item["sourceID"].casefold()
+        ]
+        if requires_sense_translation:
+            translation_options = sorted(
+                aligned_options,
+                key=lambda item: (
+                    item["semanticDistance"],
+                    -item["definitionMatch"],
+                    -item["synonymMatch"],
+                    0
+                    if pos == "a"
+                    and item["value"].startswith(
+                        ("有", "無", "不", "可", "非", "很", "易", "難")
+                    )
+                    else 1,
+                    -len(item["definitions"]),
+                    0 if translation_usage.get(item["value"], 0) else 1,
+                    -translation_usage.get(item["value"], 0),
+                    0 if 2 <= len(item["value"]) <= 6 else 1,
+                    abs(len(item["value"]) - 3),
+                    item["value"],
+                    item["reference"]["sourceEntryRef"],
+                ),
+            )
+        elif requires_cedict:
+            translation_options = cedict_options
+        if not translation_options:
+            continue
+
         cefr_entry = cefr_exact.get((key, pos)) or cefr_any.get(key)
         cefr = cefr_entry[0] if cefr_entry else "C1"
         level = CEFR_LEVEL[cefr]
-        definitions = [value.strip() for value in record["definitions"] if isinstance(value, str) and value.strip()]
-        examples = [value.strip() for value in record["examples"] if isinstance(value, str) and value.strip()]
-        if not definitions or not examples:
-            continue
         cefr_rank = {"A1": 0, "A2": 1, "B1": 2, "B2": 3, "C1": 4, "C2": 5}
         target_rank = cefr_rank[cefr]
         related_with_level = []
@@ -555,17 +1028,95 @@ def prepare_enrichment(
                 related_with_level.append((cefr_rank[related_cefr[0]], value, related_cefr[1]))
         related_with_level.sort(key=lambda value: (value[0], len(value[1]), normalized(value[1])))
         related = [value[1] for value in related_with_level]
-        if level == "advanced" and not related:
-            continue
         plain = related[0] if related else definitions[0]
         if normalized(plain) == key:
             continue
-        translation, translation_ref = translation_entry
-        refs = [source_reference(record), translation_ref]
+
+        first_word = SENTENCE_WORD.findall(key)[0]
+        target_parallel = sorted(
+            (
+                pair
+                for pair in parallel_by_word.get(first_word, [])
+                if contains_target_form(target, pair["sentence"])
+                and len(pair["sentence"]) <= 120
+                and len(pair["translation"]) <= 80
+            ),
+            key=lambda pair: (
+                0 if 12 <= len(pair["sentence"]) <= 90 else 1,
+                len(pair["sentence"]),
+                pair["reference"]["sourceEntryRef"],
+            ),
+        )[:250]
+        parallel_matches = []
+        target_terms = {
+            word
+            for form in target_forms(target)
+            for word in SENTENCE_WORD.findall(form)
+        }
+        sense_words = meaning_words(definitions + record.get("relatedTerms", []))
+        for pair in target_parallel:
+            context_match = len(
+                sense_words
+                & (meaning_words([pair["sentence"]]) - target_terms)
+            )
+            if context_match == 0:
+                continue
+            for option in translation_options[:40]:
+                if option["value"] in pair["translation"]:
+                    parallel_matches.append(
+                        (
+                            0 if 12 <= len(pair["sentence"]) <= 90 else 1,
+                            -context_match,
+                            -option["definitionMatch"],
+                            -option["synonymMatch"],
+                            option["termPriority"],
+                            len(pair["sentence"]),
+                            pair["reference"]["sourceEntryRef"],
+                            option["reference"]["sourceEntryRef"],
+                            option,
+                            pair,
+                        )
+                    )
+
+        if parallel_matches:
+            *_, translation_entry, parallel = min(parallel_matches)
+            example = parallel["sentence"]
+            example_translation = parallel["translation"]
+            example_translation_mode = "parallel"
+        else:
+            translation_entry = translation_options[0]
+            parallel = None
+            example = examples[0]
+            example_translation = None
+            example_translation_mode = "usage-note"
+
+        override = next(
+            (
+                SENSE_TRANSLATION_OVERRIDES[ili]
+                for ili in record.get("iliRefs", [])
+                if ili in SENSE_TRANSLATION_OVERRIDES
+            ),
+            None,
+        )
+        if override:
+            translation_entry = {**translation_entry, "value": override}
+            if example_translation and override not in example_translation:
+                parallel = None
+                example = examples[0]
+                example_translation = None
+                example_translation_mode = "usage-note"
+
+        refs = [source_reference(record), translation_entry["reference"]]
+        if translation_entry.get("mappingReference"):
+            refs.append(translation_entry["mappingReference"])
+        if translation_entry.get("reviewReference"):
+            refs.append(translation_entry["reviewReference"])
         if cefr_entry:
             refs.append(cefr_entry[1])
         if related_with_level:
             refs.append(related_with_level[0][2])
+        if parallel:
+            refs.append(parallel["reference"])
         unique_refs = {
             (ref["sourceID"], ref["sourceEntryRef"]): ref for ref in refs
         }
@@ -573,17 +1124,25 @@ def prepare_enrichment(
             "target": target,
             "plain": plain,
             "definition": definitions[0],
-            "example": examples[0],
-            "translationDraft": translation,
+            "example": example,
+            "exampleTranslationDraft": example_translation,
+            "exampleTranslationMode": example_translation_mode,
+            "translationDraft": translation_entry["value"],
             "partOfSpeech": pos,
             "cefr": cefr,
             "level": level,
             "sourceRefs": [unique_refs[value] for value in sorted(unique_refs)],
         }
         score = (
-            -translation_match,
+            0 if cefr_entry else 1,
+            -len(reference_sources.get(key, set())),
+            0 if parallel else 1,
+            translation_entry.get("semanticDistance", 2.0),
+            -translation_entry["definitionMatch"],
+            -translation_entry["synonymMatch"],
             0 if related else 1,
-            0 if 8 <= len(candidate["example"]) <= 160 else 1,
+            0 if len(target) <= 30 else 1,
+            len(target),
             len(candidate["definition"]),
             normalized(target),
             record["sourceEntryRef"],
@@ -638,7 +1197,7 @@ def traditionalize(values: list[str]) -> list[str]:
         "計算機": "電腦",
         "信息": "資訊",
         "網絡": "網路",
-        "程序": "程式",
+        "電腦程序": "電腦程式",
         "打印": "列印",
         "質量": "品質",
         "土著": "原住民",
@@ -727,6 +1286,9 @@ def build_reviewed(
     draft = read_jsonl(draft_path)
     existing = load_json(existing_seed_path, list)
     translations = traditionalize([item["translationDraft"] for item in draft])
+    example_translations = traditionalize(
+        [item.get("exampleTranslationDraft") or "" for item in draft]
+    )
     next_order = {
         level: max(
             (item["sortOrder"] for item in existing if item["level"] == level),
@@ -736,6 +1298,7 @@ def build_reviewed(
     }
     next_id = {level: 0 for level in LEVEL_ORDER}
     generated = []
+    generated_parts: dict[str, str] = {}
     provenance_items = [
         provenance_item(
             item["id"],
@@ -748,7 +1311,20 @@ def build_reviewed(
         for item in existing
     ]
     used_source_ids: set[str] = set()
-    for candidate, zh_hant in zip(draft, translations, strict=True):
+    for candidate, zh_hant, translated_example in zip(
+        draft, translations, example_translations, strict=True
+    ):
+        definition_lead = candidate["definition"].casefold()[:80]
+        if (
+            candidate["partOfSpeech"] == "a"
+            and not zh_hant.endswith("的")
+            and (
+                definition_lead.startswith("of or ")
+                or definition_lead.startswith("relating ")
+                or definition_lead.startswith("associated ")
+            )
+        ):
+            zh_hant += "的"
         level = candidate["level"]
         next_order[level] += 1
         next_id[level] += 1
@@ -767,7 +1343,8 @@ def build_reviewed(
             "example": {
                 "text": candidate["example"],
                 "translation": {
-                    "zh-Hant": f"這個例句中的「{candidate['target']}」表示「{zh_hant}」。"
+                    "zh-Hant": translated_example
+                    or f"例句中的「{candidate['target']}」表示「{zh_hant}」。"
                 },
             },
             "pronunciationText": candidate["target"],
@@ -778,6 +1355,7 @@ def build_reviewed(
             },
         }
         generated.append(item)
+        generated_parts[item_id] = candidate["partOfSpeech"]
         used_source_ids.update(ref["sourceID"] for ref in candidate["sourceRefs"])
         provenance_items.append(
             provenance_item(
@@ -789,6 +1367,49 @@ def build_reviewed(
                 "agent-enriched",
             )
         )
+
+    pools: dict[tuple[str, str], list[str]] = {}
+    level_pools: dict[str, list[str]] = {}
+    for item in generated:
+        target = item["upgradedExpression"]
+        level = item["level"]
+        pools.setdefault((level, generated_parts[item["id"]]), []).append(target)
+        level_pools.setdefault(level, []).append(target)
+    for values in [*pools.values(), *level_pools.values()]:
+        values.sort(key=lambda value: (normalized(value), value))
+
+    for item in generated:
+        target = item["upgradedExpression"]
+        level = item["level"]
+        candidates = [
+            value
+            for value in pools[(level, generated_parts[item["id"]])]
+            if normalized(value) != normalized(target)
+        ]
+        if len(candidates) < 3:
+            candidates.extend(
+                value
+                for value in level_pools[level]
+                if normalized(value) != normalized(target)
+                and normalized(value) not in {normalized(item) for item in candidates}
+            )
+        distractors = []
+        if candidates:
+            start = int(hashlib.sha256(item["id"].encode()).hexdigest()[:8], 16) % len(candidates)
+            for offset in range(len(candidates)):
+                value = candidates[(start + offset) % len(candidates)]
+                if normalized(value) not in {normalized(item) for item in distractors}:
+                    distractors.append(value)
+                if len(distractors) == 3:
+                    break
+        if len(distractors) < 3 and normalized(item["plainExpression"]) != normalized(target):
+            distractors.append(item["plainExpression"])
+        options = [target, *distractors[:3]]
+        if len(options) == 4:
+            rotation = int(hashlib.sha256(f"quiz:{item['id']}".encode()).hexdigest()[:8], 16) % 4
+            options = options[rotation:] + options[:rotation]
+        item["quiz"]["options"] = options
+        item["quiz"]["correctOptionIndex"] = options.index(target)
     seed = sorted(
         [*existing, *generated],
         key=lambda item: (LEVEL_ORDER[item["level"]], item["sortOrder"], item["id"]),
@@ -812,7 +1433,7 @@ def build_reviewed(
     ]
     provenance = {
         "schemaVersion": 1,
-        "bankVersion": "2026.07.1",
+        "bankVersion": "2026.07.2",
         "sources": sources,
         "items": provenance_items,
     }
@@ -962,9 +1583,9 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser = commands.add_parser("prepare-enrichment")
     prepare_parser.add_argument("--input-dir", type=Path, required=True)
     prepare_parser.add_argument("--existing-seed", type=Path, required=True)
-    prepare_parser.add_argument("--basic", type=int, default=1000)
+    prepare_parser.add_argument("--basic", type=int, default=950)
     prepare_parser.add_argument("--intermediate", type=int, default=1600)
-    prepare_parser.add_argument("--advanced", type=int, default=2710)
+    prepare_parser.add_argument("--advanced", type=int, default=2800)
     prepare_parser.add_argument("--output", type=Path, required=True)
     build_parser = commands.add_parser("build-reviewed")
     build_parser.add_argument("--input", type=Path, required=True)

@@ -1,3 +1,5 @@
+import bz2
+import gzip
 import hashlib
 import io
 import json
@@ -12,9 +14,38 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("vocabulary_sources.py")
+SIMILARITY_SCRIPT = Path(__file__).with_name("definition_similarity.swift")
 
 
 class VocabularySourcesTests(unittest.TestCase):
+    def test_definition_similarity_prefers_the_matching_sense(self):
+        payload = "\n".join(
+            json.dumps(item)
+            for item in (
+                {
+                    "id": "language",
+                    "left": "use foul or abusive language towards abuse shout",
+                    "right": "abuse insult revile vituperation",
+                },
+                {
+                    "id": "mistreat",
+                    "left": "use foul or abusive language towards abuse shout",
+                    "right": "abuse maltreat mistreatment",
+                },
+            )
+        )
+        result = subprocess.run(
+            ["xcrun", "swift", str(SIMILARITY_SCRIPT)],
+            input=payload + "\n",
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        scores = {item["id"]: item["distance"] for item in map(json.loads, result.stdout.splitlines())}
+        self.assertLess(scores["language"], scores["mistreat"])
+
     def run_cli(
         self,
         root: Path,
@@ -199,6 +230,20 @@ class VocabularySourcesTests(unittest.TestCase):
                 "forms": [],
                 "senseRefs": ["0001-a"],
             },
+            "tatoeba.jsonl": {
+                "sourceID": "tatoeba-eng-cmn-2026-07-04",
+                "sourceEntryRef": "eng-42:cmn-84",
+                "headword": "Her excellent quality impressed us.",
+                "partOfSpeech": None,
+                "cefr": None,
+                "definitions": [],
+                "examples": ["Her excellent quality impressed us."],
+                "relatedTerms": [],
+                "translations": {"zh-Hant": ["她的優秀品質令我們印象深刻。"]},
+                "pronunciations": [],
+                "forms": [],
+                "senseRefs": [],
+            },
         }
         for name, record in records.items():
             (input_dir / name).write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -226,7 +271,13 @@ class VocabularySourcesTests(unittest.TestCase):
                     "licenseURL": "https://example.invalid/license",
                     "appUse": "reference_only",
                 }
-                for source_id in ("oewn-2025", "freedict", "cefr", "cow")
+                for source_id in (
+                    "oewn-2025",
+                    "freedict",
+                    "cefr",
+                    "cow",
+                    "tatoeba-eng-cmn-2026-07-04",
+                )
             ],
         }
         manifest_path = root / "Content/Sources/source-manifest.json"
@@ -252,6 +303,180 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["headword"], "café")
 
+    def test_cedict_adapter_inverts_traditional_chinese_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw = root / "Content/Sources/Raw/cedict/cedict.txt.gz"
+            raw.parent.mkdir(parents=True)
+            with gzip.open(raw, "wt", encoding="utf-8") as stream:
+                stream.write("# CC-CEDICT test\n")
+                stream.write("有能力 有能力 [you3 neng2 li4] /able/capable/\n")
+                stream.write("舊 旧 [jiu4] /variant of 舊|旧[jiu4]/old/\n")
+            manifest = {
+                "schemaVersion": 1,
+                "sources": [
+                    {
+                        "id": "cc-cedict",
+                        "name": "CC-CEDICT",
+                        "version": "test",
+                        "adapter": "cedict_gzip",
+                        "rawFile": {
+                            "path": str(raw.relative_to(root)),
+                            "sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                            "bytes": raw.stat().st_size,
+                        },
+                        "licenseEvidence": [],
+                        "repositoryRedistribution": "allowed",
+                        "appUse": "approved",
+                    }
+                ],
+            }
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            output = root / "cedict.jsonl"
+
+            result = self.run_cli(
+                root, "import-source", "cc-cedict", "--output", str(output)
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            records = [json.loads(line) for line in output.read_text().splitlines()]
+            able = next(item for item in records if item["headword"] == "able")
+            self.assertEqual(able["translations"]["zh-Hant"], ["有能力"])
+            self.assertEqual(able["definitions"], ["able", "capable"])
+            self.assertNotIn("variant of", " ".join(item["headword"] for item in records))
+
+    def test_tatoeba_adapter_imports_verified_parallel_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw_dir = root / "Content/Sources/Raw/tatoeba"
+            raw_dir.mkdir(parents=True)
+            files = {
+                "eng_sentences.tsv.bz2": "42\teng\tHer excellent quality impressed us.\n",
+                "cmn_sentences.tsv.bz2": "84\tcmn\t她的優秀品質令我們印象深刻。\n",
+                "cmn-eng_links.tsv.bz2": "84\t42\n",
+            }
+            raw_files = []
+            for name, content in files.items():
+                path = raw_dir / name
+                with bz2.open(path, "wt", encoding="utf-8") as stream:
+                    stream.write(content)
+                raw_files.append(
+                    {
+                        "path": str(path.relative_to(root)),
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                        "bytes": path.stat().st_size,
+                    }
+                )
+            manifest = {
+                "schemaVersion": 1,
+                "sources": [
+                    {
+                        "id": "tatoeba",
+                        "name": "Tatoeba",
+                        "version": "test",
+                        "adapter": "tatoeba_parallel_bz2",
+                        "rawFiles": raw_files,
+                        "licenseEvidence": [],
+                        "repositoryRedistribution": "allowed",
+                        "appUse": "approved",
+                    }
+                ],
+            }
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            output = root / "tatoeba.jsonl"
+
+            result = self.run_cli(
+                root, "import-source", "tatoeba", "--output", str(output)
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = json.loads(output.read_text())
+            self.assertEqual(record["sourceEntryRef"], "eng-42:cmn-84")
+            self.assertEqual(record["examples"], ["Her excellent quality impressed us."])
+            self.assertEqual(record["translations"]["zh-Hant"], ["她的優秀品質令我們印象深刻。"])
+
+    def test_ili_map_adapter_preserves_pwn_and_ili_identifiers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw = root / "Content/Sources/Raw/omw/ili-map.tab"
+            raw.parent.mkdir(parents=True)
+            raw.write_text("i1\t00001740-a\ni2\t00002098-a\n", encoding="utf-8")
+            manifest = {
+                "schemaVersion": 1,
+                "sources": [
+                    {
+                        "id": "omw-ili",
+                        "adapter": "ili_map_tab",
+                        "rawFile": {
+                            "path": str(raw.relative_to(root)),
+                            "sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                            "bytes": raw.stat().st_size,
+                        },
+                        "licenseEvidence": [],
+                        "repositoryRedistribution": "allowed",
+                    }
+                ],
+            }
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            output = root / "ili.jsonl"
+
+            result = self.run_cli(
+                root, "import-source", "omw-ili", "--output", str(output)
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = json.loads(output.read_text().splitlines()[0])
+            self.assertEqual(record["senseRefs"], ["00001740-a"])
+            self.assertEqual(record["iliRefs"], ["i1"])
+
+    def test_cow_adapter_keeps_the_same_lemma_in_separate_senses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw = root / "Content/Sources/Raw/cow/wn-data.tab"
+            raw.parent.mkdir(parents=True)
+            raw.write_text(
+                "0001-n\tcmn:lemma\t吸菸\n0002-v\tcmn:lemma\t吸菸\n",
+                encoding="utf-8",
+            )
+            manifest = {
+                "schemaVersion": 1,
+                "sources": [
+                    {
+                        "id": "cow",
+                        "adapter": "cow_tsv",
+                        "rawFile": {
+                            "path": str(raw.relative_to(root)),
+                            "sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                            "bytes": raw.stat().st_size,
+                        },
+                        "licenseEvidence": [],
+                        "repositoryRedistribution": "allowed",
+                    }
+                ],
+            }
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            output = root / "cow.jsonl"
+
+            result = self.run_cli(
+                root, "import-source", "cow", "--output", str(output)
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            records = [json.loads(line) for line in output.read_text().splitlines()]
+            self.assertEqual(len(records), 2)
+            self.assertEqual(
+                [record["senseRefs"] for record in records],
+                [["0001-n"], ["0002-v"]],
+            )
+
     def test_oewn_candidate_contains_shared_enrichment_inputs(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -275,6 +500,7 @@ class VocabularySourcesTests(unittest.TestCase):
                                     }
                                 ],
                                 "members": ["excellent", "first-class"],
+                                "ili": "i1",
                                 "partOfSpeech": "a",
                             }
                         }
@@ -313,6 +539,7 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(record["definitions"], ["of very high quality"])
             self.assertEqual(record["examples"], ["She shared an excellent idea."])
             self.assertEqual(record["relatedTerms"], ["excellent", "first-class"])
+            self.assertEqual(record["iliRefs"], ["i1"])
 
     def test_oewn_candidates_keep_definition_example_and_terms_in_the_same_sense(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -490,11 +717,17 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(item["plainExpression"], "very good")
             self.assertEqual(item["upgradedExpression"], "excellent")
             self.assertEqual(item["meaning"]["zh-Hant"], "優秀")
-            self.assertEqual(item["example"]["text"], "She shared an excellent idea.")
-            self.assertIn("優秀", item["example"]["translation"]["zh-Hant"])
+            self.assertEqual(item["example"]["text"], "Her excellent quality impressed us.")
+            self.assertEqual(
+                item["example"]["translation"]["zh-Hant"],
+                "她的優秀品質令我們印象深刻。",
+            )
             self.assertEqual(item["quiz"]["correctOptionIndex"], 0)
             provenance_item = json.loads(provenance.read_text())["items"][0]
-            self.assertEqual(provenance_item["sourceIDs"], ["cefr", "freedict", "oewn-2025"])
+            self.assertEqual(
+                provenance_item["sourceIDs"],
+                ["cefr", "freedict", "oewn-2025", "tatoeba-eng-cmn-2026-07-04"],
+            )
             self.assertEqual(provenance_item["status"], "approved")
             notice_text = notices.read_text()
             self.assertIn("FULL DEMO LICENSE", notice_text)
@@ -547,6 +780,68 @@ class VocabularySourcesTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(seed.read_text())[0]["meaning"]["zh-Hant"], "原住民上方縮寫")
+
+    def test_build_reviewed_creates_four_unique_expression_options(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_source(root)
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+            draft = root / "draft.jsonl"
+            candidates = []
+            for target, meaning in (
+                ("excellent", "優秀"),
+                ("superb", "極佳"),
+                ("outstanding", "出色"),
+                ("remarkable", "卓越"),
+            ):
+                candidates.append(
+                    {
+                        "target": target,
+                        "plain": f"very good: {target}",
+                        "definition": f"a strong positive quality: {target}",
+                        "example": f"The result was {target}.",
+                        "exampleTranslationDraft": None,
+                        "exampleTranslationMode": "usage-note",
+                        "translationDraft": meaning,
+                        "partOfSpeech": "a",
+                        "cefr": "A2",
+                        "level": "basic",
+                        "sourceRefs": [
+                            {"sourceID": "demo", "sourceEntryRef": target}
+                        ],
+                    }
+                )
+            draft.write_text(
+                "".join(json.dumps(item, ensure_ascii=False) + "\n" for item in candidates),
+                encoding="utf-8",
+            )
+            seed = root / "seed.json"
+
+            result = self.run_cli(
+                root,
+                "build-reviewed",
+                "--input",
+                str(draft),
+                "--existing-seed",
+                str(existing),
+                "--seed-output",
+                str(seed),
+                "--provenance-output",
+                str(root / "provenance.json"),
+                "--notices-output",
+                str(root / "notices.txt"),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for item in json.loads(seed.read_text()):
+                options = item["quiz"]["options"]
+                self.assertEqual(len(options), 4)
+                self.assertEqual(len({value.casefold() for value in options}), 4)
+                self.assertEqual(
+                    options[item["quiz"]["correctOptionIndex"]],
+                    item["upgradedExpression"],
+                )
 
     def test_prepare_enrichment_uses_a_lower_cefr_plain_term(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -696,6 +991,145 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("not enough basic candidates", result.stderr)
 
+    def test_prepare_enrichment_requires_cedict_when_the_reviewed_source_exists(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            cedict = {
+                **json.loads((input_dir / "freedict.jsonl").read_text()),
+                "sourceID": "cc-cedict-2026-07-11",
+                "sourceEntryRef": "line-1:unrelated",
+                "headword": "unrelated",
+                "definitions": ["not connected"],
+                "translations": {"zh-Hant": ["無關"]},
+            }
+            (input_dir / "cedict.jsonl").write_text(
+                json.dumps(cedict, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(root / "draft.jsonl"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("not enough basic candidates", result.stderr)
+
+    def test_prepare_enrichment_prefers_exact_ili_sense_translation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            lexical_path = input_dir / "oewn-2025.jsonl"
+            lexical = json.loads(lexical_path.read_text())
+            lexical["iliRefs"] = ["i1"]
+            lexical_path.write_text(json.dumps(lexical) + "\n", encoding="utf-8")
+            cow = {
+                **json.loads((input_dir / "cow.jsonl").read_text()),
+                "headword": "卓越+\u7684",
+                "senseRefs": ["0001-a"],
+            }
+            (input_dir / "cow.jsonl").write_text(
+                json.dumps(cow, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            mapping = {
+                **cow,
+                "sourceID": "omw-ili-map",
+                "sourceEntryRef": "0001-a",
+                "headword": "0001-a",
+                "translations": {},
+                "iliRefs": ["i1"],
+            }
+            (input_dir / "omw.jsonl").write_text(
+                json.dumps(mapping, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            output = root / "draft.jsonl"
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            candidate = json.loads(output.read_text())
+            self.assertEqual(candidate["translationDraft"], "卓越")
+            self.assertEqual(
+                {item["sourceID"] for item in candidate["sourceRefs"]},
+                {"cefr", "cow", "oewn-2025", "omw-ili-map"},
+            )
+
+    def test_prepare_enrichment_applies_reviewed_sense_translation_override(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            lexical_path = input_dir / "oewn-2025.jsonl"
+            lexical = json.loads(lexical_path.read_text())
+            lexical["iliRefs"] = ["i15746"]
+            lexical_path.write_text(json.dumps(lexical) + "\n", encoding="utf-8")
+            cow = {
+                **json.loads((input_dir / "cow.jsonl").read_text()),
+                "headword": "观念+的",
+                "senseRefs": ["02784317-a"],
+            }
+            (input_dir / "cow.jsonl").write_text(
+                json.dumps(cow, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            mapping = {
+                **cow,
+                "sourceID": "omw-ili-map",
+                "sourceEntryRef": "02784317-a",
+                "headword": "02784317-a",
+                "translations": {},
+                "iliRefs": ["i15746"],
+            }
+            (input_dir / "omw.jsonl").write_text(
+                json.dumps(mapping, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            output = root / "draft.jsonl"
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(output.read_text())["translationDraft"], "呈現的")
+
     def test_prepare_enrichment_uses_a_matched_synonym_translation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -745,6 +1179,36 @@ class VocabularySourcesTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["translationDraft"], "卓越")
+
+    def test_prepare_enrichment_requires_the_target_in_the_source_example(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            lexical_path = input_dir / "oewn-2025.jsonl"
+            lexical = json.loads(lexical_path.read_text())
+            lexical["examples"] = ["She shared a superb idea."]
+            lexical_path.write_text(json.dumps(lexical) + "\n", encoding="utf-8")
+            (input_dir / "tatoeba.jsonl").unlink()
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(root / "draft.jsonl"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("not enough basic candidates", result.stderr)
 
     def test_prepare_enrichment_fails_when_a_level_quota_is_unavailable(self):
         with tempfile.TemporaryDirectory() as directory:

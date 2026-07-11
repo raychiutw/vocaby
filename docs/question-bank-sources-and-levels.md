@@ -27,29 +27,32 @@ Audit target: `WordingDailyApp/Resources/VocabularySeed.json` on 2026-07-11.
 
 | App level | CEFR range | Items |
 |---|---|---:|
-| `basic` | A1-A2 | 1,030 |
+| `basic` | A1-A2 | 980 |
 | `intermediate` | B1-B2 | 1,630 |
-| `advanced` | C1-C2 | 2,740 |
-| **Total** | A1-C2 | **5,400** |
+| `advanced` | C1-C2 | 2,830 |
+| **Total** | A1-C2 | **5,440** |
 
-All 5,400 IDs, upgraded expressions, and concept keys are unique. Sort order is
+All 5,440 IDs, upgraded expressions, and concept keys are unique. Sort order is
 contiguous within each level. The 90 project-owned legacy items were cleaned and
-preserved; the other 5,310 items were selected from approved local source data
+preserved; the other 5,350 items were selected from approved local source data
 and passed the shared enrichment and promotion gates.
 
 ## Source Inventory and Shipping Decisions
 
-Ten exact upstream snapshots and their evidence are tracked under
+Thirteen exact upstream snapshots and their evidence are tracked under
 `Content/Sources/Raw`. A source being public or locally imported does not make it
 eligible to ship.
 
 | Source ID | Pipeline use | App use |
 |---|---|---|
 | `cefr-j-1.6` | exact CEFR calibration | approved |
-| `freedict-eng-zho-2025.11.23` | Chinese meaning evidence | approved |
+| `cc-cedict-2026-07-11` | secondary Chinese gloss review | approved |
+| `cow-0.9` | Chinese meaning tied to a PWN 3.0 sense | approved |
+| `omw-ili-map-e3b5ac1` | exact PWN 3.0 to OEWN ILI alignment | approved |
 | `oewn-2025` | English senses, definitions, examples, lexical relations | approved |
+| `tatoeba-eng-cmn-2026-07-04` | context-aligned example translations | approved |
+| `freedict-eng-zho-2025.11.23` | retained Chinese dictionary research; unused in this release | approved |
 | `cmudict-7479086` | pronunciation research | reference only |
-| `cow-0.9` | frequency research | reference only |
 | `bsl-1.2` | research candidate list | blocked |
 | `gcide-0.54` | dictionary research | blocked |
 | `nawl-1.2` | research candidate list | blocked |
@@ -88,10 +91,11 @@ raw snapshot -> source adapter -> canonical candidate JSONL
               bundled VocabularySeed.json + ThirdPartyNotices.txt
 ```
 
-Adapters may parse CSV, TSV, dict, XLSX ZIP, JSON ZIP, TEI TAR, GCIDE TAR, or
-CMUdict. They must not contain source-specific translation, example, question,
-reviewer, notice, or promotion behavior. After canonical JSONL, every source uses
-the same commands and validation rules.
+Adapters may parse CSV, TSV, dict, XLSX ZIP, JSON ZIP, gzip, bzip2, TEI TAR,
+GCIDE TAR, ILI maps, or CMUdict. A source may declare one or several raw files.
+Adapters must not contain source-specific translation, example, question,
+reviewer, notice, or promotion behavior. After canonical JSONL, every source
+uses the same commands and validation rules.
 
 The common pipeline must keep the intended sense aligned across:
 
@@ -113,10 +117,13 @@ Level the intended sense and usage, not spelling length or a frequency rank.
 | `intermediate` | B1-B2 | common collocations and phrasal language, moderate idiomaticity, clearer register choices |
 | `advanced` | C1-C2 | nuanced or context-sensitive register, lower-frequency collocations, polysemy, opaque idioms |
 
-The shared selector uses CEFR-J evidence to propose the App level. Content review
-must verify the selected OEWN sense, FreeDict meaning, example, and prompts all
-teach that same sense. Automated CEFR mapping is a release gate, not a claim of
-official learner certification.
+The shared selector uses CEFR-J evidence to propose the App level. It aligns the
+COW PWN 3.0 sense to OEWN through an exact ILI mapping, checks definition
+similarity locally with Apple's `NaturalLanguage`, and uses CC-CEDICT/Tatoeba as
+secondary review evidence only when the intended sense and context agree.
+Content review must verify the meaning, example, and prompts all teach that same
+sense. Automated CEFR mapping is a release gate, not a claim of official learner
+certification.
 
 ## Repository-Only Provenance and Notices
 
@@ -177,6 +184,8 @@ Promotion fails before writing the output unless all of these hold:
 - correct quiz answers and pronunciation align with the item;
 - source references, reviewer fields, status, and review date are complete;
 - generated seed, provenance, and notices are byte-deterministic;
+- generated questions contain four unique same-level options, and each generated
+  example contains the target expression or an accepted inflection;
 - the built App contains only the seed and notices, not raw/import/provenance data.
 
 Automated gates prove structure, traceability, and deterministic behavior. The
@@ -190,7 +199,7 @@ usefulness.
   local TTS, notifications, and widget flows without a network or account.
 - Every displayed word, meaning, example, prompt, and answer comes from the
   bundled bank.
-- All 5,400 items have traceable approved source records and common review fields.
+- All 5,440 items have traceable approved source records and common review fields.
 - A clean two-run import/build produces byte-identical canonical and shipping
   artifacts.
 - App resources contain no source snapshots, imports, reports, source manifest,

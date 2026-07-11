@@ -40,11 +40,12 @@ Review in deterministic level/sort order. Inspect all rejected or corrected
 records plus a representative sample from each level and each contributing source
 combination. Increase the sample until no new repeated issue appears.
 
-- [ ] Basic: 1,030 items represented.
+- [ ] Basic: 980 items represented.
 - [ ] Intermediate: 1,630 items represented.
-- [ ] Advanced: 2,740 items represented.
+- [ ] Advanced: 2,830 items represented.
 - [ ] Legacy project-owned items represented.
-- [ ] CEFR-J + FreeDict + OEWN enriched items represented.
+- [ ] COW + OMW ILI + OEWN sense-aligned items represented.
+- [ ] CEFR-J, CC-CEDICT, and Tatoeba evidence combinations represented.
 - [ ] First, middle, last, and deterministic random samples recorded per level.
 
 Evidence:
@@ -65,7 +66,8 @@ For every reviewed item, verify:
 - [ ] The English definition matches the intended expression sense.
 - [ ] Taiwan Traditional Chinese is natural, accurate, and uses Taiwan wording.
 - [ ] The example is realistic and demonstrates the same intended sense.
-- [ ] The example translation is natural and faithful.
+- [ ] A Tatoeba full-sentence translation is natural and faithful; otherwise the
+  generated zh-Hant usage note accurately identifies the target and meaning.
 - [ ] English and zh-Hant prompts ask the intended question without revealing the answer.
 - [ ] Pronunciation and the correct quiz option equal the upgraded expression.
 - [ ] Same-level distractors are plausible but not alternative correct answers.
