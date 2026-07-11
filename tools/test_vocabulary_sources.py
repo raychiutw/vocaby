@@ -433,7 +433,7 @@ class VocabularySourcesTests(unittest.TestCase):
             input_dir, existing_seed = self.make_enrichment_sources(root)
             license_file = root / "Content/Sources/Raw/oewn/LICENSE.txt"
             license_file.parent.mkdir(parents=True)
-            license_file.write_text("FULL DEMO LICENSE\n", encoding="utf-8")
+            license_file.write_text("=======\nFULL DEMO LICENSE \n", encoding="utf-8")
             manifest_path = root / "Content/Sources/source-manifest.json"
             manifest = json.loads(manifest_path.read_text())
             manifest["sources"][0]["noticeFiles"] = [
@@ -489,7 +489,10 @@ class VocabularySourcesTests(unittest.TestCase):
             provenance_item = json.loads(provenance.read_text())["items"][0]
             self.assertEqual(provenance_item["sourceIDs"], ["cefr", "freedict", "oewn-2025"])
             self.assertEqual(provenance_item["status"], "approved")
-            self.assertIn("FULL DEMO LICENSE", notices.read_text())
+            notice_text = notices.read_text()
+            self.assertIn("FULL DEMO LICENSE", notice_text)
+            self.assertNotRegex(notice_text, r"(?m)^={7}")
+            self.assertFalse(any(line.endswith((" ", "\t")) for line in notice_text.splitlines()))
 
     def test_shared_enrichment_uses_taiwan_vocabulary(self):
         with tempfile.TemporaryDirectory() as directory:

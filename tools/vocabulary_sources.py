@@ -827,8 +827,11 @@ def build_reviewed(
         )
         for path in source.get("noticeFiles", []):
             try:
+                notice = Path(root, path).read_text(encoding="utf-8")
+                notice = "\n".join(line.rstrip() for line in notice.splitlines())
+                notice = re.sub(r"(?m)^={7,}$", "---", notice)
                 notice_lines.extend(
-                    [Path(root, path).read_text(encoding="utf-8").rstrip(), ""]
+                    [notice.rstrip(), ""]
                 )
             except OSError as error:
                 raise SourceError(f"cannot read source notice {path}: {error}") from error

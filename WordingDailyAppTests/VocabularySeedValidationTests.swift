@@ -2,14 +2,29 @@ import XCTest
 @testable import WordingDailyApp
 
 final class VocabularySeedValidationTests: XCTestCase {
-    func testBundledSeedHasThirtyItemsPerLevelAndPassesValidation() throws {
+    func testBundledSeedHas5400ItemsAndPassesValidation() throws {
         let items = try SeedLoader().loadBundledSeed()
 
-        XCTAssertEqual(items.count, 90)
-        XCTAssertEqual(items.filter { $0.level == .basic }.count, 30)
-        XCTAssertEqual(items.filter { $0.level == .intermediate }.count, 30)
-        XCTAssertEqual(items.filter { $0.level == .advanced }.count, 30)
+        XCTAssertEqual(items.count, 5_400)
+        XCTAssertEqual(items.filter { $0.level == .basic }.count, 1_030)
+        XCTAssertEqual(items.filter { $0.level == .intermediate }.count, 1_630)
+        XCTAssertEqual(items.filter { $0.level == .advanced }.count, 2_740)
+        XCTAssertTrue(VocabularyLevel.allCases.allSatisfy { level in
+            items.filter { $0.level == level }.count >= 4
+        })
+        XCTAssertTrue(items.allSatisfy {
+            !$0.meaning["zh-Hant", default: ""].isEmpty
+                && !$0.example.text.isEmpty
+                && !$0.example.translation["zh-Hant", default: ""].isEmpty
+                && !$0.quiz.prompt["en", default: ""].isEmpty
+                && !$0.quiz.prompt["zh-Hant", default: ""].isEmpty
+        })
         XCTAssertNoThrow(try SeedValidator.validate(items))
+    }
+
+    func testBundledVocabularyNoticesExist() throws {
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt"))
+        XCTAssertFalse(try String(contentsOf: url, encoding: .utf8).isEmpty)
     }
 
     func testValidationRejectsDuplicateIDs() throws {
