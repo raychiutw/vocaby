@@ -584,6 +584,19 @@ def parse_wiktextract(path: Path, source_id: str) -> Iterable[dict]:
             for sense in record["senses"]:
                 for language, values in sense["translations"].items():
                     record["translations"].setdefault(language, []).extend(values)
+            for translation in item.get("translations", []):
+                language = translation.get("code")
+                value = translation.get("word")
+                if language and value and value.strip():
+                    record["translations"].setdefault(language, []).append(
+                        value.strip()
+                    )
+            record["translations"] = {
+                language: sorted(
+                    set(values), key=lambda value: (normalized(value), value)
+                )
+                for language, values in sorted(record["translations"].items())
+            }
             yield record
 
 

@@ -504,6 +504,7 @@ class VocabularySourcesTests(unittest.TestCase):
                     {"ipa": "/liːd/", "tags": ["General-American"]},
                     {"ipa": "[lɛd]", "tags": ["UK"]},
                 ],
+                "translations": [{"code": "zh", "word": "帶領"}],
                 "senses": [
                     {
                         "senseid": ["lead-verb-guide"],
@@ -569,6 +570,7 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(
                 record["senses"][0]["translations"], {"zh": ["引導"]}
             )
+            self.assertEqual(record["translations"]["zh"], ["帶領", "引導"])
 
     def test_cmudict_adapter_strips_inline_comments_and_preserves_variants(self):
         with tempfile.TemporaryDirectory() as directory:
