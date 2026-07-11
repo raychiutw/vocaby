@@ -151,7 +151,7 @@ final class QuizEngineTests: XCTestCase {
         ).first)
 
         XCTAssertEqual(question.prompt, items[0].upgradedExpression)
-        XCTAssertEqual(question.correctAnswer, items[0].meaning["zh-Hant"])
+        XCTAssertEqual(question.correctAnswer, items[0].primarySense.meaning["zh-Hant"])
         XCTAssertEqual(Set(question.options).count, 4)
     }
 
@@ -164,7 +164,7 @@ final class QuizEngineTests: XCTestCase {
         ).first)
 
         XCTAssertEqual(question.prompt, "")
-        XCTAssertEqual(question.spokenText, items[0].pronunciationText)
+        XCTAssertEqual(question.spokenText, items[0].upgradedExpression)
         XCTAssertEqual(question.correctAnswer, items[0].upgradedExpression)
     }
 
@@ -176,7 +176,7 @@ final class QuizEngineTests: XCTestCase {
             supportLanguageCode: "zh-Hant", using: &random
         ).first)
 
-        XCTAssertEqual(question.prompt, items[0].meaning["zh-Hant"])
+        XCTAssertEqual(question.prompt, items[0].primarySense.meaning["zh-Hant"])
         XCTAssertTrue(QuizEngine().isCorrect("  \(items[0].upgradedExpression.uppercased())  ", for: question))
         XCTAssertFalse(QuizEngine().isCorrect("different answer", for: question))
     }
@@ -454,13 +454,22 @@ final class QuizEngineTests: XCTestCase {
 
     private func makeItems(count: Int) -> [VocabularySeedItem] {
         (1...count).map { index in
-            VocabularySeedItem(
-                id: "basic-\(index)", level: .basic, sortOrder: index,
+            let id = "basic-\(index)"
+            let pronunciationID = "\(id)-pronunciation-1"
+            let senseID = "\(id)-sense-1"
+            return VocabularySeedItem(
+                id: id, level: .basic, sortOrder: index,
                 contentLanguageCode: "en", supportLanguageCodes: ["zh-Hant"],
                 plainExpression: "plain \(index)", upgradedExpression: "upgrade \(index)",
-                meaning: ["en": "definition \(index)", "zh-Hant": "意思 \(index)"],
-                example: .init(text: "Example \(index).", translation: ["zh-Hant": "例句 \(index)。"]),
-                pronunciationText: "upgrade \(index)",
+                primarySenseID: senseID,
+                pronunciations: [.init(id: pronunciationID, ipa: "tɛst", speechLocale: "en-US", region: "US")],
+                senses: [.init(
+                    id: senseID,
+                    partOfSpeech: .phrase,
+                    meaning: ["en": "definition \(index)", "zh-Hant": "意思 \(index)"],
+                    example: .init(text: "Example \(index).", translation: ["zh-Hant": "例句 \(index)。"]),
+                    pronunciationIDs: [pronunciationID]
+                )],
                 quiz: .init(prompt: ["zh-Hant": "legacy"], options: ["legacy A", "legacy B"], correctOptionIndex: 0)
             )
         }

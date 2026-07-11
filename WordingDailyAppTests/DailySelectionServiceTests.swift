@@ -165,7 +165,9 @@ final class DailySelectionServiceTests: XCTestCase {
         sortOrder: Int,
         supportLanguageCodes: [String] = ["zh-Hant"]
     ) -> VocabularySeedItem {
-        VocabularySeedItem(
+        let pronunciationID = "\(id)-pronunciation-1"
+        let senseID = "\(id)-sense-1"
+        return VocabularySeedItem(
             id: id,
             level: level,
             sortOrder: sortOrder,
@@ -173,10 +175,16 @@ final class DailySelectionServiceTests: XCTestCase {
             supportLanguageCodes: supportLanguageCodes,
             plainExpression: "plain \(id)",
             upgradedExpression: "upgraded \(id)",
-            meaning: ["zh-Hant": "meaning"],
-            example: VocabularyExample(text: "Example.", translation: ["zh-Hant": "例句。"]),
-            pronunciationText: id,
-            quiz: VocabularyQuiz(prompt: ["zh-Hant": "prompt"], options: ["A", "B"], correctOptionIndex: 0)
+            primarySenseID: senseID,
+            pronunciations: [.init(id: pronunciationID, ipa: "tɛst", speechLocale: "en-US", region: "US")],
+            senses: [.init(
+                id: senseID,
+                partOfSpeech: .phrase,
+                meaning: ["en": "meaning", "zh-Hant": "meaning"],
+                example: .init(text: "Example.", translation: ["zh-Hant": "例句。"]),
+                pronunciationIDs: [pronunciationID]
+            )],
+            quiz: VocabularyQuiz(prompt: ["en": "prompt", "zh-Hant": "prompt"], options: ["A", "B"], correctOptionIndex: 0)
         )
     }
 }

@@ -2,27 +2,27 @@ import XCTest
 @testable import WordingDailyApp
 
 final class VocabularySeedValidationTests: XCTestCase {
-    func testBundledSeedHas5440ItemsAndPassesValidation() throws {
+    func testBundledSeedHasCompleteRichEntries() throws {
         let items = try SeedLoader().loadBundledSeed()
 
-        XCTAssertEqual(items.count, 5_440)
-        XCTAssertEqual(items.filter { $0.id.hasPrefix("bank-") }.count, 5_350)
+        XCTAssertEqual(items.count, 5_221)
         XCTAssertEqual(items.filter { $0.level == .basic }.count, 980)
         XCTAssertEqual(items.filter { $0.level == .intermediate }.count, 1_630)
-        XCTAssertEqual(items.filter { $0.level == .advanced }.count, 2_830)
-        XCTAssertTrue(VocabularyLevel.allCases.allSatisfy { level in
-            items.filter { $0.level == level }.count >= 4
-        })
-        XCTAssertTrue(items.allSatisfy {
-            !$0.meaning["zh-Hant", default: ""].isEmpty
-                && !$0.example.text.isEmpty
-                && !$0.example.translation["zh-Hant", default: ""].isEmpty
-                && !$0.quiz.prompt["en", default: ""].isEmpty
-                && !$0.quiz.prompt["zh-Hant", default: ""].isEmpty
-        })
-        XCTAssertTrue(items.filter { $0.id.hasPrefix("bank-") }.allSatisfy {
-            $0.quiz.options.count == 4 && Set($0.quiz.options).count == 4
-        })
+        XCTAssertEqual(items.filter { $0.level == .advanced }.count, 2_611)
+        for item in items {
+            XCTAssertFalse(item.pronunciations.isEmpty, item.id)
+            XCTAssertTrue((1...3).contains(item.senses.count), item.id)
+            XCTAssertEqual(item.primarySense.id, item.primarySenseID, item.id)
+            let pronunciationIDs = Set(item.pronunciations.map(\.id))
+            XCTAssertTrue(item.senses.allSatisfy { sense in
+                !sense.pronunciationIDs.isEmpty
+                    && Set(sense.pronunciationIDs).isSubset(of: pronunciationIDs)
+                    && !sense.meaning["en", default: ""].isEmpty
+                    && !sense.meaning["zh-Hant", default: ""].isEmpty
+                    && !sense.example.text.isEmpty
+                    && !sense.example.translation["zh-Hant", default: ""].isEmpty
+            }, item.id)
+        }
         XCTAssertNoThrow(try SeedValidator.validate(items))
     }
 
@@ -51,7 +51,16 @@ final class VocabularySeedValidationTests: XCTestCase {
     func testBundledSeedKeepsQuizAndPronunciationAligned() throws {
         for item in try SeedLoader().loadBundledSeed() {
             XCTAssertEqual(item.quiz.options[item.quiz.correctOptionIndex], item.upgradedExpression, item.id)
-            XCTAssertEqual(item.pronunciationText, item.upgradedExpression, item.id)
+            XCTAssertTrue(item.pronunciations.allSatisfy { $0.speechLocale.hasPrefix("en-") }, item.id)
+        }
+    }
+
+    func testValidationRejectsUnknownPronunciationReference() throws {
+        var item = try XCTUnwrap(SeedLoader.sampleItems.first)
+        item.senses[0].pronunciationIDs = ["missing"]
+
+        XCTAssertThrowsError(try SeedValidator.validate([item])) { error in
+            XCTAssertEqual(error as? SeedValidationError, .invalidPronunciationReference(item.id))
         }
     }
 

@@ -224,7 +224,7 @@ struct QuizEngine {
                 prompt: prompt(for: item, mode: questionMode, supportLanguageCode: supportLanguageCode),
                 options: options,
                 correctAnswer: correctAnswer,
-                spokenText: questionMode == .listeningChoice ? item.pronunciationText : nil
+                spokenText: questionMode == .listeningChoice ? item.upgradedExpression : nil
             )
         }
     }
@@ -271,7 +271,9 @@ struct QuizEngine {
     }
 
     private func localizedMeaning(for item: VocabularySeedItem, supportLanguageCode: String) -> String {
-        item.meaning[supportLanguageCode] ?? item.meaning["en"] ?? ""
+        item.primarySense.meaning[supportLanguageCode]
+            ?? item.primarySense.meaning["en"]
+            ?? ""
     }
 
     private func makeOptions<Random: RandomNumberGenerator>(

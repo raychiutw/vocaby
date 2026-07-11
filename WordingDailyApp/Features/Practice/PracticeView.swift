@@ -644,17 +644,17 @@ struct DailyPracticeView: View {
                     Text(verbatim: item.plainExpression)
                         .foregroundStyle(.secondary)
 
-                    Text(verbatim: localized(item.meaning))
+                    Text(verbatim: localized(item.primarySense.meaning))
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(verbatim: item.example.text)
-                        Text(verbatim: localized(item.example.translation))
+                        Text(verbatim: item.primarySense.example.text)
+                        Text(verbatim: localized(item.primarySense.example.translation))
                             .foregroundStyle(.secondary)
                     }
                     .font(.subheadline)
 
                     Button {
-                        speak(item.pronunciationText)
+                        speak(item.upgradedExpression)
                     } label: {
                         Label("practice.pronunciation.accessibility", systemImage: "speaker.wave.2")
                             .frame(minWidth: 44, minHeight: 44)
