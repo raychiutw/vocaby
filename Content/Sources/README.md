@@ -12,14 +12,36 @@ python3 tools/vocabulary_sources.py verify
 python3 tools/vocabulary_sources.py import-source cefr-j-1.6
 python3 tools/vocabulary_sources.py import-all
 python3 tools/vocabulary_sources.py report
+python3 tools/vocabulary_sources.py prepare-enrichment \
+  --input-dir Content/Sources/Imported \
+  --existing-seed Content/Baselines/legacy-90.json \
+  --output /tmp/wording-draft.jsonl
+python3 tools/vocabulary_sources.py build-reviewed \
+  --input /tmp/wording-draft.jsonl \
+  --existing-seed Content/Baselines/legacy-90.json \
+  --seed-output /tmp/wording-seed.json \
+  --provenance-output /tmp/wording-provenance.json \
+  --notices-output /tmp/wording-notices.txt
+python3 tools/vocabulary_sources.py promote \
+  --reviewed /tmp/wording-seed.json \
+  --provenance /tmp/wording-provenance.json \
+  --notices /tmp/wording-notices.txt \
+  --output /tmp/VocabularySeed.json
 python3 -m unittest tools/test_vocabulary_sources.py
 ```
 
 Generated candidate JSONL belongs under `Imported/` and is ignored by Git. It is
 research input, not shipping content. An entry can reach
 `WordingDailyApp/Resources/VocabularySeed.json` only through `promote`, after a
-reviewed seed and provenance file pass every fail-closed gate. A source marked
-`reference_only` or `blocked` cannot be promoted directly.
+reviewed seed, provenance, and notices pass every fail-closed gate. A source
+marked `reference_only` or `blocked` cannot contribute shipping fields.
+
+Shipping content currently uses only Open English WordNet 2025 for English
+definitions/examples/relations, FreeDict English-Chinese 2025.11.23 for reviewed
+Chinese meaning drafts, and CEFR-J 1.6 for level calibration. The bundled notice
+preserves the Open English WordNet and FreeDict license text, the CEFR-J citation,
+the adaptation statement, and FreeDict's CC BY-SA 3.0 share-alike notice. Other
+tracked sources remain reference-only or blocked.
 
 See `.agents/skills/wording-daily-vocabulary-import/SKILL.md` for the repeatable
 one-source workflow. Licensing decisions in the manifest are engineering gates,

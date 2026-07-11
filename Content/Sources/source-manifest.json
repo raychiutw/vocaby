@@ -49,8 +49,9 @@
         }
       ],
       "repositoryRedistribution": "review_required",
-      "appUse": "reference_only",
-      "decision": "Level calibration only until redistribution terms receive legal review."
+      "appUse": "approved",
+      "requiredNotice": "The CEFR-J Wordlist Version 1.6. Compiled by Yukio Tono, Tokyo University of Foreign Studies. Retrieved from https://www.cefr-j.org/download.html on 2026-07-11.",
+      "decision": "Approved for level calibration with the source acknowledgement required by the publisher."
     },
     {
       "id": "cmudict-7479086",
@@ -121,11 +122,20 @@
           "path": "Content/Sources/Raw/freedict-eng-zho/source-page.html",
           "sha256": "05042982f52c38002f4ca0b7674c4a01b61db79bb73aacc56a743bd76aaff56d",
           "bytes": 506284
+        },
+        {
+          "path": "Content/Sources/Raw/freedict-eng-zho/COPYING",
+          "sha256": "41a8f57655bae359bea4a7e99c7a2aed171687d3dfb49614214538ba6dcbe75b",
+          "bytes": 22459
         }
       ],
+      "noticeFiles": [
+        "Content/Sources/Raw/freedict-eng-zho/COPYING"
+      ],
       "repositoryRedistribution": "allowed",
-      "appUse": "blocked",
-      "decision": "Automatically generated Simplified-Chinese data and share-alike obligations make it unsuitable for direct app import."
+      "appUse": "approved",
+      "requiredNotice": "English-Chinese FreeDict Dictionary 2025.11.23. Adapted by Wording Daily under CC BY-SA 3.0; the adapted vocabulary data is available under the same license.",
+      "decision": "Approved for reviewed Chinese meaning drafts; the adapted data notice preserves attribution and CC BY-SA 3.0 share-alike terms."
     },
     {
       "id": "gcide-0.54",
@@ -224,9 +234,13 @@
           "bytes": 19863
         }
       ],
+      "noticeFiles": [
+        "Content/Sources/Raw/oewn/LICENSE.md"
+      ],
       "repositoryRedistribution": "allowed",
-      "appUse": "reference_only",
-      "decision": "Preferred English lexical reference; direct app use remains blocked until notices and per-item provenance are approved."
+      "appUse": "approved",
+      "requiredNotice": "Based on Princeton WordNet and Open English WordNet. Copyright (c) 2019-present, The Open English WordNet Team. Adapted under CC BY 4.0.",
+      "decision": "Approved for English definitions, examples, and synonym relations with per-item provenance and bundled license notices."
     },
     {
       "id": "tsl-1.2",

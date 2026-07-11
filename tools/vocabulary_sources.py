@@ -474,7 +474,6 @@ def prepare_enrichment(
         for record in read_jsonl(path)
     ]
     translations: dict[str, list[tuple[str, dict, list[str]]]] = {}
-    sense_translations: dict[str, list[tuple[str, dict]]] = {}
     cefr_exact: dict[tuple[str, str], tuple[str, dict]] = {}
     cefr_any: dict[str, tuple[str, dict]] = {}
     lexical: list[dict] = []
@@ -487,11 +486,6 @@ def prepare_enrichment(
             translations.setdefault(key, []).append(
                 (values[0], source_reference(record), record.get("definitions", []))
             )
-        if record.get("translations", {}).get("language") == "cmn":
-            for sense_ref in record.get("senseRefs", []):
-                sense_translations.setdefault(sense_ref, []).append(
-                    (record["headword"], source_reference(record))
-                )
         if record.get("cefr") in CEFR_LEVEL:
             value = (record["cefr"], source_reference(record))
             cefr_exact.setdefault((key, part_of_speech_code(record.get("partOfSpeech"))), value)
@@ -503,40 +497,28 @@ def prepare_enrichment(
     for record in lexical:
         target = record["headword"].replace("_", " ").strip()
         key = normalized(target)
-        aligned_translations = [
-            value
-            for sense_ref in record.get("senseRefs", [])
-            for value in sense_translations.get(sense_ref, [])
-        ]
-        if aligned_translations:
-            translation, translation_ref = sorted(
-                aligned_translations,
-                key=lambda value: (len(value[0]), normalized(value[0])),
-            )[0]
-            translation_match = 100
+        target_words = meaning_words(record.get("definitions", []))
+        translation_options = sorted(
+            [
+                (*value, priority)
+                for priority, term in enumerate(
+                    [target, *record.get("relatedTerms", [])]
+                )
+                if isinstance(term, str)
+                for value in translations.get(normalized(term), [])
+            ],
+            key=lambda value: (
+                -len(target_words & meaning_words(value[2])),
+                value[3],
+                value[1]["sourceEntryRef"],
+            ),
+        )
+        if translation_options:
+            translation, translation_ref, matched_definitions, _ = translation_options[0]
+            translation_match = len(target_words & meaning_words(matched_definitions))
         else:
-            target_words = meaning_words(record.get("definitions", []))
-            translation_options = sorted(
-                [
-                    (*value, priority)
-                    for priority, term in enumerate(
-                        [target, *record.get("relatedTerms", [])]
-                    )
-                    if isinstance(term, str)
-                    for value in translations.get(normalized(term), [])
-                ],
-                key=lambda value: (
-                    -len(target_words & meaning_words(value[2])),
-                    value[3],
-                    value[1]["sourceEntryRef"],
-                ),
-            )
-            if translation_options:
-                translation, translation_ref, matched_definitions, _ = translation_options[0]
-                translation_match = len(target_words & meaning_words(matched_definitions))
-            else:
-                translation = translation_ref = None
-                translation_match = 0
+            translation = translation_ref = None
+            translation_match = 0
         translation_entry = (
             (translation, translation_ref) if translation is not None else None
         )
@@ -681,7 +663,7 @@ def provenance_source(source: dict) -> dict:
                 "version": None,
                 "url": source.get("licenseURL"),
                 "evidence": source.get("licenseEvidence", []),
-                "requiredNotice": source.get("decision"),
+                "requiredNotice": source.get("requiredNotice"),
             }
         ],
         "attributionParties": [source.get("name", source["id"])],
@@ -694,6 +676,7 @@ def provenance_source(source: dict) -> dict:
 
 def provenance_item(
     item_id: str,
+    expression: str,
     level: str,
     cefr: str,
     source_refs: list[dict],
@@ -702,7 +685,7 @@ def provenance_item(
     difficulty = {"basic": 2, "intermediate": 5, "advanced": 8}[level]
     return {
         "itemID": item_id,
-        "conceptKey": f"expression:{normalized(item_id)}",
+        "conceptKey": f"expression:{normalized(expression)}",
         "sourceIDs": sorted({ref["sourceID"] for ref in source_refs}),
         "sourceEntryRefs": source_refs,
         "origin": origin,
@@ -729,6 +712,7 @@ def provenance_item(
 
 
 def build_reviewed(
+    root: Path,
     manifest: dict,
     draft_path: Path,
     existing_seed_path: Path,
@@ -751,6 +735,7 @@ def build_reviewed(
     provenance_items = [
         provenance_item(
             item["id"],
+            item["upgradedExpression"],
             item["level"],
             {"basic": "A2", "intermediate": "B2", "advanced": "C1"}[item["level"]],
             [{"sourceID": "wording-daily-original", "sourceEntryRef": item["id"]}],
@@ -793,6 +778,7 @@ def build_reviewed(
         provenance_items.append(
             provenance_item(
                 item_id,
+                candidate["target"],
                 level,
                 candidate["cefr"],
                 candidate["sourceRefs"],
@@ -834,10 +820,18 @@ def build_reviewed(
                 f"{source.get('name', source_id)} ({source.get('version', 'unknown version')})",
                 f"Source: {source.get('canonicalURL', '')}",
                 f"License: {source.get('license', 'Documented source terms')} {source.get('licenseURL', '')}".rstrip(),
+                source.get("requiredNotice", ""),
                 "Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.",
                 "",
             ]
         )
+        for path in source.get("noticeFiles", []):
+            try:
+                notice_lines.extend(
+                    [Path(root, path).read_text(encoding="utf-8").rstrip(), ""]
+                )
+            except OSError as error:
+                raise SourceError(f"cannot read source notice {path}: {error}") from error
     atomic_write(seed_output, json.dumps(seed, ensure_ascii=False, indent=2) + "\n")
     atomic_write(provenance_output, json.dumps(provenance, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     atomic_write(notices_output, "\n".join(notice_lines).rstrip() + "\n")
@@ -850,23 +844,56 @@ def validate_seed_item(item: dict) -> None:
         raise SourceError(f"seed item {item.get('id', '<missing>')} is incomplete")
     if item["level"] not in LEVEL_ORDER or item["contentLanguageCode"] != "en" or "zh-Hant" not in item["supportLanguageCodes"]:
         raise SourceError(f"seed item {item['id']} has invalid language or level")
-    values = (item["id"], item["plainExpression"], item["upgradedExpression"], item["pronunciationText"], item["meaning"].get("en"), item["meaning"].get("zh-Hant"), item["example"].get("text"), item["example"].get("translation", {}).get("zh-Hant"))
+    meaning = item["meaning"] if isinstance(item["meaning"], dict) else {}
+    example = item["example"] if isinstance(item["example"], dict) else {}
+    translation = example.get("translation", {})
+    quiz = item["quiz"] if isinstance(item["quiz"], dict) else {}
+    prompt = quiz.get("prompt", {})
+    values = (item["id"], item["plainExpression"], item["upgradedExpression"], item["pronunciationText"], meaning.get("en"), meaning.get("zh-Hant"), example.get("text"), translation.get("zh-Hant") if isinstance(translation, dict) else None, prompt.get("en") if isinstance(prompt, dict) else None, prompt.get("zh-Hant") if isinstance(prompt, dict) else None)
     if any(not isinstance(value, str) or not value.strip() for value in values):
         raise SourceError(f"seed item {item['id']} has missing required text")
+    options = quiz.get("options")
+    correct = quiz.get("correctOptionIndex")
+    if (
+        not isinstance(options, list)
+        or not all(isinstance(value, str) and value.strip() for value in options)
+        or not isinstance(correct, int)
+        or correct not in range(len(options))
+        or options[correct] != item["upgradedExpression"]
+        or item["pronunciationText"] != item["upgradedExpression"]
+    ):
+        raise SourceError(f"seed item {item['id']} has invalid quiz or pronunciation")
 
 
-def promote(root: Path, reviewed_path: Path, provenance_path: Path, output: Path) -> int:
+def promote(
+    root: Path,
+    reviewed_path: Path,
+    provenance_path: Path,
+    notices_path: Path,
+    output: Path,
+) -> int:
     reviewed = load_json(reviewed_path, list)
     provenance = load_json(provenance_path, dict)
+    try:
+        notices = notices_path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise SourceError(f"cannot read notices {notices_path}: {error}") from error
     source_manifest = load_manifest(root)
     external = {source["id"]: source for source in source_manifest["sources"]}
     sources = provenance.get("sources", [])
+    source_ids = {source.get("id") for source in sources}
+    if None in source_ids or len(source_ids) != len(sources):
+        raise SourceError("provenance source IDs must be non-empty and unique")
     for source in sources:
         rights = source.get("rights", {})
         if any(rights.get(key) != "approved" for key in RIGHTS):
             raise SourceError(f"source {source.get('id', '<missing>')} rights are not approved")
         if source.get("id") in external and external[source["id"]].get("appUse") != "approved":
             raise SourceError(f"source {source['id']} is not approved for app use")
+        for license_item in source.get("licenses", []):
+            required_notice = license_item.get("requiredNotice")
+            if required_notice and required_notice not in notices:
+                raise SourceError(f"source {source['id']} required notice is missing")
     if not reviewed:
         raise SourceError("reviewed seed is empty")
     ids: set[str] = set()
@@ -887,14 +914,26 @@ def promote(root: Path, reviewed_path: Path, provenance_path: Path, output: Path
             raise SourceError(f"{level} sortOrder must be contiguous from 1")
     provenance_items = provenance.get("items", [])
     by_id = {item.get("itemID"): item for item in provenance_items}
-    if set(by_id) != ids:
+    if len(by_id) != len(provenance_items) or set(by_id) != ids:
         raise SourceError("seed and provenance IDs do not match")
+    reviewed_by_id = {item["id"]: item for item in reviewed}
+    concepts: set[str] = set()
     for item_id, item in by_id.items():
-        required = ("sourceID", "cefr", "appLevel", "englishReviewer", "zhHantReviewer", "levelReviewer", "rightsReviewer", "reviewedAt")
+        required = ("conceptKey", "sourceIDs", "cefr", "appLevel", "englishReviewer", "zhHantReviewer", "levelReviewer", "rightsReviewer", "reviewedAt")
         if item.get("status") != "approved" or any(not item.get(key) for key in required):
             raise SourceError(f"provenance item {item_id} is not fully approved")
-        if item["sourceID"] not in {source.get("id") for source in sources}:
+        if item["conceptKey"] in concepts:
+            raise SourceError(f"duplicate concept key: {item['conceptKey']}")
+        concepts.add(item["conceptKey"])
+        if not isinstance(item["sourceIDs"], list) or any(
+            source_id not in source_ids for source_id in item["sourceIDs"]
+        ):
             raise SourceError(f"provenance item {item_id} uses an unknown source")
+        if (
+            CEFR_LEVEL.get(item["cefr"]) != item["appLevel"]
+            or item["appLevel"] != reviewed_by_id[item_id]["level"]
+        ):
+            raise SourceError(f"provenance item {item_id} CEFR does not match app level")
     ordered = sorted(reviewed, key=lambda item: (LEVEL_ORDER[item["level"]], item["sortOrder"], item["id"]))
     atomic_write(output, json.dumps(ordered, ensure_ascii=False, indent=2) + "\n")
     return len(ordered)
@@ -929,6 +968,7 @@ def main(argv: list[str] | None = None) -> int:
     promote_parser = commands.add_parser("promote")
     promote_parser.add_argument("--reviewed", type=Path, required=True)
     promote_parser.add_argument("--provenance", type=Path, required=True)
+    promote_parser.add_argument("--notices", type=Path, required=True)
     promote_parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     root = args.root.resolve()
@@ -983,6 +1023,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"prepared {count} enrichment candidate(s) to {args.output}")
     elif args.command == "build-reviewed":
         count = build_reviewed(
+            root,
             manifest,
             args.input,
             args.existing_seed,
@@ -992,7 +1033,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"built {count} reviewed seed item(s)")
     else:
-        print(f"promoted {promote(root, args.reviewed, args.provenance, args.output)} item(s) to {args.output}")
+        print(
+            f"promoted {promote(root, args.reviewed, args.provenance, args.notices, args.output)} item(s) to {args.output}"
+        )
     return 0
 
 

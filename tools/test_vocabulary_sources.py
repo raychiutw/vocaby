@@ -54,6 +54,84 @@ class VocabularySourcesTests(unittest.TestCase):
         path.write_text(json.dumps(manifest), encoding="utf-8")
         return path
 
+    def make_promotable_bank(self, root: Path) -> tuple[Path, Path, Path]:
+        manifest_path = self.make_source(root)
+        manifest = json.loads(manifest_path.read_text())
+        manifest["sources"][0].update(
+            {"appUse": "approved", "requiredNotice": "Demo attribution"}
+        )
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        reviewed = root / "reviewed.json"
+        reviewed.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "basic-001",
+                        "level": "basic",
+                        "sortOrder": 1,
+                        "contentLanguageCode": "en",
+                        "supportLanguageCodes": ["zh-Hant"],
+                        "plainExpression": "very good",
+                        "upgradedExpression": "excellent",
+                        "meaning": {"en": "Very good.", "zh-Hant": "非常好。"},
+                        "example": {
+                            "text": "Excellent work.",
+                            "translation": {"zh-Hant": "做得很好。"},
+                        },
+                        "pronunciationText": "excellent",
+                        "quiz": {
+                            "prompt": {"en": "Choose.", "zh-Hant": "請選擇。"},
+                            "options": ["excellent", "poor"],
+                            "correctOptionIndex": 0,
+                        },
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        provenance = root / "provenance.json"
+        provenance.write_text(
+            json.dumps(
+                {
+                    "sources": [
+                        {
+                            "id": "demo",
+                            "licenses": [{"requiredNotice": "Demo attribution"}],
+                            "rights": {
+                                key: "approved"
+                                for key in (
+                                    "commercialUse",
+                                    "reproduction",
+                                    "redistribution",
+                                    "modification",
+                                    "translatedDerivatives",
+                                )
+                            },
+                        }
+                    ],
+                    "items": [
+                        {
+                            "itemID": "basic-001",
+                            "conceptKey": "expression:excellent",
+                            "sourceIDs": ["demo"],
+                            "cefr": "A2",
+                            "appLevel": "basic",
+                            "englishReviewer": "en",
+                            "zhHantReviewer": "zh",
+                            "levelReviewer": "level",
+                            "rightsReviewer": "rights",
+                            "reviewedAt": "2026-07-11",
+                            "status": "approved",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        notices = root / "notices.txt"
+        notices.write_text("Demo attribution\n", encoding="utf-8")
+        return reviewed, provenance, notices
+
     def make_enrichment_sources(self, root: Path) -> tuple[Path, Path]:
         input_dir = root / "Content/Sources/Imported"
         input_dir.mkdir(parents=True)
@@ -78,7 +156,7 @@ class VocabularySourcesTests(unittest.TestCase):
                 "headword": "excellent",
                 "partOfSpeech": "adj",
                 "cefr": None,
-                "definitions": [],
+                "definitions": ["of very high quality"],
                 "examples": [],
                 "relatedTerms": [],
                 "translations": {"zh": ["优秀"]},
@@ -353,6 +431,15 @@ class VocabularySourcesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
+            license_file = root / "Content/Sources/Raw/oewn/LICENSE.txt"
+            license_file.parent.mkdir(parents=True)
+            license_file.write_text("FULL DEMO LICENSE\n", encoding="utf-8")
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"][0]["noticeFiles"] = [
+                "Content/Sources/Raw/oewn/LICENSE.txt"
+            ]
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             draft = root / "draft.jsonl"
 
             prepare = self.run_cli(
@@ -395,22 +482,23 @@ class VocabularySourcesTests(unittest.TestCase):
             item = json.loads(seed.read_text())[0]
             self.assertEqual(item["plainExpression"], "very good")
             self.assertEqual(item["upgradedExpression"], "excellent")
-            self.assertEqual(item["meaning"]["zh-Hant"], "卓越")
+            self.assertEqual(item["meaning"]["zh-Hant"], "優秀")
             self.assertEqual(item["example"]["text"], "She shared an excellent idea.")
-            self.assertIn("卓越", item["example"]["translation"]["zh-Hant"])
+            self.assertIn("優秀", item["example"]["translation"]["zh-Hant"])
             self.assertEqual(item["quiz"]["correctOptionIndex"], 0)
             provenance_item = json.loads(provenance.read_text())["items"][0]
-            self.assertEqual(provenance_item["sourceIDs"], ["cefr", "cow", "oewn-2025"])
+            self.assertEqual(provenance_item["sourceIDs"], ["cefr", "freedict", "oewn-2025"])
             self.assertEqual(provenance_item["status"], "approved")
+            self.assertIn("FULL DEMO LICENSE", notices.read_text())
 
     def test_shared_enrichment_uses_taiwan_vocabulary(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
-            cow = input_dir / "cow.jsonl"
-            record = json.loads(cow.read_text())
-            record["headword"] = "土著上边略称"
-            cow.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+            freedict = input_dir / "freedict.jsonl"
+            record = json.loads(freedict.read_text())
+            record["translations"] = {"zh": ["土著上边略称"]}
+            freedict.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
             draft = root / "draft.jsonl"
             self.assertEqual(
                 self.run_cli(
@@ -733,6 +821,7 @@ class VocabularySourcesTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            (root / "notices.txt").write_text("", encoding="utf-8")
 
             result = self.run_cli(
                 root,
@@ -741,6 +830,8 @@ class VocabularySourcesTests(unittest.TestCase):
                 str(reviewed),
                 "--provenance",
                 str(provenance),
+                "--notices",
+                str(root / "notices.txt"),
                 "--output",
                 str(root / "seed.json"),
             )
@@ -748,64 +839,162 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("rights", result.stderr.lower())
 
+    def test_promote_checks_every_source_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reviewed, provenance, notices = self.make_promotable_bank(root)
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"].append(
+                {**manifest["sources"][0], "id": "blocked", "appUse": "blocked"}
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            data = json.loads(provenance.read_text())
+            data["sources"].append({**data["sources"][0], "id": "blocked"})
+            data["items"][0]["sourceIDs"] = ["demo", "blocked"]
+            provenance.write_text(json.dumps(data), encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "promote",
+                "--reviewed",
+                str(reviewed),
+                "--provenance",
+                str(provenance),
+                "--notices",
+                str(notices),
+                "--output",
+                str(root / "seed.json"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("blocked", result.stderr)
+
+    def test_promote_requires_every_source_notice(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reviewed, provenance, notices = self.make_promotable_bank(root)
+            notices.write_text("", encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "promote",
+                "--reviewed",
+                str(reviewed),
+                "--provenance",
+                str(provenance),
+                "--notices",
+                str(notices),
+                "--output",
+                str(root / "seed.json"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("notice", result.stderr.lower())
+
+    def test_promote_requires_cefr_to_match_the_app_level(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reviewed, provenance, notices = self.make_promotable_bank(root)
+            data = json.loads(provenance.read_text())
+            data["items"][0]["cefr"] = "C1"
+            provenance.write_text(json.dumps(data), encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "promote",
+                "--reviewed",
+                str(reviewed),
+                "--provenance",
+                str(provenance),
+                "--notices",
+                str(notices),
+                "--output",
+                str(root / "seed.json"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("CEFR", result.stderr)
+
+    def test_promote_rejects_missing_localized_content(self):
+        for field in ("example", "prompt"):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                reviewed, provenance, notices = self.make_promotable_bank(root)
+                items = json.loads(reviewed.read_text())
+                if field == "example":
+                    items[0]["example"]["translation"]["zh-Hant"] = ""
+                else:
+                    items[0]["quiz"]["prompt"]["zh-Hant"] = ""
+                reviewed.write_text(json.dumps(items), encoding="utf-8")
+
+                result = self.run_cli(
+                    root,
+                    "promote",
+                    "--reviewed",
+                    str(reviewed),
+                    "--provenance",
+                    str(provenance),
+                    "--notices",
+                    str(notices),
+                    "--output",
+                    str(root / "seed.json"),
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("required text", result.stderr.lower())
+
+    def test_promote_rejects_duplicate_upgraded_expressions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reviewed, provenance, notices = self.make_promotable_bank(root)
+            items = json.loads(reviewed.read_text())
+            items.append({**items[0], "id": "basic-002", "sortOrder": 2})
+            reviewed.write_text(json.dumps(items), encoding="utf-8")
+            data = json.loads(provenance.read_text())
+            data["items"].append(
+                {
+                    **data["items"][0],
+                    "itemID": "basic-002",
+                    "conceptKey": "expression:excellent-copy",
+                }
+            )
+            provenance.write_text(json.dumps(data), encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "promote",
+                "--reviewed",
+                str(reviewed),
+                "--provenance",
+                str(provenance),
+                "--notices",
+                str(notices),
+                "--output",
+                str(root / "seed.json"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("duplicate upgraded expression", result.stderr)
+
     def test_promote_writes_a_fully_reviewed_seed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            manifest_path = self.make_source(root)
-            manifest = json.loads(manifest_path.read_text())
-            manifest["sources"][0]["appUse"] = "approved"
-            manifest_path.write_text(json.dumps(manifest))
-            reviewed = root / "reviewed.json"
-            reviewed.write_text(
-                json.dumps(
-                    [
-                        {
-                            "id": "basic-001",
-                            "level": "basic",
-                            "sortOrder": 1,
-                            "contentLanguageCode": "en",
-                            "supportLanguageCodes": ["zh-Hant"],
-                            "plainExpression": "very good",
-                            "upgradedExpression": "excellent",
-                            "meaning": {"en": "Very good.", "zh-Hant": "非常好。"},
-                            "example": {"text": "Excellent work.", "translation": {"zh-Hant": "做得很好。"}},
-                            "pronunciationText": "excellent",
-                            "quiz": {
-                                "prompt": {"en": "Choose.", "zh-Hant": "請選擇。"},
-                                "options": ["excellent", "poor"],
-                                "correctOptionIndex": 0,
-                            },
-                        }
-                    ]
-                ),
-                encoding="utf-8",
-            )
-            provenance = root / "provenance.json"
-            provenance.write_text(
-                json.dumps(
-                    {
-                        "sources": [{"id": "demo", "rights": {key: "approved" for key in ("commercialUse", "reproduction", "redistribution", "modification", "translatedDerivatives")}}],
-                        "items": [
-                            {
-                                "itemID": "basic-001",
-                                "sourceID": "demo",
-                                "cefr": "A2",
-                                "appLevel": "basic",
-                                "englishReviewer": "en",
-                                "zhHantReviewer": "zh",
-                                "levelReviewer": "level",
-                                "rightsReviewer": "rights",
-                                "reviewedAt": "2026-07-11",
-                                "status": "approved",
-                            }
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
+            reviewed, provenance, notices = self.make_promotable_bank(root)
             output = root / "seed.json"
 
-            result = self.run_cli(root, "promote", "--reviewed", str(reviewed), "--provenance", str(provenance), "--output", str(output))
+            result = self.run_cli(
+                root,
+                "promote",
+                "--reviewed",
+                str(reviewed),
+                "--provenance",
+                str(provenance),
+                "--notices",
+                str(notices),
+                "--output",
+                str(output),
+            )
 
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())[0]["id"], "basic-001")
