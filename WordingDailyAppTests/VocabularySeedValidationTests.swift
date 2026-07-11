@@ -1,7 +1,31 @@
+import AVFAudio
 import XCTest
 @testable import WordingDailyApp
 
 final class VocabularySeedValidationTests: XCTestCase {
+    func testPronunciationUtteranceUsesIPAAndRequestedInstalledLocale() {
+        let pronunciation = VocabularyPronunciation(
+            id: "lead-us-1",
+            ipa: "liːd",
+            speechLocale: "en-US",
+            region: "US"
+        )
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("en") }
+        let utterance = PronunciationSpeaker.makeUtterance(
+            expression: "lead",
+            pronunciation: pronunciation,
+            availableVoices: voices
+        )
+
+        XCTAssertEqual(utterance.speechString, "lead")
+        XCTAssertTrue(utterance.voice?.language.hasPrefix("en") == true)
+        let key = NSAttributedString.Key(AVSpeechSynthesisIPANotationAttribute)
+        XCTAssertEqual(
+            utterance.attributedSpeechString.attribute(key, at: 0, effectiveRange: nil) as? String,
+            "liːd"
+        )
+    }
+
     func testBundledSeedHasCompleteRichEntries() throws {
         let items = try SeedLoader().loadBundledSeed()
 
@@ -62,6 +86,13 @@ final class VocabularySeedValidationTests: XCTestCase {
         XCTAssertThrowsError(try SeedValidator.validate([item])) { error in
             XCTAssertEqual(error as? SeedValidationError, .invalidPronunciationReference(item.id))
         }
+    }
+
+    func testValidationRejectsCombinedPronunciationVariants() throws {
+        var item = try XCTUnwrap(SeedLoader.sampleItems.first)
+        item.pronunciations[0].ipa = "liːd~lɛd"
+
+        XCTAssertThrowsError(try SeedValidator.validate([item]))
     }
 
     func testValidationRejectsInvalidCorrectOptionIndex() throws {

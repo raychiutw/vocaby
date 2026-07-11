@@ -1,3 +1,4 @@
+import AVFAudio
 import SwiftData
 import SwiftUI
 
@@ -187,6 +188,7 @@ private struct LibraryDetailView: View {
     @State private var progress: WordProgress?
     @State private var errorMessage: String?
     @State private var isRestoringSavedState = false
+    @State private var speechSynthesizer = AVSpeechSynthesizer()
 
     private let persistenceService = ProgressPersistenceService()
 
@@ -204,28 +206,13 @@ private struct LibraryDetailView: View {
 
     var body: some View {
         List {
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(item.seedItem.upgradedExpression)
-                        .font(.title2.weight(.semibold))
-                    Text(item.seedItem.plainExpression)
-                        .foregroundStyle(.secondary)
-                    Text(item.seedItem.primarySense.example.text)
-                        .foregroundStyle(.secondary)
-                    Text(localized(item.seedItem.primarySense.example.translation))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 8)
-            }
-
-            Section("library.detail.definition") {
-                Text(item.seedItem.primarySense.meaning["en"] ?? "")
-                if supportLanguageCode != "en" {
-                    Text(localized(item.seedItem.primarySense.meaning))
-                        .foregroundStyle(.secondary)
-                }
-            }
+            VocabularyEntryContentView(
+                item: item.seedItem,
+                senseID: item.seedItem.primarySenseID,
+                supportLanguageCode: supportLanguageCode,
+                showsAdditionalSenses: true,
+                synthesizer: speechSynthesizer
+            )
 
             Section {
                 Toggle(isOn: $isSaved) {
@@ -279,10 +266,6 @@ private struct LibraryDetailView: View {
             isSaved = progress?.isSaved ?? false
             errorMessage = String(localized: "library.save.error")
         }
-    }
-
-    private func localized(_ values: [String: String]) -> String {
-        values[supportLanguageCode] ?? values.values.first ?? ""
     }
 }
 

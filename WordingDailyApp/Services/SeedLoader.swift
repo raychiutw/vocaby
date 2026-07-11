@@ -167,8 +167,9 @@ enum SeedValidator {
               item.pronunciations.allSatisfy({ pronunciation in
                   !pronunciation.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
                       !pronunciation.ipa.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                      pronunciation.ipa == pronunciation.ipa
-                          .trimmingCharacters(in: CharacterSet(charactersIn: "/[] ")) &&
+                      pronunciation.ipa.rangeOfCharacter(
+                          from: CharacterSet(charactersIn: "/[]~")
+                      ) == nil &&
                       pronunciation.speechLocale.hasPrefix("en-")
               }) else {
             throw SeedValidationError.missingRequiredField(item.id)

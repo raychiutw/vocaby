@@ -371,7 +371,7 @@ struct QuizRunView<Completion: View>: View {
 
                 if question.mode == .listeningChoice {
                     Button {
-                        speak(question.item.upgradedExpression)
+                        speak(question)
                     } label: {
                         Label("practice.audio.replay", systemImage: "speaker.wave.2")
                             .frame(minWidth: 44, minHeight: 44)
@@ -449,6 +449,14 @@ struct QuizRunView<Completion: View>: View {
                     }
                 }
             }
+
+            VocabularyEntryContentView(
+                item: feedback.question.item,
+                senseID: feedback.question.senseID,
+                supportLanguageCode: feedback.question.supportLanguageCode,
+                showsAdditionalSenses: true,
+                synthesizer: speechSynthesizer
+            )
         }
     }
 
@@ -571,10 +579,15 @@ struct QuizRunView<Completion: View>: View {
         resetDeadline()
     }
 
-    private func speak(_ text: String) {
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        speechSynthesizer.speak(utterance)
+    private func speak(_ question: QuizQuestion) {
+        guard let pronunciationID = question.selectedSense.pronunciationIDs.first,
+              let pronunciation = question.item.pronunciations.first(where: { $0.id == pronunciationID }) else {
+            return
+        }
+        speechSynthesizer.speak(PronunciationSpeaker.makeUtterance(
+            expression: question.item.upgradedExpression,
+            pronunciation: pronunciation
+        ))
     }
 }
 
@@ -632,36 +645,17 @@ struct DailyPracticeView: View {
     private func learnView(item: VocabularySeedItem, total: Int) -> some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("\(learnIndex + 1)/\(total)")
-                        .font(.headline.monospacedDigit())
-
-                    Text(verbatim: item.upgradedExpression)
-                        .font(.title2.bold())
-
-                    Text(verbatim: item.plainExpression)
-                        .foregroundStyle(.secondary)
-
-                    Text(verbatim: localized(item.primarySense.meaning))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(verbatim: item.primarySense.example.text)
-                        Text(verbatim: localized(item.primarySense.example.translation))
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.subheadline)
-
-                    Button {
-                        speak(item.upgradedExpression)
-                    } label: {
-                        Label("practice.pronunciation.accessibility", systemImage: "speaker.wave.2")
-                            .frame(minWidth: 44, minHeight: 44)
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel(Text("practice.pronunciation.accessibility"))
-                }
-                .padding(.vertical, 8)
+                Text("\(learnIndex + 1)/\(total)")
+                    .font(.headline.monospacedDigit())
             }
+
+            VocabularyEntryContentView(
+                item: item,
+                senseID: item.primarySenseID,
+                supportLanguageCode: supportLanguageCode,
+                showsAdditionalSenses: true,
+                synthesizer: speechSynthesizer
+            )
         }
         .safeAreaInset(edge: .bottom) {
             Button {
@@ -767,13 +761,4 @@ struct DailyPracticeView: View {
         }
     }
 
-    private func localized(_ values: [String: String]) -> String {
-        values[supportLanguageCode] ?? values["en"] ?? values.values.first ?? ""
-    }
-
-    private func speak(_ text: String) {
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        speechSynthesizer.speak(utterance)
-    }
 }

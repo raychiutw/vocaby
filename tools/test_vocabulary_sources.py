@@ -20,6 +20,20 @@ SIMILARITY_SCRIPT = Path(__file__).with_name("definition_similarity.swift")
 
 
 class VocabularySourcesTests(unittest.TestCase):
+    def test_bare_ipa_selects_one_reading_from_wiktextract_variants(self):
+        cases = {
+            "/t͡ʃæns/[t͡ʃʰæns]": "t͡ʃæns",
+            "ˈæk.tʰɚ]~[ˈæk.tʰɹ̩": "ˈæk.tʰɚ",
+            "[ˈʍɪi̯l]~/ˈw̥iːl/": "ˈʍɪi̯l",
+            "/fjʉw]": "fjʉw",
+            "dɛəns~deəns": "dɛəns",
+            "liːd": "liːd",
+        }
+
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(vocabulary_sources.bare_ipa(source), expected)
+
     def test_definition_similarity_prefers_the_matching_sense(self):
         payload = "\n".join(
             json.dumps(item)

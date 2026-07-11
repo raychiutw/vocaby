@@ -77,6 +77,34 @@ final class LocalizationCoverageTests: XCTestCase {
         }
     }
 
+    func testRichVocabularyStringsHaveEnglishAndTraditionalChineseTranslations() throws {
+        let catalog = try loadCatalog()
+        let keys = [
+            "vocabulary.pronunciation",
+            "vocabulary.meaning.english",
+            "vocabulary.meaning.support",
+            "vocabulary.example",
+            "vocabulary.additionalSenses",
+            "vocabulary.region.general",
+            "vocabulary.pos.noun",
+            "vocabulary.pos.verb",
+            "vocabulary.pos.adjective",
+            "vocabulary.pos.adverb",
+            "vocabulary.pos.preposition",
+            "vocabulary.pos.conjunction",
+            "vocabulary.pos.interjection",
+            "vocabulary.pos.pronoun",
+            "vocabulary.pos.determiner",
+            "vocabulary.pos.phrase"
+        ]
+
+        for key in keys {
+            let value = try XCTUnwrap(catalog.strings[key], "\(key) is missing")
+            XCTAssertFalse(value.localizations["en"]?.stringUnit.value.isEmpty ?? true)
+            XCTAssertFalse(value.localizations["zh-Hant"]?.stringUnit.value.isEmpty ?? true)
+        }
+    }
+
     private func loadCatalog() throws -> StringCatalog {
         let testFile = URL(fileURLWithPath: #filePath)
         let projectRoot = testFile

@@ -508,9 +508,11 @@ def parse_ili_map(path: Path, source_id: str) -> Iterable[dict]:
 
 def bare_ipa(value: str) -> str:
     value = value.strip()
-    if len(value) >= 2 and (value[0], value[-1]) in {("/", "/"), ("[", "]")}:
-        value = value[1:-1].strip()
-    return value
+    if value.startswith(("/", "[")):
+        closing = "/" if value[0] == "/" else "]"
+        if (end := value.find(closing, 1)) > 1:
+            return value[1:end].strip()
+    return re.split(r"\s*~\s*", value, maxsplit=1)[0].strip(" /[]")
 
 
 ARPABET_IPA = {
