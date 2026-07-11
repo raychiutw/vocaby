@@ -28,13 +28,16 @@ struct PracticeConfiguration: Equatable {
 
 struct QuizQuestion: Identifiable, Equatable {
     let id: String
-    let itemID: String
+    let item: VocabularySeedItem
+    let senseID: String
+    let supportLanguageCode: String
     let mode: PracticeMode
     let prompt: String
     let options: [String]
     let correctAnswer: String
-    let spokenText: String?
 
+    var itemID: String { item.id }
+    var selectedSense: VocabularySense { item.senses.first { $0.id == senseID }! }
     var correctOptionIndex: Int? { options.firstIndex(of: correctAnswer) }
 }
 
@@ -219,12 +222,13 @@ struct QuizEngine {
 
             return QuizQuestion(
                 id: "\(item.id)-\(questionMode.rawValue)",
-                itemID: item.id,
+                item: item,
+                senseID: item.primarySenseID,
+                supportLanguageCode: supportLanguageCode,
                 mode: questionMode,
                 prompt: prompt(for: item, mode: questionMode, supportLanguageCode: supportLanguageCode),
                 options: options,
-                correctAnswer: correctAnswer,
-                spokenText: questionMode == .listeningChoice ? item.upgradedExpression : nil
+                correctAnswer: correctAnswer
             )
         }
     }

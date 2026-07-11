@@ -370,16 +370,14 @@ struct QuizRunView<Completion: View>: View {
                     .font(.headline)
 
                 if question.mode == .listeningChoice {
-                    if let spokenText = question.spokenText {
-                        Button {
-                            speak(spokenText)
-                        } label: {
-                            Label("practice.audio.replay", systemImage: "speaker.wave.2")
-                                .frame(minWidth: 44, minHeight: 44)
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel(Text("practice.audio.replay"))
+                    Button {
+                        speak(question.item.upgradedExpression)
+                    } label: {
+                        Label("practice.audio.replay", systemImage: "speaker.wave.2")
+                            .frame(minWidth: 44, minHeight: 44)
                     }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(Text("practice.audio.replay"))
                 } else {
                     Text(verbatim: question.prompt)
                         .font(.title2.bold())

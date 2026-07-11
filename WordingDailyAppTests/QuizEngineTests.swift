@@ -155,6 +155,22 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertEqual(Set(question.options).count, 4)
     }
 
+    func testQuestionCarriesPrimarySenseAndSupportLanguage() throws {
+        let item = try XCTUnwrap(SeedLoader.sampleItems.first)
+        let question = try XCTUnwrap(QuizEngine().makeQuestions(
+            for: [item],
+            candidates: SeedLoader.sampleItems,
+            mode: .meaningChoice,
+            supportLanguageCode: "zh-Hant"
+        ).first)
+
+        XCTAssertEqual(question.item, item)
+        XCTAssertEqual(question.itemID, item.id)
+        XCTAssertEqual(question.senseID, item.primarySenseID)
+        XCTAssertEqual(question.selectedSense, item.primarySense)
+        XCTAssertEqual(question.supportLanguageCode, "zh-Hant")
+    }
+
     func testListeningChoiceCarriesSpeechTextWithoutShowingAnswer() throws {
         let items = makeItems(count: 5)
         var random = IncrementingRandomNumberGenerator()
@@ -164,7 +180,7 @@ final class QuizEngineTests: XCTestCase {
         ).first)
 
         XCTAssertEqual(question.prompt, "")
-        XCTAssertEqual(question.spokenText, items[0].upgradedExpression)
+        XCTAssertEqual(question.item, items[0])
         XCTAssertEqual(question.correctAnswer, items[0].upgradedExpression)
     }
 
@@ -412,12 +428,13 @@ final class QuizEngineTests: XCTestCase {
     func testOptionPersistenceIndicesUseVisibleOptionPositions() {
         let question = QuizQuestion(
             id: "choice-expressionChoice",
-            itemID: "choice",
+            item: SeedLoader.sampleItems[0],
+            senseID: SeedLoader.sampleItems[0].primarySenseID,
+            supportLanguageCode: "zh-Hant",
             mode: .expressionChoice,
             prompt: "prompt",
             options: ["option A", "correct", "option C", "selected"],
-            correctAnswer: "correct",
-            spokenText: nil
+            correctAnswer: "correct"
         )
 
         XCTAssertEqual(
@@ -443,12 +460,13 @@ final class QuizEngineTests: XCTestCase {
         let correctAnswer = "correct \(id)"
         return QuizQuestion(
             id: "\(id)-\(mode.rawValue)",
-            itemID: id,
+            item: SeedLoader.sampleItems[0],
+            senseID: SeedLoader.sampleItems[0].primarySenseID,
+            supportLanguageCode: "zh-Hant",
             mode: mode,
             prompt: "prompt \(id)",
             options: mode == .spelling ? [] : ["wrong \(id)", correctAnswer],
-            correctAnswer: correctAnswer,
-            spokenText: mode == .listeningChoice ? correctAnswer : nil
+            correctAnswer: correctAnswer
         )
     }
 
