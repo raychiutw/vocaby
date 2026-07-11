@@ -23,3 +23,10 @@ not require `prepare-enrichment`, `build-reviewed`, generated notices, or a
 single post-adapter path. That old behavior fails the two-format eval because an
 agent could add separate source-specific enrichment branches or ask the user to
 supply already reviewed artifacts.
+
+Before the rich-review update on 2026-07-11, eval 5 also failed 10 of 11 static
+expectations. The old skill mentioned OEWN but did not define target-only
+Wiktextract snapshotting, structured `pronunciations` and `senses`, CMUdict
+comment stripping, the three-sense limit, per-sense pronunciation IDs,
+quotation/audio and usage-note exclusions, `audit-reviewed`, or review JSONL
+Xcode exclusion. This is the RED baseline for the current skill revision.

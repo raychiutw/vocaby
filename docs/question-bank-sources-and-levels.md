@@ -17,9 +17,9 @@ advice.
   in a new App build.
 - Users can browse and practice the official bank but cannot edit, import, or
   replace it.
-- `Content/Sources/Raw`, generated imports/reports, the source manifest, and
-  `Content/VocabularyProvenance.json` are repository-only and must not be added
-  to an Xcode target.
+- `Content/Sources/Raw`, generated imports/reports, `Content/Reviews`, the
+  source manifest, and `Content/VocabularyProvenance.json` are repository-only
+  and must not be added to an Xcode target.
 
 ## Current Bundled Bank
 
@@ -29,17 +29,18 @@ Audit target: `WordingDailyApp/Resources/VocabularySeed.json` on 2026-07-11.
 |---|---|---:|
 | `basic` | A1-A2 | 980 |
 | `intermediate` | B1-B2 | 1,630 |
-| `advanced` | C1-C2 | 2,830 |
-| **Total** | A1-C2 | **5,440** |
+| `advanced` | C1-C2 | 2,611 |
+| **Total** | A1-C2 | **5,221** |
 
-All 5,440 IDs, upgraded expressions, and concept keys are unique. Sort order is
+All 5,221 IDs, upgraded expressions, and concept keys are unique. Sort order is
 contiguous within each level. The 90 project-owned legacy items were cleaned and
-preserved; the other 5,350 items were selected from approved local source data
-and passed the shared enrichment and promotion gates.
+preserved; 5,131 reviewed items were selected from approved local source data
+and passed the shared enrichment and promotion gates. The review run rejected
+219 source slots that lacked a verified or composable pronunciation.
 
 ## Source Inventory and Shipping Decisions
 
-Thirteen exact upstream snapshots and their evidence are tracked under
+Fourteen exact upstream snapshots and their evidence are tracked under
 `Content/Sources/Raw`. A source being public or locally imported does not make it
 eligible to ship.
 
@@ -52,12 +53,13 @@ eligible to ship.
 | `oewn-2025` | English senses, definitions, examples, lexical relations | approved |
 | `tatoeba-eng-cmn-2026-07-04` | context-aligned example translations | approved |
 | `freedict-eng-zho-2025.11.23` | retained Chinese dictionary research; unused in this release | approved |
-| `cmudict-7479086` | pronunciation research | reference only |
+| `cmudict-7479086` | pronunciation cross-check; inline comments stripped before comparison | approved |
 | `bsl-1.2` | research candidate list | blocked |
 | `gcide-0.54` | dictionary research | blocked |
 | `nawl-1.2` | research candidate list | blocked |
 | `ngsl-1.2` | research candidate list | blocked |
 | `tsl-1.2` | research candidate list | blocked |
+| `wiktextract-en-2026-07-09` | target-only English Wiktionary POS, gloss, translation, example, and IPA evidence | approved |
 
 The shipping provenance catalog also contains `wording-daily-original` for the
 90 project-owned legacy items. Exact versions, canonical URLs, hashes, license
@@ -102,10 +104,20 @@ The common pipeline must keep the intended sense aligned across:
 - upgraded expression and plain expression;
 - English meaning and Taiwan Traditional Chinese meaning;
 - example and example translation;
-- pronunciation text;
+- one to three verified pronunciations and their locale/region labels;
+- one to three common senses, each with POS and references to its applicable
+  pronunciation IDs;
 - English and zh-Hant prompts;
 - correct option and distractor generation;
 - exact CEFR, App level, source references, and reviewer fields.
+
+Wiktextract is first snapshot-filtered to current seed targets with
+`snapshot-wiktextract`; this avoids committing a full dump. Its manifest records
+the exact dump/extractor identity and CC BY-SA evidence. Quotations, audio,
+images, and externally licensed or fair-use media are excluded. CMUdict is
+cross-check evidence only after stripping inline comments; OEWN plus the ILI map
+anchors the intended sense. A usage note is never promoted as a meaning or an
+example translation.
 
 ## Three-Level Model
 
@@ -151,23 +163,42 @@ python3 tools/vocabulary_sources.py report
 python3 tools/vocabulary_sources.py prepare-enrichment \
   --input-dir Content/Sources/Imported \
   --existing-seed Content/Baselines/legacy-90.json \
-  --output /tmp/wording-draft.jsonl
+  --current-seed WordingDailyApp/Resources/VocabularySeed.json \
+  --output /tmp/vocabulary-rich-review-queue.jsonl
+python3 tools/review_vocabulary.py prepare \
+  --queue /tmp/vocabulary-rich-review-queue.jsonl \
+  --cmudict Content/Sources/Imported/cmudict-7479086.jsonl \
+  --work-dir /tmp/wording-rich-review --batch-size 20
+python3 tools/review_vocabulary.py run-local \
+  --work-dir /tmp/wording-rich-review --workers 1
+python3 tools/review_vocabulary.py build-reviewed \
+  --work-dir /tmp/wording-rich-review \
+  --output Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
+  --rejection-report docs/vocabulary-rejections-2026-07-11.md
+python3 tools/vocabulary_sources.py audit-reviewed \
+  --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl
 python3 tools/vocabulary_sources.py build-reviewed \
-  --input /tmp/wording-draft.jsonl \
+  --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
   --existing-seed Content/Baselines/legacy-90.json \
-  --seed-output /tmp/wording-seed.json \
-  --provenance-output /tmp/wording-provenance.json \
-  --notices-output /tmp/wording-notices.txt
+  --seed-output /tmp/VocabularySeed.rich.json \
+  --provenance-output /tmp/VocabularyProvenance.rich.json \
+  --notices-output /tmp/ThirdPartyNotices.rich.txt
 python3 tools/vocabulary_sources.py promote \
-  --reviewed /tmp/wording-seed.json \
-  --provenance /tmp/wording-provenance.json \
-  --notices /tmp/wording-notices.txt \
-  --output /tmp/VocabularySeed.json
+  --reviewed /tmp/VocabularySeed.rich.json \
+  --provenance /tmp/VocabularyProvenance.rich.json \
+  --notices /tmp/ThirdPartyNotices.rich.txt \
+  --output /tmp/VocabularySeed.promoted.json
 ```
 
 For a new format, add one failing adapter test, implement only raw-to-canonical
-normalization, and then rejoin this same workflow. The reusable operational guide
-is `.agents/skills/wording-daily-vocabulary-import/SKILL.md`.
+normalization, and then rejoin this same workflow. Canonical source records may
+carry `pronunciations` and `senses`; the shared review stage selects no more than
+three useful senses and requires POS, bilingual meanings, full bilingual
+examples, and valid per-sense pronunciation IDs. The resulting review JSONL is
+tracked for maintainers but never linked to the app. Agent or local language
+service output is not approved until `audit-reviewed`, deterministic
+seed/provenance/notices builds, promotion, and release review pass. The reusable
+operational guide is `.agents/skills/wording-daily-vocabulary-import/SKILL.md`.
 
 ## Release Gates
 
@@ -177,8 +208,9 @@ Promotion fails before writing the output unless all of these hold:
 - every contributing source has approved rights and every required notice exists;
 - seed and provenance IDs are unique and match one-to-one;
 - concept keys and upgraded expressions are unique;
-- required English and zh-Hant meanings, examples, translations, prompts, and
-  pronunciation text are non-empty;
+- every item has one to three valid pronunciations and one to three senses; each
+  sense has a POS, valid pronunciation IDs, English and zh-Hant meanings, and
+  complete bilingual example sentences;
 - exact CEFR maps to the declared App level;
 - sort order is unique, ascending, and contiguous within each level;
 - correct quiz answers and pronunciation align with the item;
@@ -186,7 +218,8 @@ Promotion fails before writing the output unless all of these hold:
 - generated seed, provenance, and notices are byte-deterministic;
 - generated questions contain four unique same-level options, and each generated
   example contains the target expression or an accepted inflection;
-- the built App contains only the seed and notices, not raw/import/provenance data.
+- the built App contains only the seed and notices, not raw/import/review/
+  provenance data.
 
 Automated gates prove structure, traceability, and deterministic behavior. The
 shared review in `docs/content-review.md` separately checks natural English,
@@ -199,7 +232,8 @@ usefulness.
   local TTS, notifications, and widget flows without a network or account.
 - Every displayed word, meaning, example, prompt, and answer comes from the
   bundled bank.
-- All 5,440 items have traceable approved source records and common review fields.
+- All 5,221 approved items have traceable approved source records and common
+  review fields; every rejected source slot is documented.
 - A clean two-run import/build produces byte-identical canonical and shipping
   artifacts.
 - App resources contain no source snapshots, imports, reports, source manifest,

@@ -22,17 +22,22 @@ sense alignment, Taiwan usage, and weak questions that schemas cannot prove.
 
 ## Full-Bank Mechanical Review
 
-- [ ] `verify`, importer tests, and two clean deterministic imports pass.
+- [ ] `verify`, importer/review tests, and two clean deterministic imports pass.
 - [ ] `prepare-enrichment` fills every requested level quota without duplicates.
-- [ ] `build-reviewed` emits seed, provenance, and notices from the same draft.
+- [ ] `review_vocabulary.py build-reviewed` emits the tracked review JSONL and
+  rejection report; `audit-reviewed` passes before seed generation.
+- [ ] `vocabulary_sources.py build-reviewed` emits seed, provenance, and notices
+  from that same reviewed JSONL.
 - [ ] `promote` passes rights, notice, reviewer, language, CEFR, sort-order,
   concept, expression, quiz-answer, and one-to-one provenance gates.
-- [ ] Every item has non-empty English and zh-Hant meanings, example,
-  translation, pronunciation text, and localized prompts.
+- [ ] Every item has one to three verified pronunciations and one to three
+  senses. Every sense has POS, valid pronunciation IDs, non-empty English and
+  zh-Hant meanings, an English full-sentence example, a faithful zh-Hant
+  full-sentence translation, and localized prompts.
 - [ ] Every contributing source is `appUse: approved`; reference-only and blocked
   sources contribute no shipping fields.
 - [ ] Built App resources contain the seed and notices, but no `Content/Sources`,
-  imports, reports, source manifest, or provenance file.
+  `Content/Reviews`, imports, reports, source manifest, or provenance file.
 
 ## Content Review by Level and Source
 
@@ -69,7 +74,9 @@ For every reviewed item, verify:
 - [ ] The full-sentence zh-Hant translation is natural and faithful, whether it
   comes from an aligned Tatoeba pair or the local maintainer translation stage.
 - [ ] English and zh-Hant prompts ask the intended question without revealing the answer.
-- [ ] Pronunciation and the correct quiz option equal the upgraded expression.
+- [ ] Each sense references only an existing pronunciation ID; selected IPA is
+  complete, locale/region labels are supported by evidence, and the correct quiz
+  option equals the upgraded expression.
 - [ ] Same-level distractors are plausible but not alternative correct answers.
 - [ ] The item can be understood in under 30 seconds.
 
@@ -82,6 +89,9 @@ Reject an item before promotion when it contains:
 - obscure thesaurus English, a non-expression fragment, or unusable proper name;
 - a plain/upgraded pair that does not teach an actual upgrade;
 - a vague, malformed, or sense-mismatched example;
+- more than three senses, an unknown pronunciation ID, malformed IPA, a
+  Wiktextract quotation/audio field, or a usage-note translation promoted as
+  teaching content;
 - a prompt that reveals the answer or allows multiple correct answers;
 - duplicate concept keys or normalized upgraded expressions;
 - missing source reference, required notice, approved right, reviewer field, or
@@ -124,7 +134,7 @@ Date:
 - Levels: 980 basic, 1,630 intermediate, 2,611 advanced
 - Rejected source slots: 219, all for missing verified or composable pronunciation
 - Multiple-sense items: 2,191
-- Multiple-pronunciation items: 2,643
+- Multiple-pronunciation items: 2,631
 - Complete teaching-sentence wrappers: 2,682
 
 Mechanical results:
@@ -135,8 +145,8 @@ Mechanical results:
 - Non-standard region mislabeled as US/UK audit: 0.
 - Translation request/output IDs: exact one-to-one match.
 - Two clean builds produced byte-identical Seed, Provenance, and Notices.
-- Seed SHA-256: `7b96b5f59713ecab76407a9be84ace7836c7286c4995df0dc6bae930bbea8b44`.
-- Provenance SHA-256: `f70f60cae3a49a8d9a7e1dd34d7c540a3ae098892838b427909bbbaca5c8a8e6`.
+- Seed SHA-256: `58ed8c4162e89c5c76ff08dc3137cc4f319857910ab81c74249826cc151a149d`.
+- Provenance SHA-256: `85c46c2eaff277d0b234c354ef1a419821bcffc66b3ad1c622b56300c7fa8fd0`.
 - Notices SHA-256: `1587f422bcfdf560dece186bc693fd025056fa2607811c7c8d1dab609230ca91`.
 
 Deterministic samples reviewed: first, middle, and last item in each level,

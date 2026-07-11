@@ -2,73 +2,85 @@
 
 ## Final gate
 
-- Current version reviewed: 2026.7.11
+- Checked: 2026-07-11 rich-review revision
 - Overall status: PASS
 - Blocking issues: none
-- Baseline: the pre-skill workflow had no executable importer or manifest, and the prior skill stopped before common enrichment/review; see `../assets/evals/baseline.md`.
-- Functional evidence:
-  - `python3 -m unittest tools/test_vocabulary_sources.py`: 31 tests passed, including normalized-value tie ordering across 16 Python hash seeds, multi-file sources, exact ILI alignment, reviewed sense overrides, target-bearing examples, and offline definition similarity.
-  - `python3 tools/vocabulary_sources.py verify`: 13 sources passed checksum, size, evidence, and Xcode-exclusion checks.
-  - Full import report: 863,197 canonical records and 583,073 normalized unique headwords; changed adapters produced byte-identical JSONL on repeated runs.
-  - Shared enrichment/review/promotion: 5,440 seed and provenance items; 980 basic, 1,630 intermediate, and 2,830 advanced.
-  - Generated seed, provenance, and notices are deterministic; the built App excludes raw/import/report/manifest/provenance data.
-- Skill evidence:
-  - strict format check: 0 errors, 0 warnings.
-  - quick validation, OpenClaw frontmatter, reference, and unreferenced-file audits: passed.
-  - package creation and `unzip -t`: passed.
+- Baseline: eval 5 against the previous skill was RED: 10 of 11 required
+  Wiktextract rich-review requirements were absent. The revised skill passes all
+  11 static expectations; the exact baseline is retained in
+  `../assets/evals/baseline.md`.
+
+## Evidence / commands run
+
+- [x] `python3 /Users/ray/.agents/skills/skill-creator-advanced/scripts/format_check.py --strict .agents/skills/wording-daily-vocabulary-import` — 0 errors, 0 warnings.
+- [x] `python3 /Users/ray/.agents/skills/skill-creator-advanced/scripts/quick_validate.py .agents/skills/wording-daily-vocabulary-import` — passed.
+- [x] `python3 /Users/ray/.agents/skills/skill-creator-advanced/scripts/audit_openclaw_frontmatter.py .agents/skills/wording-daily-vocabulary-import` — 0 issues.
+- [x] `python3 /Users/ray/.agents/skills/skill-creator-advanced/scripts/audit_skill_references.py .agents/skills/wording-daily-vocabulary-import` — 0 issues.
+- [x] `python3 /Users/ray/.agents/skills/skill-creator-advanced/scripts/audit_unreferenced_files.py .agents/skills/wording-daily-vocabulary-import` — 0 issues.
+- [x] `python3 /Users/ray/.agents/skills/skill-creator-advanced/scripts/prepare_eval_workspace.py .agents/skills/wording-daily-vocabulary-import --workspace /tmp/wording-daily-vocabulary-import-workspace --iteration iteration-2026-07-11-rich --baseline-label old_skill` — paired workspace prepared outside the repository.
+- [x] `package_skill.py` plus `unzip -t` — `wording-daily-vocabulary-import.skill` packaged and archive-integrity check passed in `/tmp/wording-daily-vocabulary-import-package`.
+- [x] `python3 -m unittest tools/test_vocabulary_sources.py tools/test_review_vocabulary.py` — 54 tests passed.
+- [x] `python3 tools/vocabulary_sources.py verify` — 14 sources verified.
+- [x] `python3 tools/vocabulary_sources.py audit-reviewed --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl` — 5,221 approved: 980 basic, 1,630 intermediate, 2,611 advanced.
+
+The paired-agent benchmark is not claimed: delegated/subagent execution is
+disabled in this environment. The recorded RED/GREEN static contract and the
+deterministic source/review gates are the available verification evidence.
 
 ## Format checks
 
-- [x] Folder name is kebab-case.
-- [x] `SKILL.md` exists with valid YAML frontmatter.
-- [x] Frontmatter includes name, decision-boundary description, date version, homepage, license, and single-line JSON metadata.
-- [x] Frontmatter contains no angle brackets.
-- [x] This checklist is present and current.
-- [x] Every file under `references/` and `assets/` is referenced.
-- [x] No README or mutable cache exists inside the skill folder.
+- [x] Folder name is kebab-case; `SKILL.md` has valid YAML frontmatter and
+  single-line JSON metadata.
+- [x] The description routes source import, rich review JSONL, Wiktextract,
+  CMUdict, OEWN, and promotion work without claiming generic spreadsheet, UI,
+  runtime download, account, or sync work.
+- [x] All files under `references/` and `assets/` are referenced; no README,
+  mutable cache, missing path, or orphaned file exists in the skill folder.
+- [x] This checklist records this revision's actual commands and outcomes.
 
 ## Requirement and policy checks
 
-- [x] Eight Traditional Chinese, English, and mixed should-trigger cases are listed.
-- [x] Eight unrelated and near-miss should-not-trigger cases are listed.
-- [x] The description distinguishes this workflow from spreadsheet, scrape, and skillify work.
-- [x] The skill has one primary job: the repeatable maintainer source-to-reviewed-bank pipeline.
-- [x] Source-specific adapters end at canonical JSONL; translation, example, question, review, notices, and promotion stages are shared.
-- [x] Every workflow stage states an action and mechanical validation.
-- [x] Integrity, encoding, parser, rights, review, promotion, and Xcode-exclusion errors have actionable stops.
-- [x] The four-section output contract is explicit.
-- [x] Direct-action, ask-first, and stop policies are explicit.
-- [x] Codex is the primary host and filesystem-agent portability is documented.
-- [x] App runtime network, login, credentials, sync, and remote-bank paths are forbidden.
-- [x] Generated state stays in ignored repository directories, outside the skill folder and Xcode target.
+- [x] One primary job: source-specific raw adapters end at canonical JSONL, then
+  every source shares enrichment, review, audit, deterministic build, notices,
+  and promotion.
+- [x] Target-only `snapshot-wiktextract` records the official source and license
+  evidence; quotations, audio, images, and outside media are excluded.
+- [x] The canonical rich contract requires structured pronunciations and no more
+  than three senses; every sense has POS, English/zh-Hant meaning, complete
+  bilingual example, and valid pronunciation IDs.
+- [x] CMUdict inline comments are stripped before pronunciation comparison; OEWN
+  plus the ILI map remains the sense cross-check.
+- [x] Agent/local language-service output is unapproved until `audit-reviewed`,
+  deterministic build/promotion, and release review pass. Usage-note
+  translations cannot become shipped teaching content.
+- [x] Raw snapshots and review JSONL are maintainer artifacts; neither, nor
+  provenance, is in an Xcode target or App bundle.
+- [x] The App remains fully local and offline: no runtime network, login,
+  credential, sync, cloud, or remote-bank path is permitted.
 
-## Functional checks
+## Functional and current-bank checks
 
-- [x] Wrong checksums fail before parsing.
-- [x] Manifest-declared Latin-1 imports without replacement characters.
-- [x] Normalized duplicate source rows merge deterministically.
-- [x] Rights not fully approved fail before output.
-- [x] A fully reviewed approved fixture promotes successfully.
-- [x] All retained CSV, TSV, dict, XLSX ZIP, JSON ZIP, gzip, bzip2, TEI TAR, GCIDE TAR, ILI-map, and multi-file snapshots import.
-- [x] Candidate records remain distinct from shipping seed content.
-- [x] Two different source formats rejoin one common `prepare-enrichment`, `build-reviewed`, and `promote` path.
-- [x] Promotion requires reviewed seed, one-to-one provenance, and complete notices.
+- [x] Wrong checksums fail before parsing; manifest-declared Latin-1 imports
+  without replacement characters; canonical imports are deterministic.
+- [x] CMUdict comments/variants and Wiktextract target filtering, POS, senses,
+  and IPA have regression coverage.
+- [x] Reviewed items fail closed for incomplete bilingual senses, unknown
+  pronunciation IDs, malformed IPA, invalid levels, review status, or missing
+  source evidence.
+- [x] Current bank has 2,191 multi-sense items, 2,631 multi-pronunciation items,
+  at most two selected senses, and at most three pronunciations per item.
+- [x] 219 source slots lacking verified/composable pronunciation are documented
+  in `docs/vocabulary-rejections-2026-07-11.md`, not silently replaced.
+- [x] Current resource hashes: Seed
+  `58ed8c4162e89c5c76ff08dc3137cc4f319857910ab81c74249826cc151a149d`,
+  Provenance `85c46c2eaff277d0b234c354ef1a419821bcffc66b3ad1c622b56300c7fa8fd0`,
+  Notices `1587f422bcfdf560dece186bc693fd025056fa2607811c7c8d1dab609230ca91`.
 
 ## Common error checks
 
-- [x] No missing local skill references.
-- [x] No orphaned skill files.
-- [x] No contradictory workflow/tool/follow-through rules.
-- [x] No unresolved placeholders in user-facing instructions.
-- [x] No hidden side effects bypass promotion or rights approval.
-- [x] Checksums are never rewritten merely to make verification pass.
-
-## Maintenance and ROI
-
-- [x] Date version is present.
-- [x] Four eval scenarios and regression gates are saved, including separate adapters with one shared post-adapter pipeline.
-- [x] Baseline and GREEN evidence are retained.
-- [x] The long workflow is split into identity, declaration, verification, adapter import, shared enrichment, shared review, promotion, and QA gates.
-- [x] The skill reuses one repository program instead of duplicating parser code.
-- [x] ROI is positive: the prior manual process became one repeatable command path; added iOS runtime dependencies: zero.
-- [x] Paired agent benchmark is intentionally omitted because this run disallowed delegated/subagent work; deterministic functional and static gates cover release behavior.
+- [x] No source-specific post-adapter translation, example, question, review, or
+  promotion branch is allowed.
+- [x] Checksums and rights fields are never rewritten merely to make a release
+  pass.
+- [x] Reference-only or blocked sources cannot contribute shipping fields.
+- [x] Promotion remains a distinct, explicit shipping-bank side effect.

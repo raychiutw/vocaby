@@ -62,6 +62,27 @@
         "Uses the same content, rights, provenance, notices, and promote gates for both sources.",
         "Keeps raw, imported, report, and provenance files out of the iOS target."
       ]
+    },
+    {
+      "id": 5,
+      "name": "wiktextract-rich-review",
+      "prompt": "用一份新的 Wiktextract 來源補強現有題庫，並用 CMUdict 與 OEWN 交叉驗證。保留同字多讀音、每筆最多三個常用詞義，每個詞義都要有詞性、中英文意思與完整雙語例句；原始檔與 review JSONL 要簽入版控但不能進 Xcode target。請把這套流程做成可重跑的匯入。",
+      "expected_output": "A target-only Wiktextract snapshot and adapter feeding the shared structured review pipeline, with pronunciation and sense cross-checks, full-bank audit, deterministic promotion, and proof that raw/review artifacts stay outside the App target.",
+      "files": [
+        "Content/Sources/source-manifest.json",
+        "tools/vocabulary_sources.py",
+        "tools/review_vocabulary.py",
+        "WordingDailyApp.xcodeproj/project.pbxproj"
+      ],
+      "expectations": [
+        "Snapshots only target Wiktextract entries and records official source, license evidence, bytes, and checksum.",
+        "Ends the source-specific adapter at canonical structured pronunciations and senses before the shared review path.",
+        "Cross-checks Wiktextract with CMUdict and OEWN, stripping CMUdict inline comments before comparison.",
+        "Keeps at most three common senses with part of speech, English and Traditional Chinese meanings, complete bilingual examples, and pronunciation IDs on every sense.",
+        "Excludes Wiktextract quotations and audio, and never promotes a usage-note translation as a meaning or example translation.",
+        "Treats Agent output as unapproved until audit-reviewed and release review pass, then uses deterministic build-reviewed and promote gates.",
+        "Proves raw snapshots and review JSONL are tracked for maintainers but absent from every Xcode target and App bundle."
+      ]
     }
   ]
 }
