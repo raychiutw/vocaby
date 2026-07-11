@@ -1,6 +1,6 @@
 ---
 name: wording-daily-vocabulary-import
-description: Import or re-import one external vocabulary source into Wording Daily's repository-only candidate pool. 適用於使用者要求匯入新詞庫, 新增字庫來源, 重跑來源檔, verify vocabulary checksum, parse CSV TSV XLSX ZIP TAR TEI JSON or CMUdict, generate candidate JSONL, or promote an already reviewed local bank. Verifies provenance and license evidence, runs the deterministic importer, reports counts, and keeps raw/generated source data out of the iOS target. Do not use for runtime downloads, login/sync work, ordinary seed copy edits, generic scraping, or bypassing editorial and rights review.
+description: Use when importing or re-importing an external Wording Daily vocabulary source, parsing CSV TSV XLSX ZIP TAR TEI JSON or CMUdict, generating candidate JSONL, enriching translations examples and questions, reviewing provenance and notices, or promoting a local bundled bank. 適用於新增詞庫、重跑來源檔、補強翻譯例句題目與審核上架；不適用於 App runtime 下載、登入同步、一般試算表整理或略過權利審核。
 version: 2026.7.11
 homepage: https://github.com/raychiutw/wording-daily
 license: Proprietary
@@ -9,16 +9,17 @@ metadata: {"author":"Wording Daily"}
 
 # Wording Daily vocabulary import
 
-This skill owns the maintainer workflow that turns one external source snapshot
-into reproducible, repository-only candidate JSONL. It does not turn third-party
-rows directly into shipping lessons. The app remains offline and reads only its
-reviewed bundled seed.
+This skill owns the maintainer pipeline that turns external source snapshots into
+reproducible candidate JSONL and, when shipping was requested, passes candidates
+through one shared enrichment, review, provenance, notice, and promotion path.
+The app remains offline and reads only its reviewed bundled seed.
 
 ## Single responsibility
 
-- Primary job: verify and normalize one declared external vocabulary source with the repository's deterministic importer.
-- Not this skill's job: download data at app runtime, invent translations/examples, approve licenses, or design quiz UI.
-- Split / handoff rule: use a browser or spreadsheet skill only to obtain or inspect an upstream artifact, then return here for manifest, import, report, and release gates.
+- Primary job: run the repository's repeatable source-to-reviewed-bank pipeline.
+- Source-specific responsibility ends at canonical candidate JSONL. Translation, example, question, provenance, notice, review, and promotion logic is shared across every source.
+- Not this skill's job: download data at app runtime, approve ambiguous licenses, or design quiz UI.
+- Split / handoff rule: use a browser or spreadsheet skill only to obtain or inspect an upstream artifact, then return here for manifest, adapter, shared enrichment, review, and release gates.
 
 <role>
 Act as the Wording Daily content-pipeline maintainer. Preserve exact upstream
@@ -31,7 +32,8 @@ Use when:
 - adding a new dictionary, word list, pronunciation list, or lexical dataset;
 - re-running a source after its file/version/checksum changes;
 - checking source integrity, candidate counts, duplicate headwords, or build exclusion;
-- promoting a separately reviewed seed and provenance file.
+- enriching canonical candidates into App-shaped translations, examples, and questions;
+- reviewing and promoting a local seed, provenance manifest, and notice file.
 
 Do not use when:
 - changing UI, quiz behavior, notification behavior, or SwiftData;
@@ -42,11 +44,13 @@ Do not use when:
 Inputs:
 - repository root containing `tools/vocabulary_sources.py`;
 - one raw source file plus canonical source/version/license evidence;
-- for promotion only, reviewed seed JSON and provenance JSON.
+- for enrichment, canonical JSONL plus the committed legacy baseline;
+- for promotion, reviewed seed JSON, provenance JSON, and notices text.
 
 Successful output:
 - the source snapshot is declared and checksum-verified;
-- a repeatable one-source command produces deterministic candidate JSONL;
+- a repeatable source adapter produces deterministic canonical candidate JSONL;
+- all later fields are produced and reviewed by the common pipeline;
 - current app-use status and all blocking gates are explicit;
 - `Content/Sources` remains absent from the Xcode project.
 </decision_boundary>
@@ -61,10 +65,10 @@ Successful output:
    - Triggers: "這個 XLSX 更新了，重跑字庫", "refresh the OEWN archive".
    - Inputs: new exact file/version and reviewed license changes.
    - Done: old checksum fails before metadata changes; new snapshot imports deterministically.
-3. **Promote reviewed content**
-   - Triggers: "把審核完成的批次放入 App", "promote the reviewed local bank".
-   - Inputs: complete reviewed seed and provenance.
-   - Done: every rights/reviewer/schema gate passes and only the requested bundled seed changes.
+3. **Build and promote reviewed content**
+   - Triggers: "補強翻譯例句與題目後放入 App", "promote the reviewed local bank".
+   - Inputs: canonical imports, legacy baseline, complete rights evidence.
+   - Done: the common enrichment/review path emits seed, provenance, and notices; every promotion gate passes and only approved runtime resources are bundled.
 
 ## Routing boundaries
 
@@ -72,7 +76,7 @@ Successful output:
 - `spreadsheets` may inspect XLSX/CSV but does not own source rights, checksums, canonical JSONL, or promotion.
 - `scrape` may retrieve an official page but does not own vocabulary normalization or App gates.
 - `skillify` captures browser flows; it does not import lexical data.
-- Negative triggers: generic CSV cleanup, app runtime downloads, translation writing, UI work, and login/sync tasks.
+- Negative triggers: generic CSV cleanup, unrelated translation writing, app runtime downloads, UI work, and login/sync tasks.
 
 ## Language and host coverage
 
@@ -109,30 +113,41 @@ Step 4: Import exactly one source
 - Run `python3 tools/vocabulary_sources.py import-source <source-id>`.
 - Run the same command again and compare output checksums when changing an adapter.
 - Treat JSONL as candidate evidence only. Do not edit `VocabularySeed.json` in this step.
+- Stop source-specific code here. Do not add a per-source translator, example writer, question generator, reviewer, or promotion branch.
 
 Step 5: Report and review
 - Run `python3 tools/vocabulary_sources.py report`.
 - Report source records, normalized unique headwords, CEFR coverage, zh-Hant coverage, and current `appUse` decision.
 - Explain that counts include overlaps, inflections, senses, non-English records, and unsuitable material.
 
-Step 6: Promote only separately reviewed content
-- Run `promote` only when the user asked for shipping-bank work and supplied complete reviewed seed and provenance files.
-- Require every source right, item status, reviewer field, language field, ID match, sort order, and duplicate gate to pass.
+Step 6: Prepare the shared enrichment batch
+- Only when shipping-bank work was requested, run `prepare-enrichment` with `Content/Sources/Imported` and `Content/Baselines/legacy-90.json`.
+- Select quotas by App level through command arguments; do not encode source-specific field generation in an adapter.
+- Review the draft for intended English sense, source references, CEFR, translation match, duplicates, and Taiwan learner usefulness. Reject ambiguous candidates before continuing.
+
+Step 7: Build shared reviewed artifacts
+- Run `build-reviewed` once for the complete draft. It is the common Agent-assisted pass for Taiwan Traditional Chinese, examples, prompts, quiz fields, provenance, reviewer fields, and third-party notices.
+- Require source references and `appUse: approved` for every shipping field. Reference-only sources may support research but may not contribute definitions, translations, examples, questions, or levels.
+- Review the generated seed and provenance together. Do not claim that adapter output itself was editorially approved.
+
+Step 8: Promote reviewed artifacts
+- Run `promote --reviewed <seed> --provenance <provenance> --notices <notices> --output <output>` only after the common content review passes.
+- Require every source right, required notice, item status, reviewer field, language field, ID match, sort order, CEFR mapping, quiz-answer alignment, and duplicate gate to pass.
 - A manifest source marked `reference_only` or `blocked` cannot be promoted. Stop and report the exact gate; never weaken it to finish the task.
 
-Step 7: Final QA
+Step 9: Final QA
 - Run `python3 -m unittest tools/test_vocabulary_sources.py`.
 - Run `python3 tools/vocabulary_sources.py verify`.
 - Run `git diff --check` and inspect staged paths. Raw snapshots and evidence may be committed; generated `Imported/` and `Reports/` must remain ignored.
-- If App content changed, also run the repository's Swift tests and content-review checklist.
+- If App content changed, run the repository's Swift tests, the content-review checklist, and a release build. Inspect the built App bundle to confirm it contains the seed and notices but no `Raw`, `Imported`, source manifest, or provenance file.
 </workflow>
 
 <output_contract>
 Return these four short sections in order:
 1. Source: ID, version, canonical URL, raw path.
-2. Import result: record count, unique headword count when available, output path.
-3. Gates: integrity, rights/app-use, editorial review, Xcode exclusion.
-4. Verification: exact commands and pass/fail result.
+2. Import result: record count, unique headword count when available, canonical JSONL path.
+3. Shared pipeline: enrichment/review artifact paths and item counts, or why this phase was not requested.
+4. Gates and verification: integrity, rights/app-use, notices, editorial review, promotion, Xcode exclusion, exact commands, and pass/fail result.
 
 Never describe candidate rows as approved App lessons. If blocked, name the
 failed gate and leave shipping files unchanged.
@@ -141,14 +156,16 @@ failed gate and leave shipping files unchanged.
 <tool_rules>
 - Use `tools/vocabulary_sources.py` as the single executable source of truth; do not duplicate importer logic inside this skill.
 - Use Python standard library only unless a new format proves impossible to parse safely.
+- Keep adapters limited to raw-format parsing and canonical normalization. Route every canonical record through the same `prepare-enrichment`, `build-reviewed`, review, and `promote` commands.
 - Source downloads are maintainer-time actions. App code and build resources must contain no downloader, endpoint, token, or credential.
+- The App never reads `Content/Sources/Raw`, `Imported`, `Reports`, `source-manifest.json`, or `Content/VocabularyProvenance.json`.
 - Writes to raw snapshots, manifest, tests, and reviewed artifacts are in scope when the user asks to add/import a source.
-- Promotion is a distinct side effect and requires an explicit shipping-bank request plus complete reviewed inputs.
+- Promotion is a distinct side effect and requires an explicit shipping-bank request plus complete reviewed seed, provenance, and notices.
 - Never rewrite a checksum merely to make verification pass.
 </tool_rules>
 
 <default_follow_through_policy>
-- Directly do: inspect local files, compute checksums, add a declared source, verify, import, report, test, and commit when version-control inclusion was requested.
+- Directly do: inspect local files, compute checksums, add a declared source, verify, import, report, run the shared enrichment/review path when shipping was requested, test, and commit when version-control inclusion was requested.
 - Ask first: only when source identity/license is ambiguous or promotion would overwrite reviewed App content without an explicit request.
 - Stop and report: checksum/version mismatch, missing evidence, unapproved app use, failed review fields, ambiguous duplicates, or Xcode inclusion of source folders.
 </default_follow_through_policy>
@@ -164,6 +181,7 @@ Should trigger:
 - import the new CMUdict snapshot
 - 產生來源候選報告
 - promote the fully reviewed vocabulary batch
+- 用兩種不同來源格式匯入後走同一套補強與審核流程
 
 Should not trigger:
 - 修改 Today 頁面的按鈕
@@ -181,6 +199,7 @@ Functional gates:
 - same input creates byte-identical JSONL;
 - unapproved rights fail before seed output;
 - all ten retained snapshots verify and import;
+- different raw formats use separate adapters but identical post-adapter enrichment/review/promotion stages;
 - Xcode project contains no `Content/Sources` path.
 
 Baseline evidence and the paired eval prompts live in

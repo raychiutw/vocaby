@@ -1,101 +1,113 @@
 # Content Review Checklist - Wording Daily
 
-Use this checklist before TestFlight and after changing `VocabularySeed.json`.
+Use this shared checklist after `build-reviewed`, before `promote`, and before
+TestFlight whenever `VocabularySeed.json` changes. It applies to every source
+after canonical JSONL; do not create source-specific review rules.
 
-The goal is to catch content that tests cannot prove: unnatural Taiwanese
-Traditional Chinese, obscure thesaurus English, weak expression upgrades, and
-quiz distractors that make the answer too obvious.
+Automated tests prove structure and traceability. This review catches naturalness,
+sense alignment, Taiwan usage, and weak questions that schemas cannot prove.
 
 ## Review Build
 
 - Date:
 - Commit:
-- Reviewer:
-- Seed file: `WordingDailyApp/Resources/VocabularySeed.json`
+- Agent/content reviewer:
+- Human release reviewer:
+- Draft:
+- Seed:
+- Provenance:
+- Notices:
 - Bank version:
-- Provenance manifest: `Content/VocabularyProvenance.json`
+- Item count:
 
-Required scope:
+## Full-Bank Mechanical Review
 
-- Review all 90 bundled seed items before TestFlight.
-- Review by level, in `sortOrder`.
-- Treat this as a human gate. Automated seed validation only proves structure.
+- [ ] `verify`, importer tests, and two clean deterministic imports pass.
+- [ ] `prepare-enrichment` fills every requested level quota without duplicates.
+- [ ] `build-reviewed` emits seed, provenance, and notices from the same draft.
+- [ ] `promote` passes rights, notice, reviewer, language, CEFR, sort-order,
+  concept, expression, quiz-answer, and one-to-one provenance gates.
+- [ ] Every item has non-empty English and zh-Hant meanings, example,
+  translation, pronunciation text, and localized prompts.
+- [ ] Every contributing source is `appUse: approved`; reference-only and blocked
+  sources contribute no shipping fields.
+- [ ] Built App resources contain the seed and notices, but no `Content/Sources`,
+  imports, reports, source manifest, or provenance file.
 
-## Batch Coverage
+## Content Review by Level and Source
 
-- [ ] Basic `basic-001` to `basic-030`
-- [ ] Intermediate `intermediate-001` to `intermediate-030`
-- [ ] Advanced `advanced-001` to `advanced-030`
+Review in deterministic level/sort order. Inspect all rejected or corrected
+records plus a representative sample from each level and each contributing source
+combination. Increase the sample until no new repeated issue appears.
+
+- [ ] Basic: 1,030 items represented.
+- [ ] Intermediate: 1,630 items represented.
+- [ ] Advanced: 2,740 items represented.
+- [ ] Legacy project-owned items represented.
+- [ ] CEFR-J + FreeDict + OEWN enriched items represented.
+- [ ] First, middle, last, and deterministic random samples recorded per level.
 
 Evidence:
 
-- Generated same-level candidate matrix:
-- Ambiguity reviewer:
+- Sample IDs:
+- Repeated issues found:
+- Shared rule or data correction applied:
+- Clean rerun result:
 
 ## Per-Item Checks
 
-For every item, verify:
+For every reviewed item, verify:
 
-- [ ] The item has an approved source, redistribution/adaptation rights, and any
-  required attribution or indication of changes.
-- [ ] The provenance row matches the seed ID and records exact CEFR, rubric scores,
-  reviewer IDs, and review date.
-- [ ] The plain expression is something a learner might actually say.
+- [ ] Source references identify the exact approved evidence used for this sense.
+- [ ] Exact CEFR and App level agree.
+- [ ] Plain and upgraded expressions express a useful, teachable relationship.
 - [ ] The upgraded expression is natural English, not obscure synonym swapping.
-- [ ] The Traditional Chinese explanation sounds native to Taiwan.
-- [ ] The explanation teaches usage, not only translation.
-- [ ] The English definition matches the upgraded expression.
-- [ ] The example sentence is realistic and shows the expression in context.
-- [ ] The Traditional Chinese example translation is natural and accurate.
-- [ ] Expression choice tests plain-to-upgraded usage without revealing the answer.
-- [ ] Meaning choice tests the intended localized sense.
-- [ ] Listening choice can be answered from local TTS without showing the answer.
-- [ ] Spelling accepts the intended expression and no materially different answer.
-- [ ] Same-level dynamic distractors are plausible but clearly wrong after reading the prompt.
-- [ ] The candidate matrix records every same-level item whose answer could also
-  plausibly satisfy this prompt, and each ambiguity is resolved before approval.
+- [ ] The English definition matches the intended expression sense.
+- [ ] Taiwan Traditional Chinese is natural, accurate, and uses Taiwan wording.
+- [ ] The example is realistic and demonstrates the same intended sense.
+- [ ] The example translation is natural and faithful.
+- [ ] English and zh-Hant prompts ask the intended question without revealing the answer.
+- [ ] Pronunciation and the correct quiz option equal the upgraded expression.
+- [ ] Same-level distractors are plausible but not alternative correct answers.
 - [ ] The item can be understood in under 30 seconds.
 
-## Reject Immediately
+## Reject and Fix in the Shared Stage
 
-Reject the item and fix it before TestFlight if any of these appear:
+Reject an item before promotion when it contains:
 
-- Machine-translated Traditional Chinese, including unnatural word order.
-- Mainland-only phrasing when a Taiwan user would expect a different wording.
-- English that sounds like GRE trivia or thesaurus output.
-- A plain/upgraded pair that is only a single-word dictionary translation.
-- Distractors that are obviously unrelated or accidentally also correct.
-- Examples that are too vague to teach usage.
-- Any content that feels judgmental, guilt-driven, or motivational instead of useful.
-- Missing, unknown, non-commercial-only, no-derivatives, or incompatible
-  share-alike source rights.
-- A copied or adapted item without a stable source-entry reference and attribution.
-- A CEFR/app-level assignment based only on word length, a frequency rank, or an
-  automated score.
-- A reused ID whose meaning or concept changed, or a removed ID without an explicit
-  local-data migration.
+- machine-like Traditional Chinese, Mainland-only wording, or mixed scripts;
+- an unrelated or zero-overlap translation for the selected English sense;
+- obscure thesaurus English, a non-expression fragment, or unusable proper name;
+- a plain/upgraded pair that does not teach an actual upgrade;
+- a vague, malformed, or sense-mismatched example;
+- a prompt that reveals the answer or allows multiple correct answers;
+- duplicate concept keys or normalized upgraded expressions;
+- missing source reference, required notice, approved right, reviewer field, or
+  exact CEFR;
+- any content produced by a blocked or reference-only source.
+
+Fix repeated issues in the common selector, enrichment, review rule, or source
+rights data, add a failing regression test, and regenerate the whole batch. Do
+not patch one generated seed row or add a source-specific post-adapter exception.
 
 ## Review Notes
 
-Record item IDs and the required fix. Do not approve the batch until every item
-below is fixed or explicitly accepted by the reviewer.
-
-| Item ID | Issue | Fix Needed | Status |
+| Item ID | Issue | Shared Fix | Status |
 |---|---|---|---|
 | | | | |
 
 ## Sign-Off
 
-- [ ] All 90 items were reviewed.
-- [ ] Every rejected item has been fixed or explicitly accepted.
-- [ ] The seed JSON still passes automated validation after fixes.
-- [ ] Seed and provenance contain the same IDs and the bank version was updated.
-- [ ] Every item has approved rights and an exact CEFR band in the documented app-level range.
-- [ ] Each level can generate four unique same-level options for every choice mode and supported language.
-- [ ] Duplicate upgraded expressions and duplicate concepts were resolved before the approved baseline.
-- [ ] Required attribution output is complete and deterministic.
-- [ ] This review used native Taiwan Traditional Chinese judgment, not machine translation alone.
+- [ ] Every automated gate passed after the final correction.
+- [ ] No unresolved repeated issue remains in the review samples.
+- [ ] Seed, provenance, and notices were regenerated together and match the
+  committed bank.
+- [ ] Taiwan Traditional Chinese received native-speaker release review; an Agent
+  review identifier is not represented as human sign-off.
+- [ ] The App passed offline, localization, Dynamic Type, and source-notice checks.
 
-Reviewer:
+Agent/content reviewer:
+
+Human release reviewer:
 
 Date:

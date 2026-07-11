@@ -16,3 +16,10 @@ The user correction that exposed the process failure was: "利用一個個外部
 The GREEN condition is one documented command path for every source, checksum
 and license evidence validation before parsing, deterministic output, explicit
 promotion gates, and proof that source folders are not in the Xcode project.
+
+Before the 2026-07-11 update, the skill stopped each source at candidate JSONL
+and described translation, example, and question work as out of scope. It did
+not require `prepare-enrichment`, `build-reviewed`, generated notices, or a
+single post-adapter path. That old behavior fails the two-format eval because an
+agent could add separate source-specific enrichment branches or ask the user to
+supply already reviewed artifacts.

@@ -45,6 +45,23 @@
         "Keeps the imported candidate file available for offline editorial work.",
         "States what reviewed artifacts are required before promotion."
       ]
+    },
+    {
+      "id": 4,
+      "name": "two-formats-one-shared-pipeline",
+      "prompt": "新增一份 TEI TAR 英漢字典和一份 XLSX ZIP 等級表。兩種格式各自解析，但後面的繁中翻譯、例句、題目、來源審核與放進 App 必須共用同一流程。",
+      "expected_output": "Two minimal source adapters ending at canonical JSONL, followed by one shared enrichment, review, provenance, notices, and promotion path.",
+      "files": [
+        "Content/Sources/source-manifest.json",
+        "tools/vocabulary_sources.py"
+      ],
+      "expectations": [
+        "Uses a separate minimal adapter for each real raw format.",
+        "Stops all source-specific behavior at canonical candidate JSONL.",
+        "Runs prepare-enrichment and build-reviewed once over the canonical pool.",
+        "Uses the same content, rights, provenance, notices, and promote gates for both sources.",
+        "Keeps raw, imported, report, and provenance files out of the iOS target."
+      ]
     }
   ]
 }
