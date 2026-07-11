@@ -4,19 +4,59 @@ CC-CEDICT (2026-07-11 download)
 Source: https://cc-cedict.org/editor/editor.php?handler=Download
 License: CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/
 Contains adapted data from CC-CEDICT, published by MDBG and community contributors under CC BY-SA 4.0. The adapted vocabulary data remains available under the same license.
-Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.
 
 CEFR-J Wordlist (1.6)
 Source: https://www.cefr-j.org/download.html
 License: CEFR-J download terms https://www.cefr-j.org/download.html
 The CEFR-J Wordlist Version 1.6. Compiled by Yukio Tono, Tokyo University of Foreign Studies. Retrieved from https://www.cefr-j.org/download.html on 2026-07-11.
-Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.
+
+CMU Pronouncing Dictionary (git 74790861f652b15e4ac49015a90074ad62a27690)
+Source: https://github.com/cmusphinx/cmudict
+License: CMUdict permissive license https://github.com/cmusphinx/cmudict/blob/master/LICENSE
+Pronunciation data is adapted from the CMU Pronouncing Dictionary, Copyright (C) 1993-2015 Carnegie Mellon University, under its permissive redistribution license.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.
+
+Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+   The contents of this file are deemed to be source code.
+
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+
+This work was supported in part by funding from the Defense Advanced
+Research Projects Agency, the Office of Naval Research and the National
+Science Foundation of the United States of America, and by member
+companies of the Carnegie Mellon Sphinx Speech Consortium. We acknowledge
+the contributions of many volunteers to the expansion and improvement of
+this dictionary.
+
+THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ``AS IS'' AND
+ANY EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY
+NOR ITS EMPLOYEES BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Chinese Open WordNet (0.9)
 Source: https://bond-lab.github.io/cow/
 License: Chinese Open WordNet license https://bond-lab.github.io/cow/
 Chinese Open Wordnet Copyright 2013, 2014 by Francis Bond and Shan Wang. Adapted by Wording Daily with the required copyright and license notice preserved.
-Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.
 
 Copyright: 2013, 2014 Francis Bond, Shan Wang
 
@@ -53,7 +93,7 @@ Open English WordNet (2025 edition, git dc343f2683279ecbb13fab4e2fd778d7b162d287
 Source: https://github.com/globalwordnet/english-wordnet
 License: Princeton WordNet license and CC BY 4.0 https://github.com/globalwordnet/english-wordnet/blob/main/LICENSE.md
 Based on Princeton WordNet and Open English WordNet. Copyright (c) 2019-present, The Open English WordNet Team. Adapted under CC BY 4.0.
-Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.
 
 This resource is derived from Princeton WordNet under the WordNet License
 and further developed under the Creative Commons Attribution 4.0 International License.
@@ -494,7 +534,7 @@ Open Multilingual Wordnet ILI Map (git e3b5ac103f86b743a1c0e3079675aaf0ef2cbf88)
 Source: https://github.com/globalwordnet/OMW
 License: MIT https://github.com/globalwordnet/OMW/blob/e3b5ac103f86b743a1c0e3079675aaf0ef2cbf88/LICENSE
 Uses the Open Multilingual Wordnet ILI mapping, Copyright (c) 2016-2020 Global WordNet Association, under the MIT License.
-Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.
 
 The MIT License (MIT)
 
@@ -522,4 +562,10 @@ Tatoeba English-Mandarin Parallel Sentences (2026-07-04 export)
 Source: https://tatoeba.org/en/downloads
 License: CC BY 2.0 FR https://creativecommons.org/licenses/by/2.0/fr/
 Selected English and Mandarin sentence pairs are from Tatoeba (https://tatoeba.org) and are used under CC BY 2.0 FR.
-Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.
+
+English Wiktionary data extracted by Wiktextract (enwiktionary dump 2026-07-06, extracted 2026-07-09 with wiktextract e62056b and wikitextprocessor e7887d5)
+Source: https://kaikki.org/dictionary/rawdata.html
+License: CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/
+Contains adapted English Wiktionary data extracted by Wiktextract from the 2026-07-06 enwiktionary dump, used under CC BY-SA 4.0. Wording Daily selected, normalized, translated, and reformatted the data; the adapted vocabulary data remains available under CC BY-SA 4.0.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.

@@ -15,9 +15,26 @@ python3 tools/vocabulary_sources.py report
 python3 tools/vocabulary_sources.py prepare-enrichment \
   --input-dir Content/Sources/Imported \
   --existing-seed Content/Baselines/legacy-90.json \
-  --output /tmp/wording-draft.jsonl
+  --current-seed WordingDailyApp/Resources/VocabularySeed.json \
+  --output /tmp/vocabulary-rich-review-queue.jsonl
+python3 tools/review_vocabulary.py prepare \
+  --queue /tmp/vocabulary-rich-review-queue.jsonl \
+  --cmudict Content/Sources/Imported/cmudict-7479086.jsonl \
+  --work-dir /tmp/wording-rich-review --batch-size 20
+python3 tools/review_vocabulary.py draft-source-enrichment \
+  --work-dir /tmp/wording-rich-review
+python3 tools/review_vocabulary.py finish-enrichment \
+  --work-dir /tmp/wording-rich-review
+python3 tools/review_vocabulary.py seed-source-translations \
+  --work-dir /tmp/wording-rich-review
+python3 tools/review_vocabulary.py translate-local \
+  --work-dir /tmp/wording-rich-review
+python3 tools/review_vocabulary.py build-reviewed \
+  --work-dir /tmp/wording-rich-review \
+  --output Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
+  --rejection-report docs/vocabulary-rejections-2026-07-11.md
 python3 tools/vocabulary_sources.py build-reviewed \
-  --input /tmp/wording-draft.jsonl \
+  --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
   --existing-seed Content/Baselines/legacy-90.json \
   --seed-output /tmp/wording-seed.json \
   --provenance-output /tmp/wording-provenance.json \
@@ -27,7 +44,7 @@ python3 tools/vocabulary_sources.py promote \
   --provenance /tmp/wording-provenance.json \
   --notices /tmp/wording-notices.txt \
   --output /tmp/VocabularySeed.json
-python3 -m unittest tools/test_vocabulary_sources.py
+python3 -m unittest tools/test_vocabulary_sources.py tools/test_review_vocabulary.py
 ```
 
 Generated candidate JSONL belongs under `Imported/` and is ignored by Git. It is
@@ -45,8 +62,13 @@ FreeDict remains an approved retained source but does not contribute to this
 release; reference-only and blocked sources cannot contribute shipping fields.
 
 The maintainer pipeline requires Python 3, `opencc` with `s2twp.json`, and Xcode's
-macOS Swift toolchain for the offline `NaturalLanguage` sense-similarity check.
-None of these tools or source snapshots is linked into the iOS app.
+macOS Swift toolchain. `NaturalLanguage` performs local sense matching. The rich
+review stage can use the checked-in Apple language helper with an already
+installed English-to-Traditional-Chinese Translation language pair; it checkpoints
+every 200 segments and resumes by ID. Foundation Models support targeted maintainer
+corrections but are not required for a deterministic full-bank build. None of
+these tools, language services, review files, or source snapshots is linked into
+the iOS app. The shipping App remains fully offline.
 
 See `.agents/skills/wording-daily-vocabulary-import/SKILL.md` for the repeatable
 one-source workflow. Licensing decisions in the manifest are engineering gates,

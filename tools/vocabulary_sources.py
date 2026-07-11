@@ -513,6 +513,293 @@ def bare_ipa(value: str) -> str:
     return value
 
 
+ARPABET_IPA = {
+    "AA": "ɑ", "AE": "æ", "AH": "ʌ", "AO": "ɔ", "AW": "aʊ",
+    "AY": "aɪ", "B": "b", "CH": "tʃ", "D": "d", "DH": "ð",
+    "EH": "ɛ", "ER": "ɚ", "EY": "eɪ", "F": "f", "G": "g",
+    "HH": "h", "IH": "ɪ", "IY": "i", "JH": "dʒ", "K": "k",
+    "L": "l", "M": "m", "N": "n", "NG": "ŋ", "OW": "oʊ",
+    "OY": "ɔɪ", "P": "p", "R": "ɹ", "S": "s", "SH": "ʃ",
+    "T": "t", "TH": "θ", "UH": "ʊ", "UW": "u", "V": "v",
+    "W": "w", "Y": "j", "Z": "z", "ZH": "ʒ",
+}
+ARPABET_VOWELS = {
+    "AA", "AE", "AH", "AO", "AW", "AY", "EH", "ER", "EY", "IH",
+    "IY", "OW", "OY", "UH", "UW",
+}
+
+
+def arpabet_to_ipa(value: str) -> str:
+    phones = value.split()
+    vowel_count = sum(re.sub(r"\d", "", phone) in ARPABET_VOWELS for phone in phones)
+    output = ""
+    syllable_start = 0
+    for phone in phones:
+        base = re.sub(r"\d", "", phone)
+        if base not in ARPABET_IPA:
+            raise SourceError(f"unsupported ARPABET phone: {phone}")
+        stress = phone[-1] if phone[-1:].isdigit() else None
+        if base in ARPABET_VOWELS:
+            if stress in {"1", "2"} and vowel_count > 1:
+                mark = "ˈ" if stress == "1" else "ˌ"
+                output = output[:syllable_start] + mark + output[syllable_start:]
+                syllable_start += 1
+            output += "ə" if base == "AH" and stress == "0" else ARPABET_IPA[base]
+            syllable_start = len(output)
+        else:
+            output += ARPABET_IPA[base]
+    return output
+
+
+def expression_slug(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", normalized(value)).strip("-") or "expression"
+
+
+def review_ipa(value: str) -> str:
+    value = re.sub(r"[\s()]", "", bare_ipa(value))
+    if value.startswith(("-", "–", "—")) or value.endswith(("-", "–", "—")):
+        return ""
+    return value
+
+
+def review_pronunciations(
+    expression: str,
+    candidates: list[dict],
+    cmudict: dict[str, list[dict]],
+) -> tuple[list[dict], list[dict]]:
+    priority = {
+        "US": 0,
+        "General-American": 0,
+        "UK": 1,
+        "Received-Pronunciation": 1,
+        None: 2,
+    }
+    selected: list[tuple[str, str, str, dict]] = []
+    seen: set[str] = set()
+    standard_regions = set(priority)
+    for candidate in sorted(
+        (
+            item
+            for item in candidates
+            if item.get("notation") == "ipa"
+            and item.get("region") in standard_regions
+            and review_ipa(item.get("value", ""))
+        ),
+        key=lambda item: (
+            priority.get(item.get("region"), 3),
+            review_ipa(item["value"]),
+            item.get("sourceRef", {}).get("sourceEntryRef", ""),
+        ),
+    ):
+        ipa = review_ipa(candidate["value"])
+        if ipa in seen:
+            continue
+        seen.add(ipa)
+        region = candidate.get("region")
+        if region == "General-American":
+            region = "US"
+        elif region == "Received-Pronunciation":
+            region = "UK"
+        locale = "en-GB" if region == "UK" else "en-US"
+        selected.append((ipa, locale, region or "General", candidate.get("sourceRef", {})))
+        if len(selected) == 3:
+            break
+
+    if not selected:
+        arpabet = next(
+            (
+                item
+                for item in candidates
+                if item.get("notation") == "arpabet" and item.get("value")
+            ),
+            None,
+        )
+        if arpabet:
+            selected.append(
+                (arpabet_to_ipa(arpabet["value"]), "en-US", "US", arpabet.get("sourceRef", {}))
+            )
+
+    if not selected:
+        words = re.findall(r"[a-z]+(?:'[a-z]+)?", normalized(expression))
+        if not words or any(word not in cmudict for word in words):
+            return [], []
+        values = [cmudict[word][0] for word in words]
+        selected.append(
+            (
+                " ".join(arpabet_to_ipa(value["value"]) for value in values),
+                "en-US",
+                "US",
+                {},
+            )
+        )
+        references = merged_list(
+            value.get("sourceRef", {}) for value in values if value.get("sourceRef")
+        )
+    else:
+        references = merged_list(
+            reference for *_, reference in selected if reference
+        )
+
+    slug = expression_slug(expression)
+    pronunciations = [
+        {
+            "id": f"{slug}-{locale.removeprefix('en-').casefold()}-{index}",
+            "ipa": ipa,
+            "speechLocale": locale,
+            "region": region,
+        }
+        for index, (ipa, locale, region, _) in enumerate(selected, 1)
+    ]
+    return pronunciations, references
+
+
+def canonical_part_of_speech(value: str | None) -> str:
+    token = normalized(value or "")
+    return {
+        "n": "noun",
+        "noun": "noun",
+        "v": "verb",
+        "verb": "verb",
+        "a": "adjective",
+        "s": "adjective",
+        "adj": "adjective",
+        "adjective": "adjective",
+        "r": "adverb",
+        "adv": "adverb",
+        "adverb": "adverb",
+        "prep": "preposition",
+        "preposition": "preposition",
+        "conj": "conjunction",
+        "conjunction": "conjunction",
+        "interj": "interjection",
+        "interjection": "interjection",
+        "pron": "pronoun",
+        "pronoun": "pronoun",
+        "det": "determiner",
+        "determiner": "determiner",
+    }.get(token, "phrase")
+
+
+def review_senses(packet: dict) -> list[dict]:
+    target_definition = normalized(packet.get("definition", ""))
+    target_pos = canonical_part_of_speech(packet.get("partOfSpeech"))
+    blocked_tags = {
+        "archaic", "dated", "dialectal", "historical", "humorous", "obsolete",
+        "rare", "uncommon",
+    }
+    candidates = [
+        sense
+        for sense in packet.get("candidateSenses", [])
+        if isinstance(sense, dict)
+        and sense.get("id")
+        and sense.get("glosses")
+        and not (blocked_tags & {normalized(tag) for tag in sense.get("tags", [])})
+    ]
+    candidates.sort(
+        key=lambda sense: (
+            0
+            if target_definition
+            in {normalized(gloss) for gloss in sense.get("glosses", [])}
+            else 1,
+            0 if canonical_part_of_speech(sense.get("partOfSpeech")) == target_pos else 1,
+            0
+            if sense.get("sourceRef", {}).get("sourceID", "").startswith("oewn")
+            else 1,
+            0 if sense.get("examples") else 1,
+            sense["id"],
+        )
+    )
+    exact = next(
+        (
+            sense
+            for sense in candidates
+            if target_definition
+            in {normalized(gloss) for gloss in sense.get("glosses", [])}
+        ),
+        None,
+    )
+    if exact:
+        candidates.remove(exact)
+        primary = exact
+        selected = [primary]
+    else:
+        fallback_pos = target_pos
+        if fallback_pos == "phrase":
+            fallback_pos = next(
+                (
+                    canonical_part_of_speech(sense.get("partOfSpeech"))
+                    for sense in candidates
+                    if canonical_part_of_speech(sense.get("partOfSpeech")) != "phrase"
+                ),
+                fallback_pos,
+            )
+        selected = [
+            {
+                "id": f"{packet['id']}-sense-1",
+                "partOfSpeech": fallback_pos,
+                "glosses": [packet.get("definition") or packet["target"]],
+                "examples": [packet.get("example", "")],
+                "tags": [],
+                "sourceRef": next(iter(packet.get("sourceRefs", [])), {}),
+            }
+        ]
+
+    used_meanings = {normalized(selected[0]["glosses"][0])}
+    used_parts = {canonical_part_of_speech(selected[0].get("partOfSpeech"))}
+    for candidate in sorted(
+        (
+            sense
+            for sense in candidates
+            if sense.get("sourceRef", {}).get("sourceID", "").startswith("oewn")
+        ),
+        key=lambda sense: (
+            0 if canonical_part_of_speech(sense.get("partOfSpeech")) not in used_parts else 1,
+            0
+            if sense.get("sourceRef", {}).get("sourceID", "").startswith("oewn")
+            else 1,
+            0 if sense.get("examples") else 1,
+            sense["id"],
+        ),
+    ):
+        meaning = normalized(candidate["glosses"][0])
+        part = canonical_part_of_speech(candidate.get("partOfSpeech"))
+        if meaning in used_meanings or part in used_parts:
+            continue
+        selected.append(candidate)
+        used_meanings.add(meaning)
+        used_parts.add(part)
+        if len(selected) == 2:
+            break
+
+    return [
+        {
+            "id": sense["id"],
+            "partOfSpeech": canonical_part_of_speech(sense.get("partOfSpeech")),
+            "meaning": sense["glosses"][0].strip(),
+            "exampleCandidate": next(
+                (
+                    value.strip()
+                    for value in sense.get("examples", [])
+                    if isinstance(value, str)
+                    and value.strip()
+                    and contains_target_form(packet["target"], value)
+                ),
+                next(
+                    (
+                        value.strip()
+                        for value in (packet.get("example", ""), *sense.get("examples", []))
+                        if isinstance(value, str) and value.strip()
+                    ),
+                    "",
+                ),
+            ),
+            "sourceRef": sense.get("sourceRef")
+            or next(iter(packet.get("sourceRefs", [])), {}),
+        }
+        for sense in selected
+    ]
+
+
 def wiktextract_sense(word: str, part_of_speech: str | None, sense: dict) -> dict:
     glosses = [value.strip() for value in sense.get("glosses", []) if value.strip()]
     identity = next(iter(sense.get("senseid", [])), None)
@@ -896,6 +1183,11 @@ def prepare_enrichment(
     current_seed = (
         load_json(current_seed_path, list) if current_seed_path is not None else None
     )
+    current_keys = (
+        {normalized(item["upgradedExpression"]) for item in current_seed}
+        if current_seed is not None
+        else None
+    )
     excluded = (
         set()
         if current_seed is not None
@@ -908,10 +1200,11 @@ def prepare_enrichment(
     ]
     senses_by_headword: dict[str, list[dict]] = {}
     pronunciations_by_headword: dict[str, list[dict]] = {}
+    plain_expressions_by_headword: dict[str, set[str]] = {}
     validation_sources_by_headword: dict[str, set[str]] = {}
     for record in records:
         key = normalized(record.get("headword", ""))
-        if not key:
+        if not key or (current_keys is not None and key not in current_keys):
             continue
         source_ref = source_reference(record)
         senses = [
@@ -919,6 +1212,22 @@ def prepare_enrichment(
             for sense in record.get("senses", [])
             if isinstance(sense, dict)
         ]
+        if (
+            record.get("sourceID", "").startswith("oewn")
+            and record.get("definitions")
+            and not senses
+        ):
+            senses = [
+                {
+                    "id": record["sourceEntryRef"],
+                    "partOfSpeech": record.get("partOfSpeech"),
+                    "glosses": record["definitions"],
+                    "tags": [],
+                    "examples": record.get("examples", []),
+                    "translations": record.get("translations", {}),
+                    "sourceRef": source_ref,
+                }
+            ]
         pronunciations = [
             {**pronunciation, "sourceRef": source_ref}
             for pronunciation in record.get("pronunciations", [])
@@ -928,6 +1237,16 @@ def prepare_enrichment(
             senses_by_headword.setdefault(key, []).extend(senses)
         if pronunciations:
             pronunciations_by_headword.setdefault(key, []).extend(pronunciations)
+        for value in record.get("relatedTerms", []):
+            if not isinstance(value, str):
+                continue
+            value = value.replace("_", " ").strip()
+            if (
+                normalized(value) != key
+                and ENGLISH_TERM.fullmatch(value)
+                and len(value.split()) <= 8
+            ):
+                plain_expressions_by_headword.setdefault(key, set()).add(value)
         if senses or pronunciations:
             validation_sources_by_headword.setdefault(key, set()).add(
                 record["sourceID"]
@@ -1430,6 +1749,10 @@ def prepare_enrichment(
             packet["candidateSenses"] = merged_list(senses_by_headword.get(key, []))
             packet["candidatePronunciations"] = merged_list(
                 pronunciations_by_headword.get(key, [])
+            )
+            packet["candidatePlainExpressions"] = sorted(
+                plain_expressions_by_headword.get(key, set()),
+                key=lambda value: (len(value.split()), len(value), normalized(value)),
             )
             packet["validationSourceIDs"] = sorted(
                 validation_sources_by_headword.get(key, set())

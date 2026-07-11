@@ -42,7 +42,7 @@ combination. Increase the sample until no new repeated issue appears.
 
 - [ ] Basic: 980 items represented.
 - [ ] Intermediate: 1,630 items represented.
-- [ ] Advanced: 2,830 items represented.
+- [ ] Advanced: 2,611 approved items plus all 219 pronunciation rejections represented.
 - [ ] Legacy project-owned items represented.
 - [ ] COW + OMW ILI + OEWN sense-aligned items represented.
 - [ ] CEFR-J, CC-CEDICT, and Tatoeba evidence combinations represented.
@@ -66,8 +66,8 @@ For every reviewed item, verify:
 - [ ] The English definition matches the intended expression sense.
 - [ ] Taiwan Traditional Chinese is natural, accurate, and uses Taiwan wording.
 - [ ] The example is realistic and demonstrates the same intended sense.
-- [ ] A Tatoeba full-sentence translation is natural and faithful; otherwise the
-  generated zh-Hant usage note accurately identifies the target and meaning.
+- [ ] The full-sentence zh-Hant translation is natural and faithful, whether it
+  comes from an aligned Tatoeba pair or the local maintainer translation stage.
 - [ ] English and zh-Hant prompts ask the intended question without revealing the answer.
 - [ ] Pronunciation and the correct quiz option equal the upgraded expression.
 - [ ] Same-level distractors are plausible but not alternative correct answers.
@@ -113,3 +113,45 @@ Agent/content reviewer:
 Human release reviewer:
 
 Date:
+
+## 2026-07-11 Agent Review Run
+
+- Agent/content reviewer: `codex-content-review-2026-07-11`
+- Human release reviewer: pending explicit approval
+- Reviewed draft: `Content/Reviews/vocabulary-rich-2026-07-11.jsonl`
+- Rejections: `docs/vocabulary-rejections-2026-07-11.md`
+- Approved items: 5,221
+- Levels: 980 basic, 1,630 intermediate, 2,611 advanced
+- Rejected source slots: 219, all for missing verified or composable pronunciation
+- Multiple-sense items: 2,191
+- Multiple-pronunciation items: 2,643
+- Complete teaching-sentence wrappers: 2,682
+
+Mechanical results:
+
+- `audit-reviewed`: 5,221 approved, no duplicate ID or expression.
+- Every item has one to two senses and one to three verified pronunciations.
+- IPA fragment/optional-marker audit: 0.
+- Non-standard region mislabeled as US/UK audit: 0.
+- Translation request/output IDs: exact one-to-one match.
+- Two clean builds produced byte-identical Seed, Provenance, and Notices.
+- Seed SHA-256: `7b96b5f59713ecab76407a9be84ace7836c7286c4995df0dc6bae930bbea8b44`.
+- Provenance SHA-256: `f70f60cae3a49a8d9a7e1dd34d7c540a3ae098892838b427909bbbaca5c8a8e6`.
+- Notices SHA-256: `1587f422bcfdf560dece186bc693fd025056fa2607811c7c8d1dab609230ca91`.
+
+Deterministic samples reviewed: first, middle, and last item in each level,
+including `basic-001`, `bank-basic-0461`, `bank-basic-0950`,
+`intermediate-001`, `bank-intermediate-0786`, `bank-intermediate-1600`,
+`advanced-001`, `bank-advanced-1378`, and `bank-advanced-2800`.
+
+Repeated corrections applied in the shared stage:
+
+| Issue | Shared correction | Result |
+|---|---|---|
+| Entry-level Wiktextract translations were omitted | Merge entry and sense translations before canonical deduplication | Covered by adapter regression test |
+| IPA fragments such as `ɪkˈsæs-` and regional variants were selected | Reject prefix/suffix fragments, normalize optional markers, and retain only US/General/UK/RP | Zero fragment or region audit failures |
+| Source examples such as `Italian cooking.` were phrases, not sentences | Wrap source usage phrases in a complete teaching sentence and provide a faithful zh-Hant sentence | 2,682 corrected examples |
+| Legacy records exposed `phrase` instead of the lexical part of speech | Infer the primary POS from exact OEWN evidence | Legacy samples now expose noun/verb/adjective as applicable |
+
+Human Taiwan Traditional Chinese release review and physical-device offline QA
+remain intentionally unsigned; Agent approval is not represented as human sign-off.

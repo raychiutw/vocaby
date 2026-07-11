@@ -246,6 +246,165 @@ class VocabularySourcesTests(unittest.TestCase):
         ):
             vocabulary_sources.validate_reviewed_item(item)
 
+    def test_arpabet_to_ipa_places_stress_at_the_syllable_onset(self):
+        self.assertEqual(
+            vocabulary_sources.arpabet_to_ipa("AH0 B AW1 T"),
+            "əˈbaʊt",
+        )
+        self.assertEqual(vocabulary_sources.arpabet_to_ipa("G EH1 T"), "gɛt")
+
+    def test_review_pronunciations_compose_a_phrase_from_cmudict(self):
+        pronunciations, references = vocabulary_sources.review_pronunciations(
+            "get together",
+            [],
+            {
+                "get": [
+                    {
+                        "value": "G EH1 T",
+                        "sourceRef": {
+                            "sourceID": "cmudict-7479086",
+                            "sourceEntryRef": "get",
+                        },
+                    }
+                ],
+                "together": [
+                    {
+                        "value": "T AH0 G EH1 DH ER0",
+                        "sourceRef": {
+                            "sourceID": "cmudict-7479086",
+                            "sourceEntryRef": "together",
+                        },
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(
+            pronunciations,
+            [
+                {
+                    "id": "get-together-us-1",
+                    "ipa": "gɛt təˈgɛðɚ",
+                    "speechLocale": "en-US",
+                    "region": "US",
+                }
+            ],
+        )
+        self.assertEqual(
+            references,
+            [
+                {"sourceID": "cmudict-7479086", "sourceEntryRef": "get"},
+                {
+                    "sourceID": "cmudict-7479086",
+                    "sourceEntryRef": "together",
+                },
+            ],
+        )
+
+    def test_review_pronunciations_reject_fragments_and_nonstandard_dialects(self):
+        pronunciations, _ = vocabulary_sources.review_pronunciations(
+            "exacerbate",
+            [
+                {"notation": "ipa", "value": "ɪkˈsæs-", "region": "UK"},
+                {"notation": "ipa", "value": "ɪɡ ˈzæsəˌbeɪt", "region": "UK"},
+                {"notation": "ipa", "value": "egˈzæ.sə.beɪt", "region": "Australian"},
+            ],
+            {},
+        )
+
+        self.assertEqual(
+            pronunciations,
+            [
+                {
+                    "id": "exacerbate-gb-1",
+                    "ipa": "ɪɡˈzæsəˌbeɪt",
+                    "speechLocale": "en-GB",
+                    "region": "UK",
+                }
+            ],
+        )
+
+    def test_review_senses_keep_primary_and_common_additional_meanings(self):
+        packet = {
+            "id": "bank-basic-0001",
+            "target": "lead",
+            "definition": "to guide a group",
+            "example": "She will lead the meeting.",
+            "partOfSpeech": "v",
+            "sourceRefs": [
+                {"sourceID": "oewn-2025", "sourceEntryRef": "lead#v#1"}
+            ],
+            "candidateSenses": [
+                {
+                    "id": "lead-verb-guide",
+                    "partOfSpeech": "verb",
+                    "glosses": ["to guide a group"],
+                    "examples": ["She will lead the meeting."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "lead#verb#1",
+                    },
+                },
+                {
+                    "id": "lead-noun-clue",
+                    "partOfSpeech": "noun",
+                    "glosses": ["information that may help solve a problem"],
+                    "examples": ["The detective followed a new lead."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "lead#noun#1",
+                    },
+                },
+                {
+                    "id": "lead-rare",
+                    "partOfSpeech": "verb",
+                    "glosses": ["an obsolete meaning"],
+                    "examples": [],
+                    "tags": ["obsolete"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "lead#verb#2",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual([sense["id"] for sense in senses], ["lead-verb-guide", "lead-noun-clue"])
+        self.assertEqual(senses[0]["partOfSpeech"], "verb")
+
+    def test_review_senses_infer_legacy_primary_part_of_speech(self):
+        senses = vocabulary_sources.review_senses(
+            {
+                "id": "advanced-001",
+                "target": "exacerbate",
+                "definition": "A precise verb for making a bad situation worse.",
+                "example": "Poor communication can exacerbate the delay.",
+                "partOfSpeech": "",
+                "sourceRefs": [
+                    {"sourceID": "wording-daily-original", "sourceEntryRef": "advanced-001"}
+                ],
+                "candidateSenses": [
+                    {
+                        "id": "exacerbate#v#1",
+                        "partOfSpeech": "v",
+                        "glosses": ["make worse"],
+                        "examples": ["Poor communication can exacerbate the delay."],
+                        "tags": [],
+                        "sourceRef": {
+                            "sourceID": "oewn-2025",
+                            "sourceEntryRef": "exacerbate#v#1",
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(senses[0]["partOfSpeech"], "verb")
+
     def test_audit_reviewed_reports_complete_bank_counts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1205,6 +1364,7 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(packet["level"], "intermediate")
             self.assertEqual(packet["sortOrder"], 42)
             self.assertEqual(packet["candidateSenses"][0]["id"], "excellent-adjective-1")
+            self.assertEqual(packet["candidatePlainExpressions"], ["very good"])
             self.assertEqual(
                 packet["candidatePronunciations"][0]["value"], "ˈɛksələnt"
             )
