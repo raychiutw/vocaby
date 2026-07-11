@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -67,6 +68,68 @@ class VocabularySourcesTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["headword"], "café")
+
+    def test_oewn_candidate_contains_shared_enrichment_inputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw = root / "Content/Sources/Raw/demo/oewn.zip"
+            raw.parent.mkdir(parents=True)
+            with zipfile.ZipFile(raw, "w") as archive:
+                archive.writestr(
+                    "entries-e.json",
+                    json.dumps({"excellent": {"a": {"sense": [{"synset": "0001-a"}]}}}),
+                )
+                archive.writestr(
+                    "adj.all.json",
+                    json.dumps(
+                        {
+                            "0001-a": {
+                                "definition": ["of very high quality"],
+                                "example": [
+                                    {
+                                        "text": "She shared an excellent idea.",
+                                        "source": "Demo corpus",
+                                    }
+                                ],
+                                "members": ["excellent", "first-class"],
+                                "partOfSpeech": "a",
+                            }
+                        }
+                    ),
+                )
+            manifest = {
+                "schemaVersion": 1,
+                "sources": [
+                    {
+                        "id": "demo-oewn",
+                        "name": "Demo OEWN",
+                        "version": "1",
+                        "retrievedAt": "2026-07-11",
+                        "canonicalURL": "https://example.invalid/oewn",
+                        "adapter": "oewn_json_zip",
+                        "rawFile": {
+                            "path": "Content/Sources/Raw/demo/oewn.zip",
+                            "sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                            "bytes": raw.stat().st_size,
+                        },
+                        "licenseEvidence": [],
+                        "repositoryRedistribution": "allowed",
+                        "appUse": "reference_only",
+                    }
+                ],
+            }
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            output = root / "output.jsonl"
+
+            result = self.run_cli(root, "import-source", "demo-oewn", "--output", str(output))
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = json.loads(output.read_text())
+            self.assertEqual(record["definitions"], ["of very high quality"])
+            self.assertEqual(record["examples"], ["She shared an excellent idea."])
+            self.assertEqual(record["relatedTerms"], ["excellent", "first-class"])
 
     def test_verify_rejects_checksum_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:

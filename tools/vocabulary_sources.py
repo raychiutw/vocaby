@@ -106,6 +106,8 @@ def empty_record(source_id: str, reference: str, headword: str) -> dict:
         "partOfSpeech": None,
         "cefr": None,
         "definitions": [],
+        "examples": [],
+        "relatedTerms": [],
         "translations": {},
         "pronunciations": [],
         "forms": [],
@@ -150,6 +152,25 @@ def parse_cow(path: Path, source_id: str) -> Iterable[dict]:
 
 def parse_oewn(path: Path, source_id: str) -> Iterable[dict]:
     with zipfile.ZipFile(path) as archive:
+        synsets = {}
+        for name in sorted(
+            value
+            for value in archive.namelist()
+            if value.endswith(".json")
+            and not value.startswith("entries-")
+            and value != "frames.json"
+        ):
+            with archive.open(name) as stream:
+                for synset_id, data in json.load(stream).items():
+                    synsets[synset_id] = {
+                        "definitions": data.get("definition", []),
+                        "examples": [
+                            value if isinstance(value, str) else value.get("text", "")
+                            for value in data.get("example", [])
+                            if isinstance(value, str) or value.get("text")
+                        ],
+                        "relatedTerms": data.get("members", []),
+                    }
         for name in sorted(value for value in archive.namelist() if value.startswith("entries-") and value.endswith(".json")):
             with archive.open(name) as stream:
                 entries = json.load(stream)
@@ -164,6 +185,11 @@ def parse_oewn(path: Path, source_id: str) -> Iterable[dict]:
                     record["senseRefs"] = [
                         item["synset"] for item in data.get("sense", []) if item.get("synset")
                     ]
+                    for synset_id in record["senseRefs"]:
+                        synset = synsets.get(synset_id, {})
+                        record["definitions"].extend(synset.get("definitions", []))
+                        record["examples"].extend(synset.get("examples", []))
+                        record["relatedTerms"].extend(synset.get("relatedTerms", []))
                     yield record
 
 
@@ -282,7 +308,14 @@ def merge_records(records: Iterable[dict]) -> list[dict]:
             merged[key] = record
             continue
         current = merged[key]
-        for field in ("definitions", "pronunciations", "forms", "senseRefs"):
+        for field in (
+            "definitions",
+            "examples",
+            "relatedTerms",
+            "pronunciations",
+            "forms",
+            "senseRefs",
+        ):
             current[field] = sorted(set(current[field]) | set(record[field]), key=normalized)
         for language, values in record["translations"].items():
             if isinstance(values, list):
