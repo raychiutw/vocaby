@@ -59,6 +59,9 @@ final class LocalizationCoverageTests: XCTestCase {
             "settings.reminders.openSettings": .init(en: 24, zhHant: 12),
             "settings.language.label": .init(en: 24, zhHant: 12),
             "settings.language.openSettingsHint": .init(en: 44, zhHant: 20),
+            "settings.sources.row": .init(en: 24, zhHant: 12),
+            "settings.sources.title": .init(en: 24, zhHant: 12),
+            "settings.sources.unavailable": .init(en: 48, zhHant: 24),
             "settings.level.label": .init(en: 24, zhHant: 12),
             "settings.reminders.toggle": .init(en: 24, zhHant: 12),
             "settings.reminders.time": .init(en: 24, zhHant: 12)

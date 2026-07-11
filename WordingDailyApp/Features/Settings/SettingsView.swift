@@ -79,6 +79,12 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
             }
+
+            Section {
+                NavigationLink("settings.sources.row") {
+                    ThirdPartyNoticesView()
+                }
+            }
         }
         .navigationTitle("settings.title")
         .task {
@@ -186,6 +192,31 @@ struct SettingsView: View {
         }
 
         openURL(settingsURL)
+    }
+}
+
+struct ThirdPartyNoticesView: View {
+    private let notices: String
+
+    init(bundle: Bundle = .main) {
+        if let url = bundle.url(forResource: "ThirdPartyNotices", withExtension: "txt"),
+           let text = try? String(contentsOf: url, encoding: .utf8),
+           !text.isEmpty {
+            notices = text
+        } else {
+            notices = String(localized: "settings.sources.unavailable")
+        }
+    }
+
+    var body: some View {
+        ScrollView {
+            Text(notices)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+                .padding()
+        }
+        .navigationTitle("settings.sources.title")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
