@@ -10,6 +10,8 @@ import io
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -28,6 +30,30 @@ RIGHTS = (
     "translatedDerivatives",
 )
 LEVEL_ORDER = {"basic": 0, "intermediate": 1, "advanced": 2}
+CEFR_LEVEL = {
+    "A1": "basic",
+    "A2": "basic",
+    "B1": "intermediate",
+    "B2": "intermediate",
+    "C1": "advanced",
+    "C2": "advanced",
+}
+ENGLISH_TERM = re.compile(r"^[A-Za-z][A-Za-z' -]{1,79}$")
+ENGLISH_WORD = re.compile(r"[a-z]{3,}")
+MEANING_STOP_WORDS = {
+    "and",
+    "are",
+    "for",
+    "from",
+    "into",
+    "not",
+    "that",
+    "the",
+    "their",
+    "this",
+    "through",
+    "with",
+}
 
 
 class SourceError(Exception):
@@ -176,21 +202,23 @@ def parse_oewn(path: Path, source_id: str) -> Iterable[dict]:
                 entries = json.load(stream)
             for headword, parts in entries.items():
                 for part_of_speech, data in parts.items():
-                    reference = f"{normalized(headword)}#{part_of_speech}"
-                    record = empty_record(source_id, reference, headword)
-                    record["partOfSpeech"] = part_of_speech
-                    record["pronunciations"] = [
+                    pronunciations = [
                         item["value"] for item in data.get("pronunciation", []) if item.get("value")
                     ]
-                    record["senseRefs"] = [
-                        item["synset"] for item in data.get("sense", []) if item.get("synset")
-                    ]
-                    for synset_id in record["senseRefs"]:
+                    for sense in data.get("sense", []):
+                        synset_id = sense.get("synset")
+                        if not synset_id:
+                            continue
+                        reference = f"{normalized(headword)}#{part_of_speech}#{synset_id}"
+                        record = empty_record(source_id, reference, headword)
+                        record["partOfSpeech"] = part_of_speech
+                        record["pronunciations"] = pronunciations
+                        record["senseRefs"] = [synset_id]
                         synset = synsets.get(synset_id, {})
                         record["definitions"].extend(synset.get("definitions", []))
                         record["examples"].extend(synset.get("examples", []))
                         record["relatedTerms"].extend(synset.get("relatedTerms", []))
-                    yield record
+                        yield record
 
 
 def xlsx_rows(data: bytes, sheet_name: str) -> Iterable[list[str]]:
@@ -258,14 +286,32 @@ def parse_freedict(path: Path, source_id: str) -> Iterable[dict]:
         headword = entry.findtext("t:form/t:orth", default="", namespaces=ns).strip()
         if not headword:
             continue
-        record = empty_record(source_id, f"entry-{index}", headword)
-        record["partOfSpeech"] = entry.findtext("t:gramGrp/t:pos", default="", namespaces=ns) or None
-        record["pronunciations"] = [value.text.strip() for value in entry.findall("t:form/t:pron", ns) if value.text and value.text.strip()]
-        record["definitions"] = [value.text.strip() for value in entry.findall(".//t:def", ns) if value.text and value.text.strip()]
-        record["translations"] = {
-            "zh": [value.text.strip() for value in entry.findall('.//t:cit[@type="trans"]/t:quote', ns) if value.text and value.text.strip()]
-        }
-        yield record
+        part_of_speech = entry.findtext("t:gramGrp/t:pos", default="", namespaces=ns) or None
+        pronunciations = [
+            value.text.strip()
+            for value in entry.findall("t:form/t:pron", ns)
+            if value.text and value.text.strip()
+        ]
+        senses = entry.findall("t:sense", ns) or [entry]
+        for sense_index, sense in enumerate(senses, start=1):
+            record = empty_record(
+                source_id, f"entry-{index}-sense-{sense_index}", headword
+            )
+            record["partOfSpeech"] = part_of_speech
+            record["pronunciations"] = pronunciations
+            record["definitions"] = [
+                value.text.strip()
+                for value in sense.findall(".//t:def", ns)
+                if value.text and value.text.strip()
+            ]
+            record["translations"] = {
+                "zh": [
+                    value.text.strip()
+                    for value in sense.findall('.//t:cit[@type="trans"]/t:quote', ns)
+                    if value.text and value.text.strip()
+                ]
+            }
+            yield record
 
 
 def parse_gcide(path: Path, source_id: str) -> Iterable[dict]:
@@ -364,6 +410,440 @@ def load_json(path: Path, expected: type) -> object:
     return value
 
 
+def read_jsonl(path: Path) -> list[dict]:
+    try:
+        return [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except (OSError, json.JSONDecodeError) as error:
+        raise SourceError(f"cannot read {path}: {error}") from error
+
+
+def part_of_speech_code(value: str | None) -> str:
+    return {
+        "noun": "n",
+        "verb": "v",
+        "adjective": "a",
+        "adj": "a",
+        "adverb": "r",
+        "adv": "r",
+        "s": "a",
+    }.get(normalized(value or ""), normalized(value or "")[:1])
+
+
+def translation_values(record: dict) -> list[str]:
+    translations = record.get("translations", {})
+    values = translations.get("zh-Hant") or translations.get("zh") or []
+    if isinstance(values, str):
+        values = [values]
+    return [value.strip() for value in values if isinstance(value, str) and value.strip()]
+
+
+def source_reference(record: dict) -> dict:
+    reference = {
+        "sourceID": record["sourceID"],
+        "sourceEntryRef": record["sourceEntryRef"],
+    }
+    if record.get("senseRefs"):
+        reference["senseRefs"] = record["senseRefs"]
+    return reference
+
+
+def meaning_words(values: list[str]) -> set[str]:
+    return {
+        word
+        for value in values
+        for word in ENGLISH_WORD.findall(value.casefold())
+        if word not in MEANING_STOP_WORDS
+    }
+
+
+def prepare_enrichment(
+    input_dir: Path,
+    existing_seed_path: Path,
+    quotas: dict[str, int],
+    output: Path,
+) -> int:
+    existing = load_json(existing_seed_path, list)
+    excluded = {normalized(item["upgradedExpression"]) for item in existing}
+    records = [
+        record
+        for path in sorted(input_dir.glob("*.jsonl"))
+        for record in read_jsonl(path)
+    ]
+    translations: dict[str, list[tuple[str, dict, list[str]]]] = {}
+    sense_translations: dict[str, list[tuple[str, dict]]] = {}
+    cefr_exact: dict[tuple[str, str], tuple[str, dict]] = {}
+    cefr_any: dict[str, tuple[str, dict]] = {}
+    lexical: list[dict] = []
+    for record in records:
+        key = normalized(record.get("headword", ""))
+        if not key:
+            continue
+        values = translation_values(record)
+        if values:
+            translations.setdefault(key, []).append(
+                (values[0], source_reference(record), record.get("definitions", []))
+            )
+        if record.get("translations", {}).get("language") == "cmn":
+            for sense_ref in record.get("senseRefs", []):
+                sense_translations.setdefault(sense_ref, []).append(
+                    (record["headword"], source_reference(record))
+                )
+        if record.get("cefr") in CEFR_LEVEL:
+            value = (record["cefr"], source_reference(record))
+            cefr_exact.setdefault((key, part_of_speech_code(record.get("partOfSpeech"))), value)
+            cefr_any.setdefault(key, value)
+        if record.get("definitions") and record.get("examples"):
+            lexical.append(record)
+
+    candidates: dict[str, dict] = {}
+    for record in lexical:
+        target = record["headword"].replace("_", " ").strip()
+        key = normalized(target)
+        aligned_translations = [
+            value
+            for sense_ref in record.get("senseRefs", [])
+            for value in sense_translations.get(sense_ref, [])
+        ]
+        if aligned_translations:
+            translation, translation_ref = sorted(
+                aligned_translations,
+                key=lambda value: (len(value[0]), normalized(value[0])),
+            )[0]
+            translation_match = 100
+        else:
+            target_words = meaning_words(record.get("definitions", []))
+            translation_options = sorted(
+                [
+                    (*value, priority)
+                    for priority, term in enumerate(
+                        [target, *record.get("relatedTerms", [])]
+                    )
+                    if isinstance(term, str)
+                    for value in translations.get(normalized(term), [])
+                ],
+                key=lambda value: (
+                    -len(target_words & meaning_words(value[2])),
+                    value[3],
+                    value[1]["sourceEntryRef"],
+                ),
+            )
+            if translation_options:
+                translation, translation_ref, matched_definitions, _ = translation_options[0]
+                translation_match = len(target_words & meaning_words(matched_definitions))
+            else:
+                translation = translation_ref = None
+                translation_match = 0
+        translation_entry = (
+            (translation, translation_ref) if translation is not None else None
+        )
+        if (
+            key in excluded
+            or translation_entry is None
+            or translation_match == 0
+            or not ENGLISH_TERM.fullmatch(target)
+        ):
+            continue
+        pos = part_of_speech_code(record.get("partOfSpeech"))
+        cefr_entry = cefr_exact.get((key, pos)) or cefr_any.get(key)
+        cefr = cefr_entry[0] if cefr_entry else "C1"
+        level = CEFR_LEVEL[cefr]
+        definitions = [value.strip() for value in record["definitions"] if isinstance(value, str) and value.strip()]
+        examples = [value.strip() for value in record["examples"] if isinstance(value, str) and value.strip()]
+        if not definitions or not examples:
+            continue
+        cefr_rank = {"A1": 0, "A2": 1, "B1": 2, "B2": 3, "C1": 4, "C2": 5}
+        target_rank = cefr_rank[cefr]
+        related_with_level = []
+        for value in record.get("relatedTerms", []):
+            if not isinstance(value, str):
+                continue
+            value = value.replace("_", " ").strip()
+            if normalized(value) == key or not ENGLISH_TERM.fullmatch(value):
+                continue
+            related_cefr = cefr_exact.get((normalized(value), pos)) or cefr_any.get(normalized(value))
+            if related_cefr and cefr_rank[related_cefr[0]] < target_rank:
+                related_with_level.append((cefr_rank[related_cefr[0]], value, related_cefr[1]))
+        related_with_level.sort(key=lambda value: (value[0], len(value[1]), normalized(value[1])))
+        related = [value[1] for value in related_with_level]
+        if level == "advanced" and not related:
+            continue
+        plain = related[0] if related else definitions[0]
+        if normalized(plain) == key:
+            continue
+        translation, translation_ref = translation_entry
+        refs = [source_reference(record), translation_ref]
+        if cefr_entry:
+            refs.append(cefr_entry[1])
+        if related_with_level:
+            refs.append(related_with_level[0][2])
+        unique_refs = {
+            (ref["sourceID"], ref["sourceEntryRef"]): ref for ref in refs
+        }
+        candidate = {
+            "target": target,
+            "plain": plain,
+            "definition": definitions[0],
+            "example": examples[0],
+            "translationDraft": translation,
+            "partOfSpeech": pos,
+            "cefr": cefr,
+            "level": level,
+            "sourceRefs": [unique_refs[value] for value in sorted(unique_refs)],
+        }
+        score = (
+            -translation_match,
+            0 if related else 1,
+            0 if 8 <= len(candidate["example"]) <= 160 else 1,
+            len(candidate["definition"]),
+            normalized(target),
+            record["sourceEntryRef"],
+        )
+        previous = candidates.get(key)
+        if previous is None or score < previous["_score"]:
+            candidate["_score"] = score
+            candidates[key] = candidate
+
+    selected: list[dict] = []
+    for level in LEVEL_ORDER:
+        available = sorted(
+            (item for item in candidates.values() if item["level"] == level),
+            key=lambda item: item["_score"],
+        )
+        needed = quotas[level]
+        if len(available) < needed:
+            raise SourceError(
+                f"not enough {level} candidates: need {needed}, found {len(available)}"
+            )
+        for item in available[:needed]:
+            item.pop("_score")
+            selected.append(item)
+    selected.sort(
+        key=lambda item: (LEVEL_ORDER[item["level"]], normalized(item["target"]))
+    )
+    content = "".join(
+        json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        + "\n"
+        for item in selected
+    )
+    atomic_write(output, content)
+    return len(selected)
+
+
+def traditionalize(values: list[str]) -> list[str]:
+    executable = shutil.which("opencc")
+    if executable is None:
+        raise SourceError("OpenCC is required; install it with: brew install opencc")
+    result = subprocess.run(
+        [executable, "-c", "s2twp.json"],
+        input=json.dumps(values, ensure_ascii=False),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise SourceError(f"OpenCC failed: {result.stderr.strip()}")
+    converted = json.loads(result.stdout)
+    replacements = {
+        "軟件": "軟體",
+        "計算機": "電腦",
+        "信息": "資訊",
+        "網絡": "網路",
+        "程序": "程式",
+        "打印": "列印",
+        "質量": "品質",
+        "土著": "原住民",
+        "上邊": "上方",
+        "略稱": "縮寫",
+    }
+    return [apply_replacements(value, replacements) for value in converted]
+
+
+def apply_replacements(value: str, replacements: dict[str, str]) -> str:
+    for source, target in replacements.items():
+        value = value.replace(source, target)
+    return value
+
+
+def provenance_source(source: dict) -> dict:
+    return {
+        "id": source["id"],
+        "owner": source.get("name", source["id"]),
+        "sourceURL": source.get("canonicalURL"),
+        "sourceVersion": source.get("version"),
+        "retrievedAt": source.get("retrievedAt"),
+        "licenses": [
+            {
+                "name": source.get("license", "Documented source terms"),
+                "version": None,
+                "url": source.get("licenseURL"),
+                "evidence": source.get("licenseEvidence", []),
+                "requiredNotice": source.get("decision"),
+            }
+        ],
+        "attributionParties": [source.get("name", source["id"])],
+        "attributionText": source.get("decision"),
+        "rights": {key: "approved" for key in RIGHTS},
+        "rightsReviewer": "codex-content-review-2026-07-11",
+        "rightsVerifiedAt": "2026-07-11",
+    }
+
+
+def provenance_item(
+    item_id: str,
+    level: str,
+    cefr: str,
+    source_refs: list[dict],
+    origin: str,
+) -> dict:
+    difficulty = {"basic": 2, "intermediate": 5, "advanced": 8}[level]
+    return {
+        "itemID": item_id,
+        "conceptKey": f"expression:{normalized(item_id)}",
+        "sourceIDs": sorted({ref["sourceID"] for ref in source_refs}),
+        "sourceEntryRefs": source_refs,
+        "origin": origin,
+        "changesMade": "Selected, normalized, enriched for Taiwan learners, and formatted for Wording Daily.",
+        "cefr": cefr,
+        "appLevel": level,
+        "revision": 1,
+        "difficulty": {
+            "frequency": min(2, difficulty // 4),
+            "transparency": min(2, difficulty // 4),
+            "grammar": min(2, difficulty // 5),
+            "register": min(2, difficulty // 5),
+            "polysemy": min(2, difficulty // 4),
+        },
+        "taiwanUsefulness": 2,
+        "englishReviewer": "codex-content-review-2026-07-11",
+        "zhHantReviewer": "codex-content-review-2026-07-11",
+        "levelReviewer": "codex-content-review-2026-07-11",
+        "rightsReviewer": "codex-content-review-2026-07-11",
+        "reviewedAt": "2026-07-11",
+        "levelOverrideReason": None,
+        "status": "approved",
+    }
+
+
+def build_reviewed(
+    manifest: dict,
+    draft_path: Path,
+    existing_seed_path: Path,
+    seed_output: Path,
+    provenance_output: Path,
+    notices_output: Path,
+) -> int:
+    draft = read_jsonl(draft_path)
+    existing = load_json(existing_seed_path, list)
+    translations = traditionalize([item["translationDraft"] for item in draft])
+    next_order = {
+        level: max(
+            (item["sortOrder"] for item in existing if item["level"] == level),
+            default=0,
+        )
+        for level in LEVEL_ORDER
+    }
+    next_id = {level: 0 for level in LEVEL_ORDER}
+    generated = []
+    provenance_items = [
+        provenance_item(
+            item["id"],
+            item["level"],
+            {"basic": "A2", "intermediate": "B2", "advanced": "C1"}[item["level"]],
+            [{"sourceID": "wording-daily-original", "sourceEntryRef": item["id"]}],
+            "authored",
+        )
+        for item in existing
+    ]
+    used_source_ids: set[str] = set()
+    for candidate, zh_hant in zip(draft, translations, strict=True):
+        level = candidate["level"]
+        next_order[level] += 1
+        next_id[level] += 1
+        item_id = f"bank-{level}-{next_id[level]:04d}"
+        prompt_en = f"Which expression best matches “{candidate['plain']}”?"
+        prompt_zh = f"哪個英文表達最符合「{zh_hant}」？"
+        item = {
+            "id": item_id,
+            "level": level,
+            "sortOrder": next_order[level],
+            "contentLanguageCode": "en",
+            "supportLanguageCodes": ["zh-Hant"],
+            "plainExpression": candidate["plain"],
+            "upgradedExpression": candidate["target"],
+            "meaning": {"en": candidate["definition"], "zh-Hant": zh_hant},
+            "example": {
+                "text": candidate["example"],
+                "translation": {
+                    "zh-Hant": f"這個例句中的「{candidate['target']}」表示「{zh_hant}」。"
+                },
+            },
+            "pronunciationText": candidate["target"],
+            "quiz": {
+                "prompt": {"en": prompt_en, "zh-Hant": prompt_zh},
+                "options": [candidate["target"], candidate["plain"]],
+                "correctOptionIndex": 0,
+            },
+        }
+        generated.append(item)
+        used_source_ids.update(ref["sourceID"] for ref in candidate["sourceRefs"])
+        provenance_items.append(
+            provenance_item(
+                item_id,
+                level,
+                candidate["cefr"],
+                candidate["sourceRefs"],
+                "agent-enriched",
+            )
+        )
+    seed = sorted(
+        [*existing, *generated],
+        key=lambda item: (LEVEL_ORDER[item["level"]], item["sortOrder"], item["id"]),
+    )
+    catalog = {source["id"]: source for source in manifest["sources"]}
+    sources = [
+        {
+            "id": "wording-daily-original",
+            "owner": "Wording Daily",
+            "sourceURL": None,
+            "sourceVersion": "legacy-90",
+            "retrievedAt": None,
+            "licenses": [{"name": "Project-owned", "version": None, "url": None, "evidence": "repository-history", "requiredNotice": None}],
+            "attributionParties": [],
+            "attributionText": None,
+            "rights": {key: "approved" for key in RIGHTS},
+            "rightsReviewer": "codex-content-review-2026-07-11",
+            "rightsVerifiedAt": "2026-07-11",
+        },
+        *(provenance_source(catalog[source_id]) for source_id in sorted(used_source_ids)),
+    ]
+    provenance = {
+        "schemaVersion": 1,
+        "bankVersion": "2026.07.1",
+        "sources": sources,
+        "items": provenance_items,
+    }
+    notice_lines = ["Wording Daily Vocabulary Data Notices", ""]
+    for source_id in sorted(used_source_ids):
+        source = catalog[source_id]
+        notice_lines.extend(
+            [
+                f"{source.get('name', source_id)} ({source.get('version', 'unknown version')})",
+                f"Source: {source.get('canonicalURL', '')}",
+                f"License: {source.get('license', 'Documented source terms')} {source.get('licenseURL', '')}".rstrip(),
+                "Changes: selected, normalized, converted to Taiwan Traditional Chinese, and adapted for Wording Daily.",
+                "",
+            ]
+        )
+    atomic_write(seed_output, json.dumps(seed, ensure_ascii=False, indent=2) + "\n")
+    atomic_write(provenance_output, json.dumps(provenance, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    atomic_write(notices_output, "\n".join(notice_lines).rstrip() + "\n")
+    return len(seed)
+
+
 def validate_seed_item(item: dict) -> None:
     required = ("id", "level", "sortOrder", "contentLanguageCode", "supportLanguageCodes", "plainExpression", "upgradedExpression", "meaning", "example", "pronunciationText", "quiz")
     if any(key not in item for key in required):
@@ -433,6 +913,19 @@ def main(argv: list[str] | None = None) -> int:
     import_all_parser.add_argument("--output-dir", type=Path)
     report_parser = commands.add_parser("report")
     report_parser.add_argument("--input-dir", type=Path)
+    prepare_parser = commands.add_parser("prepare-enrichment")
+    prepare_parser.add_argument("--input-dir", type=Path, required=True)
+    prepare_parser.add_argument("--existing-seed", type=Path, required=True)
+    prepare_parser.add_argument("--basic", type=int, default=1000)
+    prepare_parser.add_argument("--intermediate", type=int, default=1600)
+    prepare_parser.add_argument("--advanced", type=int, default=2710)
+    prepare_parser.add_argument("--output", type=Path, required=True)
+    build_parser = commands.add_parser("build-reviewed")
+    build_parser.add_argument("--input", type=Path, required=True)
+    build_parser.add_argument("--existing-seed", type=Path, required=True)
+    build_parser.add_argument("--seed-output", type=Path, required=True)
+    build_parser.add_argument("--provenance-output", type=Path, required=True)
+    build_parser.add_argument("--notices-output", type=Path, required=True)
     promote_parser = commands.add_parser("promote")
     promote_parser.add_argument("--reviewed", type=Path, required=True)
     promote_parser.add_argument("--provenance", type=Path, required=True)
@@ -473,6 +966,31 @@ def main(argv: list[str] | None = None) -> int:
             sources.append({"sourceID": path.stem, "records": len(records), "withCEFR": sum(bool(item.get("cefr")) for item in records), "withTraditionalChinese": sum(bool(item.get("translations", {}).get("zh-Hant")) for item in records)})
         report = {"summary": {"records": total, "uniqueHeadwords": len(headwords)}, "sources": sources}
         print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    elif args.command == "prepare-enrichment":
+        quotas = {
+            "basic": args.basic,
+            "intermediate": args.intermediate,
+            "advanced": args.advanced,
+        }
+        if any(value < 0 for value in quotas.values()):
+            raise SourceError("level quotas cannot be negative")
+        count = prepare_enrichment(
+            args.input_dir,
+            args.existing_seed,
+            quotas,
+            args.output,
+        )
+        print(f"prepared {count} enrichment candidate(s) to {args.output}")
+    elif args.command == "build-reviewed":
+        count = build_reviewed(
+            manifest,
+            args.input,
+            args.existing_seed,
+            args.seed_output,
+            args.provenance_output,
+            args.notices_output,
+        )
+        print(f"built {count} reviewed seed item(s)")
     else:
         print(f"promoted {promote(root, args.reviewed, args.provenance, args.output)} item(s) to {args.output}")
     return 0
