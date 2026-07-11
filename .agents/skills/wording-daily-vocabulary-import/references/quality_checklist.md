@@ -7,7 +7,7 @@
 - Blocking issues: none
 - Baseline: the pre-skill workflow had no executable importer or manifest, and the prior skill stopped before common enrichment/review; see `../assets/evals/baseline.md`.
 - Functional evidence:
-  - `python3 -m unittest tools/test_vocabulary_sources.py`: 20 tests passed.
+  - `python3 -m unittest tools/test_vocabulary_sources.py`: 21 tests passed, including normalized-value tie ordering across 16 Python hash seeds.
   - `python3 tools/vocabulary_sources.py verify`: 10 sources passed checksum, size, evidence, and Xcode-exclusion checks.
   - Two full `import-all` runs: 10 of 10 JSONL checksums identical; 532,363 canonical records.
   - Shared enrichment/review/promotion: 5,400 seed and provenance items; 1,030 basic, 1,630 intermediate, and 2,740 advanced.

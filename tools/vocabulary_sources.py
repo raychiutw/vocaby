@@ -362,11 +362,15 @@ def merge_records(records: Iterable[dict]) -> list[dict]:
             "forms",
             "senseRefs",
         ):
-            current[field] = sorted(set(current[field]) | set(record[field]), key=normalized)
+            current[field] = sorted(
+                set(current[field]) | set(record[field]),
+                key=lambda value: (normalized(value), value),
+            )
         for language, values in record["translations"].items():
             if isinstance(values, list):
                 current["translations"][language] = sorted(
-                    set(current["translations"].get(language, [])) | set(values), key=normalized
+                    set(current["translations"].get(language, [])) | set(values),
+                    key=lambda value: (normalized(value), value),
                 )
     return sorted(merged.values(), key=lambda item: (
         normalized(item["headword"]),

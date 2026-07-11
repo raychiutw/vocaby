@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import os
 import subprocess
 import sys
 import tarfile
@@ -14,12 +15,18 @@ SCRIPT = Path(__file__).with_name("vocabulary_sources.py")
 
 
 class VocabularySourcesTests(unittest.TestCase):
-    def run_cli(self, root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    def run_cli(
+        self,
+        root: Path,
+        *arguments: str,
+        hash_seed: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(SCRIPT), "--root", str(root), *arguments],
             text=True,
             capture_output=True,
             check=False,
+            env={**os.environ, **({"PYTHONHASHSEED": hash_seed} if hash_seed else {})},
         )
 
     def make_source(self, root: Path, *, checksum: str | None = None, encoding: str = "utf-8") -> Path:
@@ -796,6 +803,36 @@ class VocabularySourcesTests(unittest.TestCase):
             summary = json.loads(report.stdout)["summary"]
             self.assertEqual(summary["records"], 4)
             self.assertEqual(summary["uniqueHeadwords"], 2)
+
+    def test_import_is_deterministic_when_merged_values_normalize_equally(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest_path = self.make_source(root)
+            raw = root / "Content/Sources/Raw/demo/words.csv"
+            raw.write_text("Alpha,rock'n'roll\nalpha,rock’n’roll\n", encoding="utf-8")
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"][0]["rawFile"] = {
+                "path": "Content/Sources/Raw/demo/words.csv",
+                "sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                "bytes": raw.stat().st_size,
+            }
+            manifest_path.write_text(json.dumps(manifest))
+            outputs = []
+
+            for hash_seed in map(str, range(1, 17)):
+                output = root / f"seed-{hash_seed}.jsonl"
+                result = self.run_cli(
+                    root,
+                    "import-source",
+                    "demo",
+                    "--output",
+                    str(output),
+                    hash_seed=hash_seed,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                outputs.append(output.read_bytes())
+
+            self.assertEqual(len(set(outputs)), 1)
 
     def test_promote_fails_closed_when_source_rights_are_not_approved(self):
         with tempfile.TemporaryDirectory() as directory:
