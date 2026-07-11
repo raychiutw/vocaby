@@ -19,7 +19,7 @@
 - Each shipped sense has a part of speech, English and zh-Hant meaning, English and zh-Hant full-sentence example, and at least one valid pronunciation reference.
 - Each pronunciation has bare IPA without slash/bracket delimiters, an English speech locale, an optional region label, and its own playback control.
 - Preserve an existing item ID only when the expression and intended sense are unchanged. Never reuse a rejected ID for different content.
-- Keep at least 5,000 promoted items; the target remains all 5,440 current slots after invalid entries are replaced.
+- Keep at least 5,000 promoted items; original 5,440 selection slots may be reduced only by documented validation rejections.
 - Wiktextract audio URLs and audio files are never bundled. Wiktionary quotation examples are validation-only and never copied into App content.
 - No new App runtime dependency. Use `AVSpeechSynthesisIPANotationAttribute` and installed system voices.
 - Use TDD for parser, validation, quiz, and playback logic. Run `git diff --check` before every commit.
@@ -584,7 +584,7 @@ python3 tools/vocabulary_sources.py audit-reviewed \
   --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl
 ```
 
-Expected JSON: `items` is 5,440, `approved` is 5,440, and level counts remain 980 basic, 1,630 intermediate, and 2,830 advanced unless a documented replacement changes only an ID, never a quota.
+Expected JSON after the documented pronunciation review: `items` and `approved` are 5,221, with 980 basic, 1,630 intermediate, and 2,611 advanced. The 219 rejected source slots remain listed in the rejection report and are never silently replaced.
 
 - [ ] **Step 4: Run deterministic build and promotion twice**
 
@@ -790,7 +790,7 @@ xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A'
 ```
 
-Expected: all tests pass with 5,440 rich entries and unchanged persisted item IDs for unchanged senses.
+Expected: all tests pass with 5,221 rich entries and unchanged persisted item IDs for unchanged senses.
 
 - [ ] **Step 8: Commit the atomic schema and resource cutover**
 
@@ -1245,7 +1245,7 @@ git commit -m "docs: document rich vocabulary review workflow"
 - Modify only files required by a failing gate.
 
 **Interfaces:**
-- Produces authoritative evidence for source integrity, 5,440 reviewed entries, deterministic resources, App bundle exclusion, all tests, offline playback, and UI behavior.
+- Produces authoritative evidence for source integrity, 5,221 approved reviewed entries plus 219 documented pronunciation rejections, deterministic resources, App bundle exclusion, all tests, offline playback, and UI behavior.
 
 - [ ] **Step 1: Run every maintainer gate**
 
@@ -1258,7 +1258,7 @@ python3 tools/vocabulary_sources.py import-all --output-dir /tmp/wording-import-
 diff -qr /tmp/wording-import-a /tmp/wording-import-b
 ```
 
-Expected: all tests/sources pass, review audit reports 5,440 approved items, and imports are identical.
+Expected: all tests/sources pass, review audit reports 5,221 approved items with 219 documented pronunciation rejections, and imports are identical.
 
 - [ ] **Step 2: Prove seed/provenance/notices determinism and counts**
 

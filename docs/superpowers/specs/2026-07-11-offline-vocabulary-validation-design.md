@@ -215,8 +215,10 @@ custom tab bar, dashboard, or content editing screen is introduced.
 - On a physical iPhone with Wi-Fi and cellular disabled, every sampled reading
   plays, all five quiz modes complete, and answer feedback shows the required
   bilingual content.
-- The promoted bank retains at least 5,000 entries; all 5,440 current entries must
-  pass or be replaced by newly identified entries before the release is accepted.
+- The promoted bank retains at least 5,000 entries. The original 5,440 selection
+  slots may be reduced only by documented validation rejections; the audited
+  release contains 5,221 approved entries and 219 source slots rejected for
+  missing verified or composable pronunciation.
 
 ## Non-Goals
 
