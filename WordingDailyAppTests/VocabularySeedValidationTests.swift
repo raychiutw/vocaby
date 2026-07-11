@@ -20,6 +20,22 @@ final class VocabularySeedValidationTests: XCTestCase {
         }
     }
 
+    func testBundledSeedHasUniqueUpgradedExpressions() throws {
+        let items = try SeedLoader().loadBundledSeed()
+        let normalized = items.map {
+            $0.upgradedExpression.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+
+        XCTAssertEqual(Set(normalized).count, items.count)
+    }
+
+    func testBundledSeedKeepsQuizAndPronunciationAligned() throws {
+        for item in try SeedLoader().loadBundledSeed() {
+            XCTAssertEqual(item.quiz.options[item.quiz.correctOptionIndex], item.upgradedExpression, item.id)
+            XCTAssertEqual(item.pronunciationText, item.upgradedExpression, item.id)
+        }
+    }
+
     func testValidationRejectsInvalidCorrectOptionIndex() throws {
         var item = try XCTUnwrap(SeedLoader.sampleItems.first)
         item.quiz.correctOptionIndex = item.quiz.options.count

@@ -537,25 +537,25 @@
     "sortOrder": 20,
     "contentLanguageCode": "en",
     "supportLanguageCodes": ["zh-Hant"],
-    "plainExpression": "help me",
-    "upgradedExpression": "give me a hand",
+    "plainExpression": "help me with this",
+    "upgradedExpression": "lend me a hand",
     "meaning": {
-      "en": "A friendly phrase for asking someone to help.",
-      "zh-Hant": "請人幫忙的友善說法，比 help me 更自然。"
+      "en": "A friendly way to ask someone for practical help.",
+      "zh-Hant": "友善地請人搭把手，適合需要實際協助時使用。"
     },
     "example": {
-      "text": "Could you give me a hand with this box?",
+      "text": "Could you lend me a hand with this box?",
       "translation": {
         "zh-Hant": "你可以幫我搬這個箱子嗎？"
       }
     },
-    "pronunciationText": "give me a hand",
+    "pronunciationText": "lend me a hand",
     "quiz": {
       "prompt": {
-        "en": "Which phrase best upgrades help me?",
-        "zh-Hant": "哪個片語最適合替換 help me？"
+        "en": "Which phrase best upgrades help me with this?",
+        "zh-Hant": "哪個片語最適合表達請人搭把手？"
       },
-      "options": ["give me a hand", "hand me help", "make helping", "do me hand"],
+      "options": ["lend me a hand", "hand me help", "make helping", "do me hand"],
       "correctOptionIndex": 0
     }
   },
@@ -566,24 +566,24 @@
     "contentLanguageCode": "en",
     "supportLanguageCodes": ["zh-Hant"],
     "plainExpression": "wait a little",
-    "upgradedExpression": "hold on",
+    "upgradedExpression": "just a moment",
     "meaning": {
-      "en": "A common phrase for asking someone to wait briefly.",
-      "zh-Hant": "請對方稍等一下的自然說法。"
+      "en": "A polite phrase for asking someone to wait briefly.",
+      "zh-Hant": "禮貌地請對方稍等片刻。"
     },
     "example": {
-      "text": "Hold on. I need to check the address.",
+      "text": "Just a moment, please. I need to check the address.",
       "translation": {
         "zh-Hant": "等一下，我需要確認地址。"
       }
     },
-    "pronunciationText": "hold on",
+    "pronunciationText": "just a moment",
     "quiz": {
       "prompt": {
         "en": "Which phrase best upgrades wait a little?",
         "zh-Hant": "哪個片語最適合替換 wait a little？"
       },
-      "options": ["hold on", "waitly", "little stop", "pause me"],
+      "options": ["just a moment", "waitly", "little stop", "pause me"],
       "correctOptionIndex": 0
     }
   },
@@ -593,25 +593,25 @@
     "sortOrder": 22,
     "contentLanguageCode": "en",
     "supportLanguageCodes": ["zh-Hant"],
-    "plainExpression": "I don't know",
-    "upgradedExpression": "I'm not sure",
+    "plainExpression": "I don't know for certain",
+    "upgradedExpression": "I'm not certain",
     "meaning": {
-      "en": "A softer way to say you do not know something.",
-      "zh-Hant": "表示不確定，比 I don't know 更委婉。"
+      "en": "A calm way to say that you are uncertain.",
+      "zh-Hant": "平和地表示自己還不確定。"
     },
     "example": {
-      "text": "I'm not sure which option is better.",
+      "text": "I'm not certain which option is better.",
       "translation": {
         "zh-Hant": "我不確定哪個選項比較好。"
       }
     },
-    "pronunciationText": "I'm not sure",
+    "pronunciationText": "I'm not certain",
     "quiz": {
       "prompt": {
-        "en": "Which phrase softly upgrades I don't know?",
-        "zh-Hant": "哪個片語能委婉替換 I don't know？"
+        "en": "Which phrase softly expresses uncertainty?",
+        "zh-Hant": "哪個片語能委婉表達不確定？"
       },
-      "options": ["I'm not sure", "I no know", "not knowing me", "unknownly"],
+      "options": ["I'm not certain", "I no know", "not knowing me", "unknownly"],
       "correctOptionIndex": 0
     }
   },
@@ -1125,25 +1125,25 @@
     "sortOrder": 11,
     "contentLanguageCode": "en",
     "supportLanguageCodes": ["zh-Hant"],
-    "plainExpression": "talk about",
-    "upgradedExpression": "discuss",
+    "plainExpression": "review together",
+    "upgradedExpression": "go over",
     "meaning": {
-      "en": "A concise verb for talking about a topic with purpose.",
-      "zh-Hant": "表示討論某個主題，比 talk about 更正式精簡。"
+      "en": "A natural phrasal verb for reviewing something together.",
+      "zh-Hant": "一起逐項檢視或複習某件事的自然說法。"
     },
     "example": {
-      "text": "Let's discuss the timeline tomorrow.",
+      "text": "Let's go over the timeline tomorrow.",
       "translation": {
         "zh-Hant": "我們明天討論時程。"
       }
     },
-    "pronunciationText": "discuss",
+    "pronunciationText": "go over",
     "quiz": {
       "prompt": {
-        "en": "Which verb best upgrades talk about?",
-        "zh-Hant": "哪個動詞最適合替換 talk about？"
+        "en": "Which phrase best upgrades review together?",
+        "zh-Hant": "哪個片語最適合表達一起檢視？"
       },
-      "options": ["discuss", "talking aboutness", "speak topic", "say around"],
+      "options": ["go over", "talking aboutness", "speak topic", "say around"],
       "correctOptionIndex": 0
     }
   },
@@ -1209,25 +1209,25 @@
     "sortOrder": 14,
     "contentLanguageCode": "en",
     "supportLanguageCodes": ["zh-Hant"],
-    "plainExpression": "make better",
-    "upgradedExpression": "improve",
+    "plainExpression": "make more effective",
+    "upgradedExpression": "enhance",
     "meaning": {
-      "en": "A direct verb for making something better.",
-      "zh-Hant": "表示改善、提升，比 make better 更精準。"
+      "en": "A precise verb for improving quality, value, or effectiveness.",
+      "zh-Hant": "表示強化品質、價值或效果。"
     },
     "example": {
-      "text": "Small changes can improve the user experience.",
+      "text": "Small changes can enhance the user experience.",
       "translation": {
         "zh-Hant": "小改動可以改善使用者體驗。"
       }
     },
-    "pronunciationText": "improve",
+    "pronunciationText": "enhance",
     "quiz": {
       "prompt": {
-        "en": "Which verb best upgrades make better?",
-        "zh-Hant": "哪個動詞最適合替換 make better？"
+        "en": "Which verb best upgrades make more effective?",
+        "zh-Hant": "哪個動詞最適合表達強化效果？"
       },
-      "options": ["improve", "betterize", "good make", "more bettering"],
+      "options": ["enhance", "betterize", "good make", "more bettering"],
       "correctOptionIndex": 0
     }
   },
@@ -1518,24 +1518,24 @@
     "contentLanguageCode": "en",
     "supportLanguageCodes": ["zh-Hant"],
     "plainExpression": "because of",
-    "upgradedExpression": "due to",
+    "upgradedExpression": "owing to",
     "meaning": {
-      "en": "A concise phrase for giving the reason for something.",
-      "zh-Hant": "表示由於、因為，比 because of 更正式。"
+      "en": "A formal phrase for stating the cause of something.",
+      "zh-Hant": "較正式地說明某件事的原因。"
     },
     "example": {
-      "text": "The event was delayed due to rain.",
+      "text": "The event was delayed owing to rain.",
       "translation": {
         "zh-Hant": "活動因為下雨而延後。"
       }
     },
-    "pronunciationText": "due to",
+    "pronunciationText": "owing to",
     "quiz": {
       "prompt": {
         "en": "Which phrase best upgrades because of?",
         "zh-Hant": "哪個片語最適合替換 because of？"
       },
-      "options": ["due to", "because to", "reason by", "why from"],
+      "options": ["owing to", "because to", "reason by", "why from"],
       "correctOptionIndex": 0
     }
   },
@@ -2413,25 +2413,25 @@
     "sortOrder": 27,
     "contentLanguageCode": "en",
     "supportLanguageCodes": ["zh-Hant"],
-    "plainExpression": "not clear",
-    "upgradedExpression": "ambiguous",
+    "plainExpression": "not clearly defined",
+    "upgradedExpression": "open to interpretation",
     "meaning": {
-      "en": "A precise adjective for something that can be understood in more than one way.",
-      "zh-Hant": "表示模糊、有多種解讀，比 not clear 更精準。"
+      "en": "A precise phrase for something that permits more than one reasonable reading.",
+      "zh-Hant": "表示內容容許多種合理解讀，語氣比 not clear 更精準。"
     },
     "example": {
-      "text": "The instruction is ambiguous without an example.",
+      "text": "Without an example, the instruction is open to interpretation.",
       "translation": {
-        "zh-Hant": "如果沒有例子，這個指示會有點模糊。"
+        "zh-Hant": "如果沒有例子，這個指示可能會有不同解讀。"
       }
     },
-    "pronunciationText": "ambiguous",
+    "pronunciationText": "open to interpretation",
     "quiz": {
       "prompt": {
-        "en": "Which adjective best upgrades not clear?",
-        "zh-Hant": "哪個形容詞最適合替換 not clear？"
+        "en": "Which phrase best upgrades not clearly defined?",
+        "zh-Hant": "哪個片語最適合表達可能有多種解讀？"
       },
-      "options": ["ambiguous", "unclearly", "not clearful", "fog meaning"],
+      "options": ["open to interpretation", "unclearly", "not clearful", "fog meaning"],
       "correctOptionIndex": 0
     }
   },
