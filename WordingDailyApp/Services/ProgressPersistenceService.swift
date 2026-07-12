@@ -24,20 +24,29 @@ struct ProgressPersistenceService {
     func session(
         for dayKey: String,
         itemIDs: [String],
-        targetItemCount: Int = 10,
+        reviewItemIDs: Set<String> = [],
         in context: ModelContext
     ) throws -> DailySession {
-        let session = try session(for: dayKey, targetItemCount: targetItemCount, in: context)
+        let session = try session(for: dayKey, targetItemCount: itemIDs.count, in: context)
         guard session.items.isEmpty else {
+            if session.targetItemCount != session.items.count {
+                session.targetItemCount = session.items.count
+                try context.save()
+            }
             return session
         }
 
         for (position, itemID) in itemIDs.enumerated() {
-            let item = DailySessionItem(itemID: itemID, position: position)
+            let item = DailySessionItem(
+                itemID: itemID,
+                position: position,
+                isReviewFill: reviewItemIDs.contains(itemID)
+            )
             context.insert(item)
             session.items.append(item)
         }
 
+        session.targetItemCount = session.items.count
         try context.save()
         return session
     }
@@ -47,11 +56,7 @@ struct ProgressPersistenceService {
         level: VocabularyLevel,
         in context: ModelContext
     ) throws -> WordProgress {
-        let descriptor = FetchDescriptor<WordProgress>(
-            predicate: #Predicate { $0.itemID == itemID }
-        )
-
-        if let existing = try context.fetch(descriptor).first {
+        if let existing = try existingWordProgress(for: itemID, in: context) {
             return existing
         }
 
@@ -59,6 +64,16 @@ struct ProgressPersistenceService {
         context.insert(progress)
         try context.save()
         return progress
+    }
+
+    func existingWordProgress(
+        for itemID: String,
+        in context: ModelContext
+    ) throws -> WordProgress? {
+        let descriptor = FetchDescriptor<WordProgress>(
+            predicate: #Predicate { $0.itemID == itemID }
+        )
+        return try context.fetch(descriptor).first
     }
 
     func quizResult(
@@ -86,6 +101,26 @@ struct ProgressPersistenceService {
         context.insert(result)
         try context.save()
         return result
+    }
+
+    func practiceAttempt(
+        runID: String,
+        itemID: String,
+        level: VocabularyLevel,
+        mode: PracticeMode,
+        wasCorrect: Bool,
+        in context: ModelContext
+    ) throws -> PracticeAttemptRecord {
+        let attempt = PracticeAttemptRecord(
+            runID: runID,
+            itemID: itemID,
+            level: level,
+            mode: mode,
+            wasCorrect: wasCorrect
+        )
+        context.insert(attempt)
+        try context.save()
+        return attempt
     }
 
     private static func quizResultID(dayKey: String, itemID: String) -> String {

@@ -28,6 +28,8 @@ enum DailyReminderPlan: Equatable {
 
 struct NotificationScheduler {
     static let dailyReminderIdentifier = "wording-daily.daily-reminder"
+    static let deepLinkUserInfoKey = "wording-daily.internal-url"
+    static let dailyReminderURL = URL(string: "wordingdaily://today")!
     static let reminderRequestIdentifiers = [dailyReminderIdentifier]
 
     func dailyReminderPlan(
@@ -69,6 +71,7 @@ struct NotificationScheduler {
         content.title = title
         content.body = body
         content.sound = .default
+        content.userInfo[Self.deepLinkUserInfoKey] = Self.dailyReminderURL.absoluteString
 
         var dateComponents = DateComponents()
         dateComponents.hour = hour

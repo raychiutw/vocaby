@@ -85,3 +85,38 @@ struct DayKeyService {
         }
     }
 }
+
+struct StreakService {
+    private let dayKeyService: DayKeyService
+
+    init(dayKeyService: DayKeyService = DayKeyService()) {
+        self.dayKeyService = dayKeyService
+    }
+
+    func streakCount(from sessions: [DailySession], currentDayKey: String) -> Int {
+        let completedDayKeys = Set(sessions.compactMap { session in
+            session.completedAt != nil && !session.items.isEmpty ? session.dayKey : nil
+        })
+
+        let anchorDayKey: String
+        if completedDayKeys.contains(currentDayKey) {
+            anchorDayKey = currentDayKey
+        } else if let yesterday = dayKeyService.dayKey(byAddingDays: -1, to: currentDayKey),
+                  completedDayKeys.contains(yesterday) {
+            anchorDayKey = yesterday
+        } else {
+            return 0
+        }
+
+        var count = 0
+        var dayKey = anchorDayKey
+        while completedDayKeys.contains(dayKey) {
+            count += 1
+            guard let previousDayKey = dayKeyService.dayKey(byAddingDays: -1, to: dayKey) else {
+                break
+            }
+            dayKey = previousDayKey
+        }
+        return count
+    }
+}

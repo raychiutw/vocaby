@@ -6,6 +6,8 @@ final class WordProgress {
     @Attribute(.unique) var itemID: String
     var levelRawValue: String
     var isSaved: Bool
+    var firstSeenAt: Date?
+    var lastReviewedAt: Date?
     var correctCount: Int
     var dueDayKey: String?
     var wrongCount: Int
@@ -16,6 +18,8 @@ final class WordProgress {
         itemID: String,
         level: VocabularyLevel,
         isSaved: Bool = false,
+        firstSeenAt: Date? = nil,
+        lastReviewedAt: Date? = nil,
         correctCount: Int = 0,
         dueDayKey: String? = nil,
         wrongCount: Int = 0,
@@ -25,6 +29,8 @@ final class WordProgress {
         self.itemID = itemID
         self.levelRawValue = level.rawValue
         self.isSaved = isSaved
+        self.firstSeenAt = firstSeenAt
+        self.lastReviewedAt = lastReviewedAt
         self.correctCount = correctCount
         self.dueDayKey = dueDayKey
         self.wrongCount = wrongCount
@@ -50,10 +56,34 @@ final class DailySession {
     }
 }
 
+extension DailySession {
+    var completedItemCount: Int {
+        items.filter { $0.answeredAt != nil }.count
+    }
+
+    var correctItemCount: Int {
+        items.filter { $0.wasCorrect == true }.count
+    }
+
+    func scheduledReviewCount(from progressRows: [WordProgress]) -> Int {
+        let completedItemIDs = Set(items.compactMap { $0.answeredAt == nil ? nil : $0.itemID })
+        return Set(progressRows.compactMap { progress -> String? in
+            guard completedItemIDs.contains(progress.itemID),
+                  progress.dueDayKey != nil,
+                  progress.masteredAt == nil else {
+                return nil
+            }
+
+            return progress.itemID
+        }).count
+    }
+}
+
 @Model
 final class DailySessionItem {
     var itemID: String
     var position: Int
+    var isReviewFill: Bool = false
     var answeredAt: Date?
     var selectedOptionIndex: Int?
     var wasCorrect: Bool?
@@ -61,12 +91,14 @@ final class DailySessionItem {
     init(
         itemID: String,
         position: Int,
+        isReviewFill: Bool = false,
         answeredAt: Date? = nil,
         selectedOptionIndex: Int? = nil,
         wasCorrect: Bool? = nil
     ) {
         self.itemID = itemID
         self.position = position
+        self.isReviewFill = isReviewFill
         self.answeredAt = answeredAt
         self.selectedOptionIndex = selectedOptionIndex
         self.wasCorrect = wasCorrect
@@ -97,5 +129,34 @@ final class QuizResult {
         self.correctOptionIndex = correctOptionIndex
         self.answeredAt = answeredAt
         self.wasCorrect = selectedOptionIndex == correctOptionIndex
+    }
+}
+
+@Model
+final class PracticeAttemptRecord {
+    @Attribute(.unique) var id: String
+    var runID: String
+    var itemID: String
+    var levelRawValue: String
+    var modeRawValue: String
+    var wasCorrect: Bool
+    var answeredAt: Date
+
+    init(
+        id: String = UUID().uuidString,
+        runID: String,
+        itemID: String,
+        level: VocabularyLevel,
+        mode: PracticeMode,
+        wasCorrect: Bool,
+        answeredAt: Date = Date()
+    ) {
+        self.id = id
+        self.runID = runID
+        self.itemID = itemID
+        self.levelRawValue = level.rawValue
+        self.modeRawValue = mode.rawValue
+        self.wasCorrect = wasCorrect
+        self.answeredAt = answeredAt
     }
 }

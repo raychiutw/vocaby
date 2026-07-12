@@ -31,10 +31,12 @@
 		000000000000000000000415 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000315 /* OnboardingView.swift */; };
 		000000000000000000000416 /* ReviewQueueService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000316 /* ReviewQueueService.swift */; };
 		000000000000000000000417 /* LibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000317 /* LibraryService.swift */; };
-		000000000000000000000430 /* WordingDailyWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000330 /* WordingDailyWidget.swift */; };
-		000000000000000000000431 /* WidgetSnapshotWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000311 /* WidgetSnapshotWriter.swift */; };
-		000000000000000000000432 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000308 /* Localizable.xcstrings */; };
-		000000000000000000000433 /* WordingDailyWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000112 /* WordingDailyWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		000000000000000000000418 /* QuizEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031A /* QuizEngine.swift */; };
+		000000000000000000000419 /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031B /* PracticeView.swift */; };
+		00000000000000000000041A /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031C /* ThirdPartyNotices.txt */; };
+		00000000000000000000041B /* VocabularyEntryContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031D /* VocabularyEntryContentView.swift */; };
+		00000000000000000000041C /* PracticeProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031E /* PracticeProgressService.swift */; };
+		00000000000000000000041D /* LearningChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031F /* LearningChrome.swift */; };
 		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
 		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
 		000000000000000000000422 /* PersistenceGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000322 /* PersistenceGuardTests.swift */; };
@@ -46,6 +48,42 @@
 		000000000000000000000428 /* ReviewQueueServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000328 /* ReviewQueueServiceTests.swift */; };
 		000000000000000000000429 /* LibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000329 /* LibraryServiceTests.swift */; };
 		00000000000000000000042A /* LocalizationCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000032A /* LocalizationCoverageTests.swift */; };
+		00000000000000000000042B /* QuizEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000032B /* QuizEngineTests.swift */; };
+		000000000000000000000430 /* WordingDailyWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000330 /* WordingDailyWidget.swift */; };
+		000000000000000000000431 /* WidgetSnapshotWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000311 /* WidgetSnapshotWriter.swift */; };
+		000000000000000000000432 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000308 /* Localizable.xcstrings */; };
+		000000000000000000000433 /* WordingDailyWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000112 /* WordingDailyWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		05A05A8522D2824C6BB9469A /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000301 /* RootTabView.swift */; };
+		0BA66AFAB7C233F6862E765E /* WidgetSnapshotWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000311 /* WidgetSnapshotWriter.swift */; };
+		0ECC1756DDDE065CE7AD252F /* SeedLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030C /* SeedLoader.swift */; };
+		0FC5DA276C2256378C8664F8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000306 /* Theme.swift */; };
+		135E316F9B908E8D5C929844 /* DayKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030B /* DayKeyService.swift */; };
+		19694E905A4E5326BB075959 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000308 /* Localizable.xcstrings */; };
+		2DC81A54453B4EAE4886AA56 /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031B /* PracticeView.swift */; };
+		30EA7D398244F182C0A12FE4 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000312 /* NotificationScheduler.swift */; };
+		3481B68444DB24910CF87DAB /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000305 /* SettingsView.swift */; };
+		4718A1F95877C95C0A742B54 /* VocabularyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000309 /* VocabularyModels.swift */; };
+		4DC4B74DDC7ECA9B76DDAC26 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000304 /* LibraryView.swift */; };
+		4E127E8C8650E797DB6F15C3 /* ReviewScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000310 /* ReviewScheduler.swift */; };
+		512767C29A3234458CD0DC78 /* QuizEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031A /* QuizEngine.swift */; };
+		73A44CFD7324CBAA098CC9B2 /* ReviewQueueService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000316 /* ReviewQueueService.swift */; };
+		749019534EFA31FE6BCFF49A /* UserPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000313 /* UserPreferencesStore.swift */; };
+		803BB2F52015262217D8F1F5 /* VocabularySeed.json in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030D /* VocabularySeed.json */; };
+		83854FD4A6F342C3077E5150 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000314 /* RootView.swift */; };
+		89B258B6909F7CB00C1FCA6C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000307 /* Assets.xcassets */; };
+		8DF0621FBBC3D7F9930FE38F /* DailySelectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030F /* DailySelectionService.swift */; };
+		AB74E89EC27F80E0CE2F98B1 /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031C /* ThirdPartyNotices.txt */; };
+		C7C804D77E9FD886C3B63CA0 /* LibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000317 /* LibraryService.swift */; };
+		CA505021015367E5DCFCA000 /* ReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000303 /* ReviewView.swift */; };
+		CAEAAFCE4504FACCB8EFB08B /* ProgressPersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030E /* ProgressPersistenceService.swift */; };
+		CD1B62FECC86A1512EC76E4B /* DebugBridgeUI in Frameworks */ = {isa = PBXBuildFile; productRef = C4DB45087DFFA94022F7E3DF /* DebugBridgeUI */; };
+		D772EED60BD3AE87703FA6D9 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000302 /* TodayView.swift */; };
+		E3A4777BEDC52FBFFF6784FF /* PersistenceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030A /* PersistenceModels.swift */; };
+		E90F9885B16F4B2189B5D091 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000315 /* OnboardingView.swift */; };
+		FC9AE2752E1EC9A3F4B2006D /* WordingDailyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000300 /* WordingDailyApp.swift */; };
+		FD05E47103284A7DAD9AD075 /* VocabularyEntryContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031D /* VocabularyEntryContentView.swift */; };
+		A1A0B1C2D3E4F50617283940 /* PracticeProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031E /* PracticeProgressService.swift */; };
+		A1A0B1C2D3E4F50617283941 /* LearningChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031F /* LearningChrome.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +102,20 @@
 			remoteInfo = WordingDailyWidget;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		000000000000000000000123 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				000000000000000000000433 /* WordingDailyWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000110 /* WordingDailyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WordingDailyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -95,6 +147,12 @@
 		000000000000000000000317 /* LibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryService.swift; sourceTree = "<group>"; };
 		000000000000000000000318 /* WordingDailyApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyApp.entitlements; sourceTree = "<group>"; };
 		000000000000000000000319 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		00000000000000000000031A /* QuizEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizEngine.swift; sourceTree = "<group>"; };
+		00000000000000000000031B /* PracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
+		00000000000000000000031C /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
+		00000000000000000000031D /* VocabularyEntryContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyEntryContentView.swift; sourceTree = "<group>"; };
+		00000000000000000000031E /* PracticeProgressService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeProgressService.swift; sourceTree = "<group>"; };
+		00000000000000000000031F /* LearningChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningChrome.swift; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
 		000000000000000000000322 /* PersistenceGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceGuardTests.swift; sourceTree = "<group>"; };
@@ -106,24 +164,12 @@
 		000000000000000000000328 /* ReviewQueueServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000329 /* LibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryServiceTests.swift; sourceTree = "<group>"; };
 		00000000000000000000032A /* LocalizationCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationCoverageTests.swift; sourceTree = "<group>"; };
+		00000000000000000000032B /* QuizEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizEngineTests.swift; sourceTree = "<group>"; };
 		000000000000000000000330 /* WordingDailyWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordingDailyWidget.swift; sourceTree = "<group>"; };
 		000000000000000000000331 /* WordingDailyWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyWidget.entitlements; sourceTree = "<group>"; };
 		000000000000000000000332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CAB72340019A049A10CCD3AF /* WordingDailyAppQA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WordingDailyAppQA.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		000000000000000000000123 /* Embed App Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				000000000000000000000433 /* WordingDailyWidget.appex in Embed App Extensions */,
-			);
-			name = "Embed App Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		000000000000000000000122 /* Frameworks */ = {
@@ -147,6 +193,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CBEF586D88B7D26C20D18079 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD1B62FECC86A1512EC76E4B /* DebugBridgeUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -166,6 +220,7 @@
 				000000000000000000000110 /* WordingDailyApp.app */,
 				000000000000000000000111 /* WordingDailyAppTests.xctest */,
 				000000000000000000000112 /* WordingDailyWidget.appex */,
+				CAB72340019A049A10CCD3AF /* WordingDailyAppQA.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -197,14 +252,25 @@
 		000000000000000000000050 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				00000000000000000000005C /* Shared */,
 				000000000000000000000051 /* Root */,
 				00000000000000000000005A /* Onboarding */,
 				000000000000000000000052 /* Today */,
+				00000000000000000000005B /* Practice */,
 				000000000000000000000053 /* Review */,
 				000000000000000000000054 /* Library */,
 				000000000000000000000055 /* Settings */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		00000000000000000000005C /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000031F /* LearningChrome.swift */,
+				00000000000000000000031D /* VocabularyEntryContentView.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		000000000000000000000051 /* Root */ = {
@@ -214,14 +280,6 @@
 				000000000000000000000314 /* RootView.swift */,
 			);
 			path = Root;
-			sourceTree = "<group>";
-		};
-		00000000000000000000005A /* Onboarding */ = {
-			isa = PBXGroup;
-			children = (
-				000000000000000000000315 /* OnboardingView.swift */,
-			);
-			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		000000000000000000000052 /* Today */ = {
@@ -269,6 +327,7 @@
 			children = (
 				000000000000000000000308 /* Localizable.xcstrings */,
 				00000000000000000000030D /* VocabularySeed.json */,
+				00000000000000000000031C /* ThirdPartyNotices.txt */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -292,11 +351,29 @@
 				000000000000000000000310 /* ReviewScheduler.swift */,
 				000000000000000000000316 /* ReviewQueueService.swift */,
 				000000000000000000000317 /* LibraryService.swift */,
+				00000000000000000000031A /* QuizEngine.swift */,
 				000000000000000000000311 /* WidgetSnapshotWriter.swift */,
 				000000000000000000000312 /* NotificationScheduler.swift */,
 				000000000000000000000313 /* UserPreferencesStore.swift */,
+				00000000000000000000031E /* PracticeProgressService.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		00000000000000000000005A /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000315 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		00000000000000000000005B /* Practice */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000031B /* PracticeView.swift */,
+			);
+			path = Practice;
 			sourceTree = "<group>";
 		};
 		000000000000000000000060 /* WordingDailyAppTests */ = {
@@ -313,6 +390,7 @@
 				000000000000000000000328 /* ReviewQueueServiceTests.swift */,
 				000000000000000000000329 /* LibraryServiceTests.swift */,
 				00000000000000000000032A /* LocalizationCoverageTests.swift */,
+				00000000000000000000032B /* QuizEngineTests.swift */,
 			);
 			path = WordingDailyAppTests;
 			sourceTree = "<group>";
@@ -349,23 +427,6 @@
 			productReference = 000000000000000000000110 /* WordingDailyApp.app */;
 			productType = "com.apple.product-type.application";
 		};
-		000000000000000000000102 /* WordingDailyWidget */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 000000000000000000000252 /* Build configuration list for PBXNativeTarget "WordingDailyWidget" */;
-			buildPhases = (
-				000000000000000000000140 /* Sources */,
-				000000000000000000000142 /* Frameworks */,
-				000000000000000000000141 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = WordingDailyWidget;
-			productName = WordingDailyWidget;
-			productReference = 000000000000000000000112 /* WordingDailyWidget.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		000000000000000000000101 /* WordingDailyAppTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 000000000000000000000222 /* Build configuration list for PBXNativeTarget "WordingDailyAppTests" */;
@@ -383,6 +444,43 @@
 			productName = WordingDailyAppTests;
 			productReference = 000000000000000000000111 /* WordingDailyAppTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		000000000000000000000102 /* WordingDailyWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000252 /* Build configuration list for PBXNativeTarget "WordingDailyWidget" */;
+			buildPhases = (
+				000000000000000000000140 /* Sources */,
+				000000000000000000000142 /* Frameworks */,
+				000000000000000000000141 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WordingDailyWidget;
+			productName = WordingDailyWidget;
+			productReference = 000000000000000000000112 /* WordingDailyWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		FCED24BDC3A914E058695A01 /* WordingDailyAppQA */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 248C128BB4FA2DFA2C4884C0 /* Build configuration list for PBXNativeTarget "WordingDailyAppQA" */;
+			buildPhases = (
+				24ED922C7C809B133744DDB5 /* Sources */,
+				CBEF586D88B7D26C20D18079 /* Frameworks */,
+				CCCA66C209F242C7EBF6FFF1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WordingDailyAppQA;
+			packageProductDependencies = (
+				C4DB45087DFFA94022F7E3DF /* DebugBridgeUI */,
+			);
+			productName = WordingDailyAppQA;
+			productReference = CAB72340019A049A10CCD3AF /* WordingDailyAppQA.app */;
+			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
@@ -414,6 +512,9 @@
 							};
 						};
 					};
+					FCED24BDC3A914E058695A01 = {
+						CreatedOnToolsVersion = 26.6;
+					};
 				};
 			};
 			buildConfigurationList = 000000000000000000000202 /* Build configuration list for PBXProject "WordingDailyApp" */;
@@ -425,6 +526,9 @@
 				"zh-Hant",
 			);
 			mainGroup = 000000000000000000000002;
+			packageReferences = (
+				CBE2B67DCFBE96438155782E /* XCLocalSwiftPackageReference "DebugBridge" */,
+			);
 			productRefGroup = 000000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -432,6 +536,7 @@
 				000000000000000000000100 /* WordingDailyApp */,
 				000000000000000000000101 /* WordingDailyAppTests */,
 				000000000000000000000102 /* WordingDailyWidget */,
+				FCED24BDC3A914E058695A01 /* WordingDailyAppQA */,
 			);
 		};
 /* End PBXProject section */
@@ -444,6 +549,7 @@
 				000000000000000000000407 /* Assets.xcassets in Resources */,
 				000000000000000000000408 /* Localizable.xcstrings in Resources */,
 				00000000000000000000040D /* VocabularySeed.json in Resources */,
+				00000000000000000000041A /* ThirdPartyNotices.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,6 +565,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				000000000000000000000432 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CCCA66C209F242C7EBF6FFF1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				89B258B6909F7CB00C1FCA6C /* Assets.xcassets in Resources */,
+				19694E905A4E5326BB075959 /* Localizable.xcstrings in Resources */,
+				803BB2F52015262217D8F1F5 /* VocabularySeed.json in Resources */,
+				AB74E89EC27F80E0CE2F98B1 /* ThirdPartyNotices.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -490,6 +607,11 @@
 				000000000000000000000415 /* OnboardingView.swift in Sources */,
 				000000000000000000000416 /* ReviewQueueService.swift in Sources */,
 				000000000000000000000417 /* LibraryService.swift in Sources */,
+				000000000000000000000418 /* QuizEngine.swift in Sources */,
+				000000000000000000000419 /* PracticeView.swift in Sources */,
+				00000000000000000000041B /* VocabularyEntryContentView.swift in Sources */,
+				00000000000000000000041C /* PracticeProgressService.swift in Sources */,
+				00000000000000000000041D /* LearningChrome.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -508,6 +630,7 @@
 				000000000000000000000428 /* ReviewQueueServiceTests.swift in Sources */,
 				000000000000000000000429 /* LibraryServiceTests.swift in Sources */,
 				00000000000000000000042A /* LocalizationCoverageTests.swift in Sources */,
+				00000000000000000000042B /* QuizEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -517,6 +640,39 @@
 			files = (
 				000000000000000000000430 /* WordingDailyWidget.swift in Sources */,
 				000000000000000000000431 /* WidgetSnapshotWriter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		24ED922C7C809B133744DDB5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC9AE2752E1EC9A3F4B2006D /* WordingDailyApp.swift in Sources */,
+				05A05A8522D2824C6BB9469A /* RootTabView.swift in Sources */,
+				D772EED60BD3AE87703FA6D9 /* TodayView.swift in Sources */,
+				CA505021015367E5DCFCA000 /* ReviewView.swift in Sources */,
+				4DC4B74DDC7ECA9B76DDAC26 /* LibraryView.swift in Sources */,
+				3481B68444DB24910CF87DAB /* SettingsView.swift in Sources */,
+				0FC5DA276C2256378C8664F8 /* Theme.swift in Sources */,
+				4718A1F95877C95C0A742B54 /* VocabularyModels.swift in Sources */,
+				E3A4777BEDC52FBFFF6784FF /* PersistenceModels.swift in Sources */,
+				135E316F9B908E8D5C929844 /* DayKeyService.swift in Sources */,
+				0ECC1756DDDE065CE7AD252F /* SeedLoader.swift in Sources */,
+				CAEAAFCE4504FACCB8EFB08B /* ProgressPersistenceService.swift in Sources */,
+				8DF0621FBBC3D7F9930FE38F /* DailySelectionService.swift in Sources */,
+				4E127E8C8650E797DB6F15C3 /* ReviewScheduler.swift in Sources */,
+				0BA66AFAB7C233F6862E765E /* WidgetSnapshotWriter.swift in Sources */,
+				30EA7D398244F182C0A12FE4 /* NotificationScheduler.swift in Sources */,
+				749019534EFA31FE6BCFF49A /* UserPreferencesStore.swift in Sources */,
+				83854FD4A6F342C3077E5150 /* RootView.swift in Sources */,
+				E90F9885B16F4B2189B5D091 /* OnboardingView.swift in Sources */,
+				73A44CFD7324CBAA098CC9B2 /* ReviewQueueService.swift in Sources */,
+				C7C804D77E9FD886C3B63CA0 /* LibraryService.swift in Sources */,
+				512767C29A3234458CD0DC78 /* QuizEngine.swift in Sources */,
+				2DC81A54453B4EAE4886AA56 /* PracticeView.swift in Sources */,
+				FD05E47103284A7DAD9AD075 /* VocabularyEntryContentView.swift in Sources */,
+				A1A0B1C2D3E4F50617283940 /* PracticeProgressService.swift in Sources */,
+				A1A0B1C2D3E4F50617283941 /* LearningChrome.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -791,6 +947,62 @@
 			};
 			name = Release;
 		};
+		C7B1CAFDD228F7096A1F9665 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Accent;
+				CODE_SIGN_ENTITLEMENTS = WordingDailyApp/WordingDailyAppQA.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3LHEYBW4DC;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WordingDailyApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.raychiutw.WordingDaily.QA;
+				PRODUCT_NAME = WordingDailyAppQA;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG GSTACK_IOS_QA";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EE211CCDDD6BFF61855B2DA5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Accent;
+				CODE_SIGN_ENTITLEMENTS = WordingDailyApp/WordingDailyAppQA.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3LHEYBW4DC;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WordingDailyApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.raychiutw.WordingDaily.QA;
+				PRODUCT_NAME = WordingDailyAppQA;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) GSTACK_IOS_QA_DISABLED";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -830,7 +1042,31 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		248C128BB4FA2DFA2C4884C0 /* Build configuration list for PBXNativeTarget "WordingDailyAppQA" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EE211CCDDD6BFF61855B2DA5 /* Release */,
+				C7B1CAFDD228F7096A1F9665 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		CBE2B67DCFBE96438155782E /* XCLocalSwiftPackageReference "DebugBridge" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = DebugBridge;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C4DB45087DFFA94022F7E3DF /* DebugBridgeUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CBE2B67DCFBE96438155782E /* XCLocalSwiftPackageReference "DebugBridge" */;
+			productName = DebugBridgeUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 000000000000000000000001 /* Project object */;
 }

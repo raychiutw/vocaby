@@ -1,44 +1,78 @@
-# Simulator Smoke QA - Wording Daily
+# Simulator and qa-ios Smoke QA - Wording Daily
 
-Last run: 2026-07-10
+Last run: 2026-07-11
 
 ## Build Under Test
 
-- Commit: `1eb1083`
-- Simulator: `iPhone 17 Pro (native-iOS)`
-- Simulator ID: `F6E47DF4-6357-4304-B68F-7EB4A203C1DC`
-- Bundle ID: `com.raychiutw.WordingDaily`
-- Scope: first-screen simulator smoke, not full manual QA.
+- Branch: `codex/complete-v1` working tree.
+- Simulator: `iPhone 17 Pro`, iOS 26.5.
+- Simulator ID: `642EFBFD-4D1B-4946-8BD4-8FE6A852E59A`.
+- Formal scheme/bundle: `WordingDailyApp` / `com.raychiutw.WordingDaily`.
+- QA scheme/bundle: `WordingDailyAppQA` / `com.raychiutw.WordingDaily.QA`.
+
+`WordingDailyAppQA` is an independent internal target. Only its Debug
+configuration defines `GSTACK_IOS_QA` and links the repo-local `DebugBridge`
+package. The formal target has no DebugBridge product dependency.
 
 ## Commands Run
 
 ```sh
-xcrun simctl boot F6E47DF4-6357-4304-B68F-7EB4A203C1DC
-xcrun simctl bootstatus F6E47DF4-6357-4304-B68F-7EB4A203C1DC -b
-xcodebuild build -project WordingDailyApp.xcodeproj -scheme WordingDailyApp -destination 'platform=iOS Simulator,id=F6E47DF4-6357-4304-B68F-7EB4A203C1DC'
-xcrun simctl uninstall F6E47DF4-6357-4304-B68F-7EB4A203C1DC com.raychiutw.WordingDaily
-xcrun simctl install F6E47DF4-6357-4304-B68F-7EB4A203C1DC ~/Library/Developer/Xcode/DerivedData/WordingDailyApp-coqsiwlaszzetxeqkxycmzcggylc/Build/Products/Debug-iphonesimulator/WordingDailyApp.app
-xcrun simctl launch F6E47DF4-6357-4304-B68F-7EB4A203C1DC com.raychiutw.WordingDaily
+xcrun simctl terminate \
+  642EFBFD-4D1B-4946-8BD4-8FE6A852E59A \
+  com.raychiutw.WordingDaily.QA 2>/dev/null || true
+swift test --package-path DebugBridge
+
+xcodebuild test \
+  -project WordingDailyApp.xcodeproj \
+  -scheme WordingDailyApp \
+  -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A' \
+  -only-testing:WordingDailyAppTests \
+  CODE_SIGNING_ALLOWED=NO
+
+xcodebuild build \
+  -project WordingDailyApp.xcodeproj \
+  -scheme WordingDailyAppQA \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A' \
+  CODE_SIGNING_ALLOWED=NO
+
+xcodebuild build \
+  -project WordingDailyApp.xcodeproj \
+  -scheme WordingDailyApp \
+  -configuration Release \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO
 ```
 
-Screenshots were captured locally under `/tmp/wording-daily-qa/` for this run.
-They are not committed to the repo.
+## Bridge Contract
+
+- State server listens on port 9999 and requires a one-time boot token followed
+  by bearer-token rotation.
+- Stop any running QA build before the macOS package tests because both use the
+  intentionally fixed local port 9999.
+- Mutation endpoints additionally require an acquired `X-Session-ID`.
+- `/healthz`, `/auth/rotate`, `/session/acquire`, `/elements`, `/screenshot`, and
+  `/tap` were exercised against a fresh QA install.
+- `/elements` returned the visible SwiftUI accessibility tree in under 0.1 s.
+- Bridge touch completed onboarding and reached the Today screen.
 
 ## Results
 
-- Build: passed with `** BUILD SUCCEEDED **`.
-- Fresh launch: passed. App launched to onboarding welcome, not a blank screen or crash.
-- Onboarding welcome zh-Hant: passed. Shows app name, one value sentence, and one primary continue action.
-- Today zh-Hant normal size: passed. Shows Today tab, 0/10 progress, one primary start action, due review count, and native `TabView`.
-- Today zh-Hant accessibility-extra-large: passed. Text expands without visible overlap or clipped primary action; primary button wraps to two lines.
-- Today English normal size: passed. Text fits on Today first screen; native tab labels render as Today, Review, Library.
-- Tab structure: passed by source and screenshot. `RootTabView` uses native `TabView` with `.tabItem`, not a custom tab bar.
+- DebugBridge package: 3 tests passed, 0 failed.
+- Formal iOS unit suite: 92 tests passed, 0 failed or skipped.
+- QA Debug simulator build: passed.
+- Formal Release simulator build: passed.
+- Fresh QA launch and onboarding: passed in Traditional Chinese.
+- Today screen and native `TabView`: visually inspected from bridge screenshot.
+- Formal Release bundle contains `VocabularySeed.json`, notices, localization,
+  assets, and the widget only; no DebugBridge marker, raw/imported source,
+  manifest, or provenance artifact was found.
+
+Screenshots and endpoint responses are kept under `/tmp/wording-qa-*` for the
+local run and are not committed.
 
 ## Not Covered
 
-- Tapping through the full onboarding flow.
-- Notification permission denied/skipped/authorized system prompts.
-- Practice session answer states.
-- Library detail save toggle.
-- Widget small and medium placement on Home Screen.
-- Real-device `ios-qa` DebugBridge run.
+- Notification permission denied and authorized system-alert branches.
+- Widget small and medium placement on the Home Screen.
+- Real-device CoreDevice tunnel; the authenticated simulator path is verified.

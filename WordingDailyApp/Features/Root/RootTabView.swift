@@ -48,7 +48,9 @@ struct RootTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
-                TodayView()
+                TodayView {
+                    selectedTab = .review
+                }
             }
             .tabItem {
                 Label("today.tab.title", systemImage: "sun.max")
@@ -72,6 +74,13 @@ struct RootTabView: View {
             .tag(RootTab.library)
         }
         .onOpenURL { url in
+            route(url)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .wordingDailyInternalURL)) { notification in
+            guard let url = notification.object as? URL else {
+                return
+            }
+
             route(url)
         }
     }

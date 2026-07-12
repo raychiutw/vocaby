@@ -91,6 +91,11 @@ struct WordingDailyWidgetView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+            } else if entry.snapshot.progressTotal > 0,
+                      entry.snapshot.progressCompleted >= entry.snapshot.progressTotal {
+                Text("widget.completed")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             } else {
                 Text("widget.empty")
                     .font(.subheadline)

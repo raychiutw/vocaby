@@ -16,7 +16,7 @@ final class DailySelectionServiceTests: XCTestCase {
             selectedLevel: .basic,
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
-            seenItemIDs: ["basic-002"],
+            firstSeenItemIDs: ["basic-002"],
             dueReviewItemIDs: [],
             targetCount: 2
         )
@@ -40,7 +40,7 @@ final class DailySelectionServiceTests: XCTestCase {
             selectedLevel: .basic,
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
-            seenItemIDs: ["basic-002", "basic-003", "basic-004"],
+            firstSeenItemIDs: ["basic-002", "basic-003", "basic-004"],
             dueReviewItemIDs: ["basic-004", "basic-002", "missing"],
             targetCount: 3
         )
@@ -62,7 +62,7 @@ final class DailySelectionServiceTests: XCTestCase {
             selectedLevel: .basic,
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
-            seenItemIDs: [],
+            firstSeenItemIDs: [],
             dueReviewItemIDs: [],
             targetCount: 10
         )
@@ -84,7 +84,7 @@ final class DailySelectionServiceTests: XCTestCase {
             selectedLevel: .basic,
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
-            seenItemIDs: ["basic-002", "advanced-001", "basic-ja-001"],
+            firstSeenItemIDs: ["basic-002", "advanced-001", "basic-ja-001"],
             dueReviewItemIDs: ["basic-001", "basic-002", "advanced-001", "basic-ja-001", "basic-002"],
             targetCount: 3
         )
@@ -95,13 +95,79 @@ final class DailySelectionServiceTests: XCTestCase {
         XCTAssertEqual(selection.status, .fewerThanTarget(availableCount: 2, targetCount: 3))
     }
 
+    func testSavedOnlyProgressRemainsUnseenUntilFirstSeenTimestampIsSet() {
+        let items = [
+            item("basic-001", level: .basic, sortOrder: 1),
+            item("basic-002", level: .basic, sortOrder: 2)
+        ]
+        let progressRows = [
+            WordProgress(itemID: "basic-001", level: .basic, isSaved: true),
+            WordProgress(
+                itemID: "basic-002",
+                level: .basic,
+                firstSeenAt: Date(timeIntervalSince1970: 100)
+            )
+        ]
+
+        let selection = DailySelectionService().selectItems(
+            from: items,
+            selectedLevel: .basic,
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant",
+            firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
+            dueReviewItemIDs: [],
+            targetCount: 10
+        )
+
+        XCTAssertEqual(selection.newItemIDs, ["basic-001"])
+    }
+
+    func testEligibleReviewIsNotHiddenBehindEarlierOffLevelDueRows() {
+        let offLevelItems = (1...11).map { index in
+            item(String(format: "advanced-%03d", index), level: .advanced, sortOrder: index)
+        }
+        let eligibleItem = item("basic-review", level: .basic, sortOrder: 1)
+        let progressRows = offLevelItems.map { item in
+            WordProgress(
+                itemID: item.id,
+                level: item.level,
+                firstSeenAt: Date(timeIntervalSince1970: 100),
+                dueDayKey: "2026-07-01"
+            )
+        } + [
+            WordProgress(
+                itemID: eligibleItem.id,
+                level: eligibleItem.level,
+                firstSeenAt: Date(timeIntervalSince1970: 100),
+                dueDayKey: "2026-07-10"
+            )
+        ]
+        let dueReviewItemIDs = ReviewScheduler()
+            .allDueItems(from: progressRows, on: "2026-07-10")
+            .map(\.itemID)
+
+        let selection = DailySelectionService().selectItems(
+            from: offLevelItems + [eligibleItem],
+            selectedLevel: .basic,
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant",
+            firstSeenItemIDs: Set(progressRows.map(\.itemID)),
+            dueReviewItemIDs: dueReviewItemIDs,
+            targetCount: 10
+        )
+
+        XCTAssertEqual(selection.reviewItemIDs, ["basic-review"])
+    }
+
     private func item(
         _ id: String,
         level: VocabularyLevel,
         sortOrder: Int,
         supportLanguageCodes: [String] = ["zh-Hant"]
     ) -> VocabularySeedItem {
-        VocabularySeedItem(
+        let pronunciationID = "\(id)-pronunciation-1"
+        let senseID = "\(id)-sense-1"
+        return VocabularySeedItem(
             id: id,
             level: level,
             sortOrder: sortOrder,
@@ -109,10 +175,16 @@ final class DailySelectionServiceTests: XCTestCase {
             supportLanguageCodes: supportLanguageCodes,
             plainExpression: "plain \(id)",
             upgradedExpression: "upgraded \(id)",
-            meaning: ["zh-Hant": "meaning"],
-            example: VocabularyExample(text: "Example.", translation: ["zh-Hant": "例句。"]),
-            pronunciationText: id,
-            quiz: VocabularyQuiz(prompt: ["zh-Hant": "prompt"], options: ["A", "B"], correctOptionIndex: 0)
+            primarySenseID: senseID,
+            pronunciations: [.init(id: pronunciationID, ipa: "tɛst", speechLocale: "en-US", region: "US")],
+            senses: [.init(
+                id: senseID,
+                partOfSpeech: .phrase,
+                meaning: ["en": "meaning", "zh-Hant": "meaning"],
+                example: .init(text: "Example.", translation: ["zh-Hant": "例句。"]),
+                pronunciationIDs: [pronunciationID]
+            )],
+            quiz: VocabularyQuiz(prompt: ["en": "prompt", "zh-Hant": "prompt"], options: ["A", "B"], correctOptionIndex: 0)
         )
     }
 }

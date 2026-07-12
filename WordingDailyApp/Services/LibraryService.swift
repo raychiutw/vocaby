@@ -53,12 +53,13 @@ struct LibraryService {
             return true
         }
 
-        return [
+        let searchableText = [
             item.plainExpression,
-            item.upgradedExpression,
-            item.pronunciationText,
-            item.meaning[supportLanguageCode] ?? ""
-        ]
-        .contains { $0.lowercased().contains(query) }
+            item.upgradedExpression
+        ] + item.pronunciations.map(\.ipa) + item.senses.flatMap { sense in
+            [sense.meaning["en"] ?? "", sense.meaning[supportLanguageCode] ?? ""]
+        }
+
+        return searchableText.contains { $0.lowercased().contains(query) }
     }
 }

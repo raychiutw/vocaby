@@ -1,38 +1,45 @@
-import AVFoundation
 import SwiftData
 import SwiftUI
 import WidgetKit
 
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
-    @State private var isShowingSettings = false
     @State private var isShowingPractice = false
+    @State private var isShowingExtraPractice = false
     @State private var todaySession: DailySession?
     @State private var seedItems: [VocabularySeedItem] = []
+    @State private var practiceAttempts: [PracticeAttemptRecord] = []
     @State private var dueReviewCount = 0
+    @State private var scheduledReviewCount = 0
+    @State private var streakCount = 0
     @State private var statusMessage: String?
+
+    let onReview: () -> Void
 
     private let contentLanguageCode = "en"
     private let supportLanguageCode = "zh-Hant"
+    private let dailyTargetCount = 10
     private let dayKeyService = DayKeyService()
     private let dailySelectionService = DailySelectionService()
     private let persistenceService = ProgressPersistenceService()
     private let preferencesStore = UserPreferencesStore()
     private let reviewScheduler = ReviewScheduler()
     private let seedLoader = SeedLoader()
+    private let streakService = StreakService()
     private let widgetSnapshotWriter = WidgetSnapshotWriter.appGroupWriter()
+    private let practiceProgressService = PracticeProgressService()
 
     private var orderedSessionItems: [DailySessionItem] {
         (todaySession?.items ?? []).sorted { $0.position < $1.position }
     }
 
     private var completedCount: Int {
-        orderedSessionItems.filter { $0.answeredAt != nil }.count
+        todaySession?.completedItemCount ?? 0
     }
 
     private var totalCount: Int {
         let itemCount = orderedSessionItems.count
-        return itemCount > 0 ? itemCount : 10
+        return itemCount > 0 ? itemCount : dailyTargetCount
     }
 
     private var progressText: String {
@@ -62,42 +69,117 @@ struct TodayView: View {
         return completedCount == totalCount ? "today.completed.button" : "today.resume.button"
     }
 
+    private var vocabularyProgress: PracticeProgressSummary {
+        practiceProgressService.summary(seedItems: seedItems, attempts: practiceAttempts)
+    }
+
+    private var compactSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "today.compactSummary.format"),
+            completedCount,
+            totalCount,
+            streakCount
+        )
+    }
+
+    private var reviewSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "today.review.estimatedTime.format"),
+            dueReviewCount,
+            max(1, dueReviewCount / 3 + 1)
+        )
+    }
+
+    private var libraryProgressSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "today.libraryProgress.row"),
+            vocabularyProgress.total.correctItemCount,
+            vocabularyProgress.total.totalItemCount
+        )
+    }
+
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("today.progress.title")
+                HStack(spacing: 12) {
+                    Image("DailyFocusCover")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(Date.now, style: .date)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        Text(primaryButtonTitle)
                             .font(.headline)
-                        Spacer()
-                        Text(progressText)
-                            .font(.headline.monospacedDigit())
+
+                        Text(compactSummary)
+                            .font(.subheadline.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
-
-                    ProgressView(value: Double(completedCount), total: Double(totalCount))
-                        .tint(AppTheme.accent)
-                        .accessibilityLabel(Text("today.progress.accessibility"))
-                        .accessibilityValue(Text(progressText))
-
-                    Button {
-                        startPractice()
-                    } label: {
-                        Label(primaryButtonTitle, systemImage: completedCount == totalCount ? "checkmark.circle.fill" : "play.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(AppTheme.accent)
-                    .disabled(todaySession != nil && completedCount == totalCount)
-                    .accessibilityIdentifier("today.start")
                 }
-                .padding(.vertical, 8)
+
+                ProgressView(value: Double(completedCount), total: Double(totalCount))
+                    .tint(AppTheme.accent)
+                    .accessibilityLabel(Text("today.progress.accessibility"))
+                    .accessibilityValue(Text(progressText))
+
+                Button {
+                    if todaySession != nil && completedCount == totalCount {
+                        isShowingExtraPractice = true
+                    } else {
+                        startPractice()
+                    }
+                } label: {
+                    Text(todaySession != nil && completedCount == totalCount
+                        ? "today.extraPractice.button"
+                        : primaryButtonTitle)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.accent)
+                .accessibilityIdentifier("today.start")
             }
 
             Section {
-                LabeledContent("today.due.label", value: "\(dueReviewCount)")
-                LabeledContent("today.preview.label", value: previewText)
+                Button(action: onReview) {
+                    CompactMetadataRow(
+                        title: String(localized: "review.title"),
+                        subtitle: reviewSummary,
+                        systemImage: "arrow.triangle.2.circlepath",
+                        tint: AppTheme.reviewAmber
+                    )
+                }
+                .buttonStyle(.plain)
+
+                CompactMetadataRow(
+                    title: String(localized: "today.preview.label"),
+                    subtitle: previewText,
+                    systemImage: "text.quote",
+                    tint: AppTheme.accent
+                )
+            }
+
+            Section("today.vocabularyProgress.title") {
+                LabeledContent("today.vocabularyProgress.total", value: libraryProgressSummary)
+                LabeledContent("settings.level.basic", value: progressText(for: vocabularyProgress.progress(for: .basic)))
+                LabeledContent("settings.level.intermediate", value: progressText(for: vocabularyProgress.progress(for: .intermediate)))
+                LabeledContent("settings.level.advanced", value: progressText(for: vocabularyProgress.progress(for: .advanced)))
+            }
+
+            Section {
+                NavigationLink {
+                    PracticeCenterView(
+                        seedItems: seedItems,
+                        selectedLevel: preferencesStore.read().selectedLevel,
+                        supportLanguageCode: supportLanguageCode
+                    )
+                } label: {
+                    Label("practice.center.button", systemImage: "slider.horizontal.3")
+                }
             }
 
             if let statusMessage {
@@ -107,110 +189,166 @@ struct TodayView: View {
                 }
             }
         }
+        .listStyle(.plain)
         .navigationTitle("today.title")
         .task {
             refreshToday()
         }
         .navigationDestination(isPresented: $isShowingPractice) {
             if let todaySession {
-                TodayPracticeView(
+                DailyPracticeView(
                     session: todaySession,
                     seedItems: seedItems,
-                    supportLanguageCode: supportLanguageCode
+                    supportLanguageCode: supportLanguageCode,
+                    streakCount: streakCount,
+                    scheduledReviewCount: scheduledReviewCount,
+                    dueReviewCount: dueReviewCount,
+                    onReview: onReview
                 ) {
                     refreshToday()
                 }
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    isShowingSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                }
-                .accessibilityLabel(Text("settings.title"))
-            }
+        .navigationDestination(isPresented: $isShowingExtraPractice) {
+            PracticeCenterView(
+                seedItems: seedItems,
+                selectedLevel: preferencesStore.read().selectedLevel,
+                supportLanguageCode: supportLanguageCode,
+                startsImmediately: true,
+                onUpdate: refreshToday
+            )
         }
-        .sheet(isPresented: $isShowingSettings) {
-            NavigationStack {
-                SettingsView()
-            }
-        }
+        .learningSettingsSheet()
     }
 
     private func refreshToday() {
         do {
             try loadSeedIfNeeded()
             let dayKey = dayKeyService.dayKey(for: Date())
-            let sessionDescriptor = FetchDescriptor<DailySession>(
-                predicate: #Predicate { $0.dayKey == dayKey }
-            )
-            todaySession = try modelContext.fetch(sessionDescriptor).first
+            let sessions = try modelContext.fetch(FetchDescriptor<DailySession>())
+            todaySession = sessions.first { $0.dayKey == dayKey }
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueItems(from: progressRows, on: dayKey, limit: 10).count
+            practiceAttempts = try modelContext.fetch(FetchDescriptor<PracticeAttemptRecord>())
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
+            scheduledReviewCount = todaySession?.scheduledReviewCount(from: progressRows) ?? 0
+            streakCount = streakService.streakCount(from: sessions, currentDayKey: dayKey)
+            if let todaySession {
+                statusMessage = todaySession.targetItemCount < dailyTargetCount
+                    ? selectionStatusMessage(for: .fewerThanTarget(
+                        availableCount: todaySession.targetItemCount,
+                        targetCount: dailyTargetCount
+                    ))
+                    : nil
+            } else {
+                statusMessage = selectionStatusMessage(
+                    for: dailySelection(from: progressRows, on: dayKey).status
+                )
+            }
             writeWidgetSnapshot(dayKey: dayKey)
-            statusMessage = nil
         } catch {
             statusMessage = String(localized: "today.load.error")
         }
+    }
+
+    private func progressText(for progress: VocabularyPracticeProgress) -> String {
+        "\(progress.correctItemCount)/\(progress.totalItemCount)"
     }
 
     private func startPractice() {
         do {
             try loadSeedIfNeeded()
             let dayKey = dayKeyService.dayKey(for: Date())
+            let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
 
             if let existingSession = try existingSession(for: dayKey), !existingSession.items.isEmpty {
+                try markNewItemsFirstSeen(in: existingSession)
+                try modelContext.save()
                 todaySession = existingSession
+                statusMessage = existingSession.targetItemCount < dailyTargetCount
+                    ? selectionStatusMessage(for: .fewerThanTarget(
+                        availableCount: existingSession.targetItemCount,
+                        targetCount: dailyTargetCount
+                    ))
+                    : nil
                 writeWidgetSnapshot(dayKey: dayKey)
                 isShowingPractice = true
                 return
             }
 
-            let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            let dueReviewItemIDs = reviewScheduler
-                .dueItems(from: progressRows, on: dayKey, limit: 10)
-                .map(\.itemID)
-            let result = dailySelectionService.selectItems(
-                from: seedItems,
-                selectedLevel: preferencesStore.read().selectedLevel,
-                contentLanguageCode: contentLanguageCode,
-                supportLanguageCode: supportLanguageCode,
-                seenItemIDs: Set(progressRows.map(\.itemID)),
-                dueReviewItemIDs: dueReviewItemIDs
-            )
+            let result = dailySelection(from: progressRows, on: dayKey)
 
             guard !result.itemIDs.isEmpty else {
-                statusMessage = String(localized: "today.seed.empty")
+                statusMessage = selectionStatusMessage(for: result.status)
                 return
             }
 
             let session = try persistenceService.session(
                 for: dayKey,
                 itemIDs: result.itemIDs,
-                targetItemCount: 10,
+                reviewItemIDs: Set(result.reviewItemIDs),
                 in: modelContext
             )
-            let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
-
-            for itemID in result.itemIDs {
-                guard let item = seedByID[itemID] else {
-                    continue
-                }
-
-                _ = try persistenceService.wordProgress(for: itemID, level: item.level, in: modelContext)
-            }
+            try markNewItemsFirstSeen(in: session)
 
             try modelContext.save()
             todaySession = session
-            dueReviewCount = dueReviewItemIDs.count
             writeWidgetSnapshot(dayKey: dayKey)
-            statusMessage = nil
+            statusMessage = selectionStatusMessage(for: result.status)
             isShowingPractice = true
         } catch {
             statusMessage = String(localized: "today.load.error")
+        }
+    }
+
+    private func dailySelection(from progressRows: [WordProgress], on dayKey: String) -> DailySelectionResult {
+        let dueReviewItemIDs = reviewScheduler
+            .allDueItems(from: progressRows, on: dayKey)
+            .map(\.itemID)
+
+        return dailySelectionService.selectItems(
+            from: seedItems,
+            selectedLevel: preferencesStore.read().selectedLevel,
+            contentLanguageCode: contentLanguageCode,
+            supportLanguageCode: supportLanguageCode,
+            firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
+            dueReviewItemIDs: dueReviewItemIDs,
+            targetCount: dailyTargetCount
+        )
+    }
+
+    private func markNewItemsFirstSeen(in session: DailySession) throws {
+        let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
+
+        for sessionItem in session.items where !sessionItem.isReviewFill {
+            guard let seedItem = seedByID[sessionItem.itemID] else {
+                continue
+            }
+
+            let progress = try persistenceService.wordProgress(
+                for: seedItem.id,
+                level: seedItem.level,
+                in: modelContext
+            )
+            if progress.firstSeenAt == nil {
+                progress.firstSeenAt = session.createdAt
+            }
+        }
+    }
+
+    private func selectionStatusMessage(for status: DailySelectionStatus) -> String? {
+        switch status {
+        case .full:
+            return nil
+        case .fewerThanTarget(availableCount: 0, targetCount: _):
+            return String(localized: "today.seed.empty")
+        case let .fewerThanTarget(availableCount, targetCount):
+            return String.localizedStringWithFormat(
+                String(localized: "today.seed.fewer"),
+                availableCount,
+                targetCount
+            )
         }
     }
 
@@ -236,7 +374,7 @@ struct TodayView: View {
             dayKey: dayKey,
             progressCompleted: completedCount,
             progressTotal: totalCount,
-            streakCount: 0,
+            streakCount: streakCount,
             displayExpression: nextSeedItem.map {
                 WidgetSnapshotExpression(
                     itemID: $0.id,
@@ -252,233 +390,15 @@ struct TodayView: View {
     }
 }
 
-private struct TodayPracticeView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-
-    let session: DailySession
-    let seedItems: [VocabularySeedItem]
-    let supportLanguageCode: String
-    let onUpdate: () -> Void
-
-    @State private var selectedOptionIndex: Int?
-    @State private var errorMessage: String?
-    @State private var speechSynthesizer = AVSpeechSynthesizer()
-
-    private let persistenceService = ProgressPersistenceService()
-    private let reviewScheduler = ReviewScheduler()
-
-    private var orderedSessionItems: [DailySessionItem] {
-        session.items.sorted { $0.position < $1.position }
-    }
-
-    private var currentSessionItem: DailySessionItem? {
-        orderedSessionItems.first { $0.answeredAt == nil }
-    }
-
-    private var currentIndex: Int {
-        guard let currentSessionItem else {
-            return orderedSessionItems.count
-        }
-
-        return (orderedSessionItems.firstIndex { $0 === currentSessionItem } ?? 0) + 1
-    }
-
-    private var currentSeedItem: VocabularySeedItem? {
-        guard let currentSessionItem else {
-            return nil
-        }
-
-        return seedItems.first { $0.id == currentSessionItem.itemID }
-    }
-
-    var body: some View {
-        List {
-            if let item = currentSeedItem, currentSessionItem != nil {
-                Section {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("\(currentIndex)/\(max(orderedSessionItems.count, 1))")
-                                .font(.headline.monospacedDigit())
-                            Spacer()
-                            Button {
-                                speak(item.pronunciationText)
-                            } label: {
-                                Label(item.pronunciationText, systemImage: "speaker.wave.2")
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityLabel(Text("practice.pronunciation.accessibility"))
-                        }
-
-                        Text(item.upgradedExpression)
-                            .font(.title2.bold())
-
-                        Text(item.plainExpression)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-
-                        Text(localized(item.meaning))
-                            .font(.body)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.example.text)
-                            Text(localized(item.example.translation))
-                                .foregroundStyle(.secondary)
-                        }
-                        .font(.subheadline)
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                Section {
-                    Text(localized(item.quiz.prompt))
-                        .font(.headline)
-
-                    ForEach(Array(item.quiz.options.enumerated()), id: \.offset) { index, option in
-                        Button {
-                            selectedOptionIndex = index
-                        } label: {
-                            HStack {
-                                Text(option)
-                                    .multilineTextAlignment(.leading)
-                                Spacer()
-                                answerIcon(for: index, correctOptionIndex: item.quiz.correctOptionIndex)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(answerTint(for: index, correctOptionIndex: item.quiz.correctOptionIndex))
-                        .disabled(selectedOptionIndex != nil)
-                    }
-                }
-
-                if let selectedOptionIndex {
-                    Section {
-                        Text(String(localized: selectedOptionIndex == item.quiz.correctOptionIndex ? "practice.correct" : "practice.wrong"))
-                            .font(.headline)
-                    }
-                }
-            } else {
-                Section {
-                    Text("practice.completed")
-                        .font(.headline)
-
-                    Button("common.done") {
-                        dismiss()
-                    }
-                }
-            }
-
-            if let errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .navigationTitle("practice.title")
-        .safeAreaInset(edge: .bottom) {
-            if selectedOptionIndex != nil, currentSeedItem != nil {
-                VStack(spacing: 0) {
-                    Button {
-                        persistAnswer()
-                    } label: {
-                        Text("practice.next")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(AppTheme.accent)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.regularMaterial)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func answerIcon(for index: Int, correctOptionIndex: Int) -> some View {
-        if selectedOptionIndex != nil && index == correctOptionIndex {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Color("CorrectGreen"))
-        } else if selectedOptionIndex == index {
-            Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(Color("WrongRed"))
-        }
-    }
-
-    private func answerTint(for index: Int, correctOptionIndex: Int) -> Color? {
-        guard let selectedOptionIndex else {
-            return nil
-        }
-
-        if index == correctOptionIndex {
-            return Color("CorrectGreen")
-        }
-
-        return selectedOptionIndex == index ? Color("WrongRed") : nil
-    }
-
-    private func persistAnswer() {
-        guard let currentSessionItem, let item = currentSeedItem, let selectedOptionIndex else {
-            return
-        }
-
-        do {
-            let now = Date()
-            let wasCorrect = selectedOptionIndex == item.quiz.correctOptionIndex
-            currentSessionItem.selectedOptionIndex = selectedOptionIndex
-            currentSessionItem.wasCorrect = wasCorrect
-            currentSessionItem.answeredAt = now
-
-            let progress = try persistenceService.wordProgress(for: item.id, level: item.level, in: modelContext)
-            reviewScheduler.applyAnswer(
-                to: progress,
-                wasCorrect: wasCorrect,
-                answeredAt: now,
-                context: .dailyPractice
-            )
-            _ = try persistenceService.quizResult(
-                dayKey: session.dayKey,
-                itemID: item.id,
-                selectedOptionIndex: selectedOptionIndex,
-                correctOptionIndex: item.quiz.correctOptionIndex,
-                in: modelContext
-            )
-
-            if session.items.allSatisfy({ $0.answeredAt != nil }) {
-                session.completedAt = now
-            }
-
-            try modelContext.save()
-            self.selectedOptionIndex = nil
-            errorMessage = nil
-            onUpdate()
-        } catch {
-            errorMessage = String(localized: "practice.save.error")
-        }
-    }
-
-    private func localized(_ values: [String: String]) -> String {
-        values[supportLanguageCode] ?? values.values.first ?? ""
-    }
-
-    private func speak(_ text: String) {
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        speechSynthesizer.speak(utterance)
-    }
-}
-
 #Preview {
     NavigationStack {
-        TodayView()
+        TodayView {}
     }
     .modelContainer(for: [
         WordProgress.self,
         DailySession.self,
         DailySessionItem.self,
-        QuizResult.self
+        QuizResult.self,
+        PracticeAttemptRecord.self
     ], inMemory: true)
 }

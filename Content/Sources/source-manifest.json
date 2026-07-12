@@ -1,0 +1,430 @@
+{
+  "schemaVersion": 1,
+  "retrievedAt": "2026-07-11",
+  "sources": [
+    {
+      "id": "bsl-1.2",
+      "name": "Business Service List 1.2",
+      "version": "1.2",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.newgeneralservicelist.com/business-service-list",
+      "adapter": "lemma_csv",
+      "rawFile": {
+        "path": "Content/Sources/Raw/bsl/BSL_120_lemmatized_for_research.csv",
+        "sha256": "c29d181e7916250d21b5c41d63bdcfa67c992f66ae1dbaa207db82728f16d54d",
+        "bytes": 52302
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/bsl/source-page.html",
+          "sha256": "0c108b0bd92b9a41ddacbe207f5f1ad01e6a76541cff84635b3899fc3108a9fd",
+          "bytes": 191093
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Reference only; share-alike treatment is not approved for the shipping bank."
+    },
+    {
+      "id": "cefr-j-1.6",
+      "name": "CEFR-J Wordlist",
+      "version": "1.6",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.cefr-j.org/download.html",
+      "adapter": "cefr_j_xlsx_zip",
+      "rawFile": {
+        "path": "Content/Sources/Raw/cefr-j/CEFRJ_wordlist_ver1.6.zip",
+        "sha256": "c837d2c00ab8954ed8db48e79afd8ef37099570295fec36950dbf9322303a37a",
+        "bytes": 1089155
+      },
+      "license": "CEFR-J download terms",
+      "licenseURL": "https://www.cefr-j.org/download.html",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/cefr-j/source-page.html",
+          "sha256": "b44caaefa496adde0ef122bbea95dcaabbef5fee77d26de2c9611d2bb6284cdd",
+          "bytes": 70960
+        }
+      ],
+      "repositoryRedistribution": "review_required",
+      "appUse": "approved",
+      "requiredNotice": "The CEFR-J Wordlist Version 1.6. Compiled by Yukio Tono, Tokyo University of Foreign Studies. Retrieved from https://www.cefr-j.org/download.html on 2026-07-11.",
+      "decision": "Approved for level calibration with the source acknowledgement required by the publisher."
+    },
+    {
+      "id": "cc-cedict-2026-07-11",
+      "name": "CC-CEDICT",
+      "version": "2026-07-11 download",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://cc-cedict.org/editor/editor.php?handler=Download",
+      "adapter": "cedict_gzip",
+      "rawFile": {
+        "path": "Content/Sources/Raw/cc-cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+        "sha256": "d521f4b3b17bf44539455e7b91ed739063245f48f72b306bd6ade3209fbf944e",
+        "bytes": 3966430
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/cc-cedict/source-page.html",
+          "sha256": "631bc8a4dccaf163683316080c56abb422f0911dfb2d9f5eea095ac22bd64558",
+          "bytes": 6206
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Contains adapted data from CC-CEDICT, published by MDBG and community contributors under CC BY-SA 4.0. The adapted vocabulary data remains available under the same license.",
+      "decision": "Approved for reviewed Traditional Chinese sense alignment with attribution and CC BY-SA 4.0 share-alike terms."
+    },
+    {
+      "id": "cmudict-7479086",
+      "name": "CMU Pronouncing Dictionary",
+      "version": "git 74790861f652b15e4ac49015a90074ad62a27690",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://github.com/cmusphinx/cmudict",
+      "adapter": "cmudict",
+      "rawFile": {
+        "path": "Content/Sources/Raw/cmudict/cmudict.dict",
+        "sha256": "81917843c7f44ce2b094ac63873c2c7a4cf802040792c455ba3ca406891c3d22",
+        "bytes": 3618488
+      },
+      "license": "CMUdict permissive license",
+      "licenseURL": "https://github.com/cmusphinx/cmudict/blob/master/LICENSE",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/cmudict/LICENSE",
+          "sha256": "bd4ce8e44170a5f9f481310ca85c51de3c4f851a65e679b40e603b143bd3542a",
+          "bytes": 1754
+        }
+      ],
+      "noticeFiles": [
+        "Content/Sources/Raw/cmudict/LICENSE"
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Pronunciation data is adapted from the CMU Pronouncing Dictionary, Copyright (C) 1993-2015 Carnegie Mellon University, under its permissive redistribution license.",
+      "decision": "Approved for pronunciation evidence and deterministic IPA preparation; the App still uses only on-device system TTS."
+    },
+    {
+      "id": "cow-0.9",
+      "name": "Chinese Open WordNet",
+      "version": "0.9",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://bond-lab.github.io/cow/",
+      "adapter": "cow_tsv",
+      "rawFile": {
+        "path": "Content/Sources/Raw/cow/wn-data-cmn-0.9.tab",
+        "sha256": "ba11514279f48963d5a83aeef17de3c53b06bce6a1a50e599a88beb81388534b",
+        "bytes": 2547919
+      },
+      "license": "Chinese Open WordNet license",
+      "licenseURL": "https://bond-lab.github.io/cow/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/cow/LICENSE",
+          "sha256": "81a3cb1f97e120581d67c71424f2de5dd96325d951f991e8a092147a2a4b2321",
+          "bytes": 1441
+        }
+      ],
+      "noticeFiles": [
+        "Content/Sources/Raw/cow/LICENSE"
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Chinese Open Wordnet Copyright 2013, 2014 by Francis Bond and Shan Wang. Adapted by Wording Daily with the required copyright and license notice preserved.",
+      "decision": "Approved only through exact ILI sense alignment, OpenCC Taiwan conversion, and the shared content review gates."
+    },
+    {
+      "id": "freedict-eng-zho-2025.11.23",
+      "name": "FreeDict English-Chinese",
+      "version": "2025.11.23",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://freedict.org/downloads/",
+      "adapter": "freedict_tei_tar",
+      "rawFile": {
+        "path": "Content/Sources/Raw/freedict-eng-zho/freedict-eng-zho-2025.11.23.src.tar.xz",
+        "sha256": "78f6909786861809886201827e5e3d55dbf8e12f753d7a7183e785dbc574de8b",
+        "bytes": 1600448
+      },
+      "license": "CC BY-SA 3.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/freedict-eng-zho/source-page.html",
+          "sha256": "05042982f52c38002f4ca0b7674c4a01b61db79bb73aacc56a743bd76aaff56d",
+          "bytes": 506284
+        },
+        {
+          "path": "Content/Sources/Raw/freedict-eng-zho/COPYING",
+          "sha256": "41a8f57655bae359bea4a7e99c7a2aed171687d3dfb49614214538ba6dcbe75b",
+          "bytes": 22459
+        }
+      ],
+      "noticeFiles": [
+        "Content/Sources/Raw/freedict-eng-zho/COPYING"
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "English-Chinese FreeDict Dictionary 2025.11.23. Adapted by Wording Daily under CC BY-SA 3.0; the adapted vocabulary data is available under the same license.",
+      "decision": "Approved for reviewed Chinese meaning drafts; the adapted data notice preserves attribution and CC BY-SA 3.0 share-alike terms."
+    },
+    {
+      "id": "gcide-0.54",
+      "name": "GNU Collaborative International Dictionary of English",
+      "version": "0.54",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://gcide.gnu.org.ua/",
+      "adapter": "gcide_tar",
+      "rawFile": {
+        "path": "Content/Sources/Raw/gcide/gcide-0.54.tar.xz",
+        "sha256": "22416f6f36175b160dc388b7547512514d464473cf7d7c898d738efb26c51d42",
+        "bytes": 14803080
+      },
+      "license": "GPL-3.0-or-later",
+      "licenseURL": "https://gcide.gnu.org.ua/license",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/gcide/source-page.html",
+          "sha256": "e512476bc694b90ec82f46b70719f50fb4f5a568dc2840af171f498b476ce959",
+          "bytes": 3047
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Historical/GPL reference only; do not copy definitions or examples into the app."
+    },
+    {
+      "id": "grundwortschatz-voc-en-004977a",
+      "name": "WortUniversum English Vocabulary Database",
+      "version": "Hugging Face commit 004977ae2c475fcf12f8b73a02dbb9552e3b6577",
+      "retrievedAt": "2026-07-12",
+      "canonicalURL": "https://huggingface.co/datasets/cstr/grundwortschatz-voc-en",
+      "adapter": "grundwortschatz_sqlite_gzip",
+      "rawFile": {
+        "path": "Content/Sources/Raw/grundwortschatz-voc-en/grundwortschatz_en-004977a.db.gz",
+        "sha256": "dd0639b3f7dc96469a644cd4fff525a49f531ef2b58a3d6670601357422c9867",
+        "bytes": 19256361
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/grundwortschatz-voc-en/README-004977a.md",
+          "sha256": "db8e4412543e2a65037706ab8a37c8f0c3821ecdb7442d1a5e7eab63ffb6cc60",
+          "bytes": 9443
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Contains adapted data from WortUniversum English Vocabulary Database (cstr/grundwortschatz-voc-en), used under CC BY-SA 4.0. Wording Daily retains the required attribution and share-alike notice for the adapted vocabulary data.",
+      "decision": "Approved for entries carrying explicit CEFR-J A1-B2 evidence, with source attribution and CC BY-SA 4.0 notice. Grade-only estimates are not promoted as CEFR evidence."
+    },
+    {
+      "id": "nawl-1.2",
+      "name": "New Academic Word List 1.2",
+      "version": "1.2",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.newgeneralservicelist.com/new-academic-word-list",
+      "adapter": "lemma_csv",
+      "encoding": "iso-8859-1",
+      "rawFile": {
+        "path": "Content/Sources/Raw/nawl/NAWL_12_lemmatized_for_research.csv",
+        "sha256": "c28ef95623d79c08a4060d6d6d51d3331115e75a18ee247caa4cc3ae5506b92e",
+        "bytes": 25980
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/nawl/source-page.html",
+          "sha256": "3c71db5de30fadd86315ab2ddc44d0b8b277750cd52f615a645da26cc85ef3eb",
+          "bytes": 196095
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Reference only; share-alike treatment is not approved for the shipping bank."
+    },
+    {
+      "id": "ngsl-1.2",
+      "name": "New General Service List 1.2",
+      "version": "1.2",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.newgeneralservicelist.com/new-general-service-list",
+      "adapter": "lemma_csv",
+      "rawFile": {
+        "path": "Content/Sources/Raw/ngsl/NGSL_12_lemmatized_for_research.csv",
+        "sha256": "d814f2a0a3c61479a2c5ad037661719a0cc6e7dbcde31f181b54f12d0f1e11a4",
+        "bytes": 89485
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/ngsl/source-page.html",
+          "sha256": "a39be121275dabe2e9186fe1a4cb2f2e58e40f0e4dbec8a0ab1772b1730f29db",
+          "bytes": 266482
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Frequency reference only; share-alike treatment is not approved for the shipping bank."
+    },
+    {
+      "id": "omw-ili-map-e3b5ac1",
+      "name": "Open Multilingual Wordnet ILI Map",
+      "version": "git e3b5ac103f86b743a1c0e3079675aaf0ef2cbf88",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://github.com/globalwordnet/OMW",
+      "adapter": "ili_map_tab",
+      "rawFile": {
+        "path": "Content/Sources/Raw/omw-ili/ili-map.tab",
+        "sha256": "13b6741395a8bdf20e5a19686ffa49167653696d4f523db17a79dce3211a6627",
+        "bytes": 2124416
+      },
+      "license": "MIT",
+      "licenseURL": "https://github.com/globalwordnet/OMW/blob/e3b5ac103f86b743a1c0e3079675aaf0ef2cbf88/LICENSE",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/omw-ili/LICENSE",
+          "sha256": "f5d45e0539566ef4932d29df114e911e1ac30bd4862d3b89348a81c7bf063f31",
+          "bytes": 1098
+        }
+      ],
+      "noticeFiles": [
+        "Content/Sources/Raw/omw-ili/LICENSE"
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Uses the Open Multilingual Wordnet ILI mapping, Copyright (c) 2016-2020 Global WordNet Association, under the MIT License.",
+      "decision": "Approved as the deterministic PWN 3.0 to ILI bridge for exact Chinese Open Wordnet sense alignment."
+    },
+    {
+      "id": "oewn-2025",
+      "name": "Open English WordNet",
+      "version": "2025 edition, git dc343f2683279ecbb13fab4e2fd778d7b162d287",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://github.com/globalwordnet/english-wordnet",
+      "adapter": "oewn_json_zip",
+      "rawFile": {
+        "path": "Content/Sources/Raw/oewn/english-wordnet-2025-json.zip",
+        "sha256": "7d749f6e2c39e6970e4997839dcf6e42fd281f3c2fae0171d2192bae8cfa4b51",
+        "bytes": 9986555
+      },
+      "license": "Princeton WordNet license and CC BY 4.0",
+      "licenseURL": "https://github.com/globalwordnet/english-wordnet/blob/main/LICENSE.md",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/oewn/LICENSE.md",
+          "sha256": "672cc8b5663e8dc74c4b07a9dcf477193853575b119908fd3dc0aeeb60a9dbbb",
+          "bytes": 19863
+        }
+      ],
+      "noticeFiles": [
+        "Content/Sources/Raw/oewn/LICENSE.md"
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Based on Princeton WordNet and Open English WordNet. Copyright (c) 2019-present, The Open English WordNet Team. Adapted under CC BY 4.0.",
+      "decision": "Approved for English definitions, examples, and synonym relations with per-item provenance and bundled license notices."
+    },
+    {
+      "id": "tatoeba-eng-cmn-2026-07-04",
+      "name": "Tatoeba English-Mandarin Parallel Sentences",
+      "version": "2026-07-04 export",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://tatoeba.org/en/downloads",
+      "adapter": "tatoeba_parallel_bz2",
+      "rawFiles": [
+        {
+          "path": "Content/Sources/Raw/tatoeba-eng-cmn/eng_sentences.tsv.bz2",
+          "sha256": "90611c4bfacf08c3e5da1b31f694d386b12a5626cddc40ed02de5a08bdb83c87",
+          "bytes": 24779170
+        },
+        {
+          "path": "Content/Sources/Raw/tatoeba-eng-cmn/cmn_sentences.tsv.bz2",
+          "sha256": "f0afc919db43f2ccb869aa56f151b1baea056177e95307491701daca04e26ab3",
+          "bytes": 1237040
+        },
+        {
+          "path": "Content/Sources/Raw/tatoeba-eng-cmn/cmn-eng_links.tsv.bz2",
+          "sha256": "a39e9fbc8181fb986b6cc5bef1f957f9f77cff72c9e64cf0c9ada720923f9ac9",
+          "bytes": 476675
+        }
+      ],
+      "license": "CC BY 2.0 FR",
+      "licenseURL": "https://creativecommons.org/licenses/by/2.0/fr/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/tatoeba-eng-cmn/source-page.html",
+          "sha256": "55f8ac621bb0c13bf7ce04e700d6c08118ca3b29ba7c61187b9cf79c5e7cad98",
+          "bytes": 315465
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Selected English and Mandarin sentence pairs are from Tatoeba (https://tatoeba.org) and are used under CC BY 2.0 FR.",
+      "decision": "Approved for aligned example sentences with Tatoeba attribution and per-pair provenance."
+    },
+    {
+      "id": "tsl-1.2",
+      "name": "TOEIC Service List 1.2",
+      "version": "1.2",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://www.newgeneralservicelist.com/toeic-service-list",
+      "adapter": "lemma_csv",
+      "encoding": "iso-8859-1",
+      "rawFile": {
+        "path": "Content/Sources/Raw/tsl/TSL_12_lemmatized_for_research.csv",
+        "sha256": "466070128772a356e73135c7a49b6b179b7e4a3c0f5951ecc79f4f871c2b9db7",
+        "bytes": 37150
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/tsl/source-page.html",
+          "sha256": "0d93c366f41b0c723eb2352aa811b60b3ec50348f03ca3f2df5adc6227677747",
+          "bytes": 330741
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "blocked",
+      "decision": "Reference only; share-alike treatment is not approved for the shipping bank."
+    },
+    {
+      "id": "wiktextract-en-2026-07-09",
+      "name": "English Wiktionary data extracted by Wiktextract",
+      "version": "enwiktionary dump 2026-07-06, extracted 2026-07-09 with wiktextract e62056b and wikitextprocessor e7887d5",
+      "retrievedAt": "2026-07-11",
+      "canonicalURL": "https://kaikki.org/dictionary/rawdata.html",
+      "adapter": "wiktextract_jsonl_gz",
+      "rawFile": {
+        "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09.jsonl.gz",
+        "sha256": "1b6e3fab54497483e7a81ea71909a659c68c59851ddcd4ff26af0ffe7239895b",
+        "bytes": 36206593
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/wiktextract-en/source-page.html",
+          "sha256": "de6e5cb541d8e6d978fe56f11e340da34f321e56403dadf6ad4d787fc3b62280",
+          "bytes": 27247
+        },
+        {
+          "path": "Content/Sources/Raw/wiktextract-en/Wiktionary-Copyrights.html",
+          "sha256": "03cfe3e64ab78cde13ad9ee70b3bc4b1a30afa397813b18d152bbea0c6b25a74",
+          "bytes": 85540
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Contains adapted English Wiktionary data extracted by Wiktextract from the 2026-07-06 enwiktionary dump, used under CC BY-SA 4.0. Wording Daily selected, normalized, translated, and reformatted the data; the adapted vocabulary data remains available under CC BY-SA 4.0.",
+      "decision": "Approved only for cleaned parts of speech, glosses, translations, and IPA. Quotations, audio, images, and externally licensed or fair-use media are excluded."
+    }
+  ]
+}

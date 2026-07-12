@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xml:lang="zh">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<link rel="stylesheet" href="rsc/font-awesome/css/font-awesome.min.css?jcrev16">
+<link rel="stylesheet" href="rsc/css/cedicteditorapp_style.css?jcrev16" type="text/css" />
+<link rel="stylesheet" href="rsc/css/chat-widget.css?jcrev16">
+<link rel="alternate" type="application/rss+xml" title="Change log" href="/editor/editor.php?handler=ListChangesRss" />
+<script type="text/javascript">
+var selfUrl = "\/editor\/editor.php";
+var handlerParameterName = "handler";
+</script>
+<script type="text/javascript" src="rsc/js/jquery-3.7.1.min.js"></script>
+<script type="text/javascript" src="rsc/js/jquery.scrollTo.min.js"></script>
+<script type="text/javascript" src="rsc/js/jquery.textcomplete.mdbg.js"></script>
+<script type="text/javascript" src="rsc/js/cedicteditorapp_variants.js?jcrev16"></script>
+<script type="text/javascript" src="rsc/js/cedicteditorapp_scripts.js?jcrev16"></script>
+<script type="text/javascript" src="rsc/js/marked-15.0.12.min.js"></script>
+<script type="text/javascript" src="rsc/js/chat-widget.js?jcrev16"></script>
+<!-- Matomo -->
+<script>
+    var _paq = window._paq = window._paq || [];
+    /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+    _paq.push(['trackPageView']);
+    _paq.push(['enableLinkTracking']);
+    (function() {
+        var u="https://matomo.mdbg.net/";
+        _paq.push(['setTrackerUrl', u+'matomo.php']);
+        _paq.push(['setSiteId', '4']);
+        var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+        g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+    })();
+</script>
+<!-- End Matomo Code -->
+<title>CC-CEDICT Editor</title>
+<!-- Begin Cookie Consent plugin by Silktide - http://silktide.com/cookieconsent -->
+<link rel="stylesheet" type="text/css" href="https://www.mdbg.net/chinese/rsc/js/cookieconsent-3/cookieconsent.min.css" />
+<script src="https://www.mdbg.net/chinese/rsc/js/cookieconsent-3/cookieconsent.min.js"></script>
+<script>
+    window.addEventListener("load", function(){
+        window.cookieconsent.initialise({
+            "palette": {
+                "popup": {
+                    "background": "#000"
+                },
+                "button": {
+                    "background": "#f1d600"
+                }
+            },
+            "content": {
+                "href": "https://www.mdbg.net/chinese/dictionary?page=privacy"
+            }
+        })});
+</script>
+<!-- End Cookie Consent plugin -->
+</head>
+<body >
+
+<div class="headerarea">
+<ul class="topnav">
+<li onclick="$('.topnav').toggleClass('responsive')" class="icon">
+    <a href="javascript:void(0);" onclick="myFunction()">☰</a>
+</li>
+
+<li class="primary">
+<a href="/editor/editor.php?handler=Main">Home</a>
+</li> 
+<li>
+<a href="/editor/editor.php?handler=QueryDictionary">Search CC-CEDICT</a>
+</li>
+<li> 
+<a href="/editor/editor.php?handler=InsertSimpleEntry">Add a new entry</a>
+</li> 
+<li class="primary">
+<a href="/editor/editor.php?handler=ListChanges">Change log</a>
+</li> 
+<li>
+<a target="_blank" onclick="window.open('/editor/editor.php?popup=1&amp;handler=Help','_blank', 'resizable=yes,scrollbars=yes,width=700,height=500'); return false;" href="/editor/editor.php?handler=Help">Help</a>
+</li>
+<li>
+<a href="/editor/editor.php?sendemail_recipient_user_ids=admin&amp;handler=SendEmail">Contact</a>
+</li>
+
+</ul>
+</div>
+
+
+<div class="bodyarea">
+
+<div class="hinttext" style="float: right">
+<a href="/editor/editor.php?login_return=MySubmissions&amp;handler=Login">Login</a>
+</div>
+
+
+<h1>CC-CEDICT download</h1>
+
+<p>
+The recommended way to get CC-CEDICT is to download the latest release version through the MDBG dictionary website: 
+</p>
+<ul>
+<li><a href="https://www.mdbg.net/chinese/dictionary?page=cc-cedict">MDBG Chinese-English dictionary</a></li>
+</ul>
+
+<p>
+The latest non-verified version of CC-CEDICT can be downloaded for editing and reviewing purposes in the following formats:
+</p>
+<ul>
+<li><a href="editor_export_cedict.php?c=zip">ZIP format</a></li>
+<li><a href="editor_export_cedict.php?c=gz">GZip format</a></li>
+</ul>
+
+<p>
+<strong>Beta: </strong>The latest non-verified version of CC-CEDICT can be downloaded for editing and reviewing purposes in the following formats:
+</p>
+<ul>
+    <li>
+        Mixed version 1 and version 2 entries in <a href="editor_export_cedict.php?c=zip&amp;v=0">ZIP format</a> or <a href="editor_export_cedict.php?c=gz&amp;v=0">GZip format</a>
+    </li>
+    <li>
+        Version 1 entries upgraded to version 2 in <a href="editor_export_cedict.php?c=zip&amp;v=2">ZIP format</a> or <a href="editor_export_cedict.php?c=gz&amp;v=2">GZip format</a> (upgraded entries might not be fully valid version 2 entries)
+    </li>
+</ul>
+
+<div class="description">
+<strong><em>Please observe the copyrights of this work.</em></strong>
+<br />
+<a target="_blank" rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a>
+<br />
+This work is licensed under a <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+(click the link for detailed information)
+</div>
+<div class="hinttext">
+It more or less means that you are allowed to use this data for both non-commercial and commercial purposes provided that you:
+mention where you got the data from (attribution)
+and that in case you improve / add to the data you will share these changes under the same license (share alike). 
+</div>
+
+
+</div>
+<div class="footerarea">
+<div style="float: right; text-align: right">
+By <a href="https://www.mdbg.net/">MDBG</a> 2026<br />
+<a target="_blank" href="https://www.mdbg.net/chinese/dictionary?page=privacy">Privacy and cookies</a>
+</div>
+<div class="hinttext"><strong>Help wanted:</strong> the CC-CEDICT project is looking for new <a target="_blank" href="editor.php?handler=Volunteer">volunteer editors</a>!</div>
+</div>
+</body>
+</html>

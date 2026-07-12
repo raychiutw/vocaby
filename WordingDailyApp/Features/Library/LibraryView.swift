@@ -1,3 +1,4 @@
+import AVFAudio
 import SwiftData
 import SwiftUI
 
@@ -42,14 +43,45 @@ struct LibraryView: View {
         return selectedScope == .learned ? "library.empty.learned" : "library.empty.saved"
     }
 
+    private var practicedItemCount: Int {
+        progressRows.filter { $0.firstSeenAt != nil }.count
+    }
+
+    private var compactProgress: String {
+        String.localizedStringWithFormat(
+            String(localized: "library.compactProgress.format"),
+            practicedItemCount,
+            seedItems.count
+        )
+    }
+
     var body: some View {
         List {
+            Section {
+                HStack(spacing: 12) {
+                    Image("LibraryCover")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("library.title")
+                            .font(.headline)
+
+                        Text(compactProgress)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
             Picker("library.scope.accessibility", selection: $selectedScope) {
                 Text("library.scope.learned").tag(LibraryScope.learned)
                 Text("library.scope.saved").tag(LibraryScope.saved)
             }
             .pickerStyle(.segmented)
-            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
             if libraryItems.isEmpty {
                 Section {
@@ -80,6 +112,7 @@ struct LibraryView: View {
                 }
             }
         }
+        .listStyle(.plain)
         .navigationTitle("library.title")
         .searchable(text: $query, prompt: Text("library.search.prompt"))
         .navigationDestination(item: $selectedDetailItemID) { itemID in
@@ -102,6 +135,7 @@ struct LibraryView: View {
         .onChange(of: deepLinkedItemID) { _, _ in
             refreshLibrary()
         }
+        .learningSettingsSheet()
     }
 
     private func refreshLibrary() {
@@ -149,30 +183,29 @@ private struct LibraryRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(item.seedItem.upgradedExpression)
-                .font(.headline)
-            Text(item.seedItem.plainExpression)
+                .font(.body.weight(.semibold))
+            Text("\(item.seedItem.plainExpression) · \(statusText)")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Text(statusText)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
-    private var statusText: LocalizedStringKey {
+    private var statusText: String {
         guard let progress = item.progress else {
-            return "library.row.practiced"
+            return String(localized: "library.row.practiced")
         }
 
         if progress.masteredAt != nil {
-            return "library.row.mastered"
+            return String(localized: "library.row.mastered")
         }
 
         if progress.isSaved {
-            return "library.row.saved"
+            return String(localized: "library.row.saved")
         }
 
-        return "library.row.practiced"
+        return String(localized: "library.row.practiced")
     }
 }
 
@@ -187,6 +220,7 @@ private struct LibraryDetailView: View {
     @State private var progress: WordProgress?
     @State private var errorMessage: String?
     @State private var isRestoringSavedState = false
+    @State private var speechSynthesizer = AVSpeechSynthesizer()
 
     private let persistenceService = ProgressPersistenceService()
 
@@ -204,21 +238,13 @@ private struct LibraryDetailView: View {
 
     var body: some View {
         List {
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(item.seedItem.upgradedExpression)
-                        .font(.title2.weight(.semibold))
-                    Text(item.seedItem.plainExpression)
-                        .foregroundStyle(.secondary)
-                    Text(localized(item.seedItem.meaning))
-                    Text(item.seedItem.example.text)
-                        .foregroundStyle(.secondary)
-                    Text(localized(item.seedItem.example.translation))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 8)
-            }
+            VocabularyEntryContentView(
+                item: item.seedItem,
+                senseID: item.seedItem.primarySenseID,
+                supportLanguageCode: supportLanguageCode,
+                showsAdditionalSenses: true,
+                synthesizer: speechSynthesizer
+            )
 
             Section {
                 Toggle(isOn: $isSaved) {
@@ -273,10 +299,6 @@ private struct LibraryDetailView: View {
             errorMessage = String(localized: "library.save.error")
         }
     }
-
-    private func localized(_ values: [String: String]) -> String {
-        values[supportLanguageCode] ?? values.values.first ?? ""
-    }
 }
 
 #Preview {
@@ -287,6 +309,7 @@ private struct LibraryDetailView: View {
         WordProgress.self,
         DailySession.self,
         DailySessionItem.self,
-        QuizResult.self
+        QuizResult.self,
+        PracticeAttemptRecord.self
     ], inMemory: true)
 }

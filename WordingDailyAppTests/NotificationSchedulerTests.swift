@@ -3,6 +3,21 @@ import XCTest
 @testable import WordingDailyApp
 
 final class NotificationSchedulerTests: XCTestCase {
+    func testDailyReminderIncludesTodayDeepLink() {
+        let request = NotificationScheduler().dailyReminderRequest(
+            hour: 8,
+            minute: 30,
+            title: "Reminder",
+            body: "Practice"
+        )
+
+        XCTAssertEqual(NotificationScheduler.deepLinkUserInfoKey, "wording-daily.internal-url")
+        XCTAssertEqual(
+            request.content.userInfo[NotificationScheduler.deepLinkUserInfoKey] as? String,
+            "wordingdaily://today"
+        )
+    }
+
     func testDailyReminderUsesFixedWordingDailyIdentifierAndRepeatingTime() throws {
         let request = NotificationScheduler().dailyReminderRequest(
             hour: 8,

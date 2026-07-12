@@ -18,7 +18,7 @@ struct DailySelectionService {
         selectedLevel: VocabularyLevel,
         contentLanguageCode: String,
         supportLanguageCode: String,
-        seenItemIDs: Set<String>,
+        firstSeenItemIDs: Set<String>,
         dueReviewItemIDs: [String],
         targetCount: Int = 10
     ) -> DailySelectionResult {
@@ -38,7 +38,7 @@ struct DailySelectionService {
         let eligibleIDs = Set(eligibleItems.map(\.id))
         let newItemIDs = eligibleItems
             .map(\.id)
-            .filter { !seenItemIDs.contains($0) }
+            .filter { !firstSeenItemIDs.contains($0) }
             .prefix(targetCount)
 
         var selectedIDs = Array(newItemIDs)
