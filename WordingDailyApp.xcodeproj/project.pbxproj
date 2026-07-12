@@ -76,7 +76,6 @@
 		C7C804D77E9FD886C3B63CA0 /* LibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000317 /* LibraryService.swift */; };
 		CA505021015367E5DCFCA000 /* ReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000303 /* ReviewView.swift */; };
 		CAEAAFCE4504FACCB8EFB08B /* ProgressPersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030E /* ProgressPersistenceService.swift */; };
-		CD1B62FECC86A1512EC76E4B /* DebugBridgeUI in Frameworks */ = {isa = PBXBuildFile; productRef = C4DB45087DFFA94022F7E3DF /* DebugBridgeUI */; };
 		D772EED60BD3AE87703FA6D9 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000302 /* TodayView.swift */; };
 		E3A4777BEDC52FBFFF6784FF /* PersistenceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000030A /* PersistenceModels.swift */; };
 		E90F9885B16F4B2189B5D091 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000315 /* OnboardingView.swift */; };
@@ -168,7 +167,6 @@
 		000000000000000000000330 /* WordingDailyWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordingDailyWidget.swift; sourceTree = "<group>"; };
 		000000000000000000000331 /* WordingDailyWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordingDailyWidget.entitlements; sourceTree = "<group>"; };
 		000000000000000000000332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		CAB72340019A049A10CCD3AF /* WordingDailyAppQA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WordingDailyAppQA.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -220,7 +218,6 @@
 				000000000000000000000110 /* WordingDailyApp.app */,
 				000000000000000000000111 /* WordingDailyAppTests.xctest */,
 				000000000000000000000112 /* WordingDailyWidget.appex */,
-				CAB72340019A049A10CCD3AF /* WordingDailyAppQA.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -462,26 +459,6 @@
 			productReference = 000000000000000000000112 /* WordingDailyWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		FCED24BDC3A914E058695A01 /* WordingDailyAppQA */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 248C128BB4FA2DFA2C4884C0 /* Build configuration list for PBXNativeTarget "WordingDailyAppQA" */;
-			buildPhases = (
-				24ED922C7C809B133744DDB5 /* Sources */,
-				CBEF586D88B7D26C20D18079 /* Frameworks */,
-				CCCA66C209F242C7EBF6FFF1 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = WordingDailyAppQA;
-			packageProductDependencies = (
-				C4DB45087DFFA94022F7E3DF /* DebugBridgeUI */,
-			);
-			productName = WordingDailyAppQA;
-			productReference = CAB72340019A049A10CCD3AF /* WordingDailyAppQA.app */;
-			productType = "com.apple.product-type.application";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -512,9 +489,6 @@
 							};
 						};
 					};
-					FCED24BDC3A914E058695A01 = {
-						CreatedOnToolsVersion = 26.6;
-					};
 				};
 			};
 			buildConfigurationList = 000000000000000000000202 /* Build configuration list for PBXProject "WordingDailyApp" */;
@@ -527,7 +501,6 @@
 			);
 			mainGroup = 000000000000000000000002;
 			packageReferences = (
-				CBE2B67DCFBE96438155782E /* XCLocalSwiftPackageReference "DebugBridge" */,
 			);
 			productRefGroup = 000000000000000000000003 /* Products */;
 			projectDirPath = "";
@@ -536,7 +509,6 @@
 				000000000000000000000100 /* WordingDailyApp */,
 				000000000000000000000101 /* WordingDailyAppTests */,
 				000000000000000000000102 /* WordingDailyWidget */,
-				FCED24BDC3A914E058695A01 /* WordingDailyAppQA */,
 			);
 		};
 /* End PBXProject section */
