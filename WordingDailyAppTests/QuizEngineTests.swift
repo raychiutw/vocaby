@@ -184,6 +184,33 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertEqual(question.correctAnswer, items[0].upgradedExpression)
     }
 
+    func testQuizPronunciationNeverLeaksAnExpressionChoiceAnswer() throws {
+        let items = makeItems(count: 1)
+        var random = IncrementingRandomNumberGenerator()
+        let engine = QuizEngine()
+        let expressionChoice = try XCTUnwrap(engine.makeQuestions(
+            for: items, candidates: items, mode: .expressionChoice,
+            supportLanguageCode: "zh-Hant", using: &random
+        ).first)
+        let meaningChoice = try XCTUnwrap(engine.makeQuestions(
+            for: items, candidates: items, mode: .meaningChoice,
+            supportLanguageCode: "zh-Hant", using: &random
+        ).first)
+        let listeningChoice = try XCTUnwrap(engine.makeQuestions(
+            for: items, candidates: items, mode: .listeningChoice,
+            supportLanguageCode: "zh-Hant", using: &random
+        ).first)
+        let spelling = try XCTUnwrap(engine.makeQuestions(
+            for: items, candidates: items, mode: .spelling,
+            supportLanguageCode: "zh-Hant", using: &random
+        ).first)
+
+        XCTAssertEqual(expressionChoice.pronunciationText, items[0].plainExpression)
+        XCTAssertEqual(meaningChoice.pronunciationText, items[0].upgradedExpression)
+        XCTAssertEqual(listeningChoice.pronunciationText, items[0].upgradedExpression)
+        XCTAssertEqual(spelling.pronunciationText, items[0].upgradedExpression)
+    }
+
     func testSpellingUsesMeaningAndIgnoresCaseAndEdgeWhitespace() throws {
         let items = makeItems(count: 1)
         var random = IncrementingRandomNumberGenerator()

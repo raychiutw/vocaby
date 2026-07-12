@@ -66,7 +66,8 @@ struct WordingDailyApp: App {
                     WordProgress.self,
                     DailySession.self,
                     DailySessionItem.self,
-                    QuizResult.self
+                    QuizResult.self,
+                    PracticeAttemptRecord.self
                 ])
         }
     }

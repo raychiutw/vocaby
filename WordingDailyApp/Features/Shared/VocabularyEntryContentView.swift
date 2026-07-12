@@ -7,13 +7,7 @@ enum PronunciationSpeaker {
         pronunciation: VocabularyPronunciation,
         availableVoices: [AVSpeechSynthesisVoice] = AVSpeechSynthesisVoice.speechVoices()
     ) -> AVSpeechUtterance {
-        let attributed = NSMutableAttributedString(string: expression)
-        attributed.addAttribute(
-            NSAttributedString.Key(AVSpeechSynthesisIPANotationAttribute),
-            value: pronunciation.ipa,
-            range: NSRange(location: 0, length: attributed.length)
-        )
-        let utterance = AVSpeechUtterance(attributedString: attributed)
+        let utterance = AVSpeechUtterance(string: expression)
         let englishVoices = availableVoices.filter { $0.language.hasPrefix("en") }
         utterance.voice = englishVoices.first { $0.language == pronunciation.speechLocale }
             ?? englishVoices.first

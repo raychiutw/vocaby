@@ -140,10 +140,29 @@ struct PracticeCenterView: View {
     let seedItems: [VocabularySeedItem]
     let selectedLevel: VocabularyLevel
     let supportLanguageCode: String
+    let startsImmediately: Bool
+    let onUpdate: () -> Void
 
     @State private var configuration = PracticeCenterPlan.defaultConfiguration
     @State private var activePlan: PracticeCenterPlan?
     @State private var loadError: String?
+
+    private let persistenceService = ProgressPersistenceService()
+    private let reviewScheduler = ReviewScheduler()
+
+    init(
+        seedItems: [VocabularySeedItem],
+        selectedLevel: VocabularyLevel,
+        supportLanguageCode: String,
+        startsImmediately: Bool = false,
+        onUpdate: @escaping () -> Void = {}
+    ) {
+        self.seedItems = seedItems
+        self.selectedLevel = selectedLevel
+        self.supportLanguageCode = supportLanguageCode
+        self.startsImmediately = startsImmediately
+        self.onUpdate = onUpdate
+    }
 
     private var hasEligibleItems: Bool {
         seedItems.contains {
@@ -159,7 +178,7 @@ struct PracticeCenterView: View {
                     questions: activePlan.questions,
                     configuration: activePlan.configuration,
                     tint: AppTheme.accent,
-                    onFirstAttempt: { _ in }
+                    onAttempt: persistAnswer
                 ) {
                     Section {
                         Button {
@@ -176,6 +195,11 @@ struct PracticeCenterView: View {
             }
         }
         .navigationTitle("practice.center.title")
+        .task {
+            if startsImmediately, activePlan == nil {
+                startRun()
+            }
+        }
     }
 
     private var setupForm: some View {
@@ -261,6 +285,42 @@ struct PracticeCenterView: View {
             loadError = String(localized: "practice.center.load.error")
         }
     }
+
+    private func persistAnswer(_ attempt: QuizAttempt) throws {
+        guard let activePlan,
+              let item = seedItems.first(where: { $0.id == attempt.question.itemID }) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        do {
+            if attempt.isFirstAttempt {
+                let progress = try persistenceService.wordProgress(
+                    for: item.id,
+                    level: item.level,
+                    in: modelContext
+                )
+                reviewScheduler.applyAnswer(
+                    to: progress,
+                    wasCorrect: attempt.wasCorrect,
+                    answeredAt: Date(),
+                    context: .dailyPractice
+                )
+            }
+
+            _ = try persistenceService.practiceAttempt(
+                runID: activePlan.runID.uuidString,
+                itemID: item.id,
+                level: item.level,
+                mode: attempt.question.mode,
+                wasCorrect: attempt.wasCorrect,
+                in: modelContext
+            )
+            onUpdate()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
 }
 
 struct QuizRunView<Completion: View>: View {
@@ -268,7 +328,7 @@ struct QuizRunView<Completion: View>: View {
     let questions: [QuizQuestion]
     let configuration: PracticeConfiguration
     let tint: Color
-    let onFirstAttempt: (QuizAttempt) throws -> Void
+    let onAttempt: (QuizAttempt) throws -> Void
     let completion: () -> Completion
 
     @State private var runState: QuizRunState
@@ -282,14 +342,14 @@ struct QuizRunView<Completion: View>: View {
         questions: [QuizQuestion],
         configuration: PracticeConfiguration,
         tint: Color,
-        onFirstAttempt: @escaping (QuizAttempt) throws -> Void,
+        onAttempt: @escaping (QuizAttempt) throws -> Void,
         @ViewBuilder completion: @escaping () -> Completion
     ) {
         self.runID = AnyHashable(runID)
         self.questions = questions
         self.configuration = configuration
         self.tint = tint
-        self.onFirstAttempt = onFirstAttempt
+        self.onAttempt = onAttempt
         self.completion = completion
         _runState = State(initialValue: QuizRunState(questions: questions))
         _deadline = State(initialValue: Date().addingTimeInterval(TimeInterval(configuration.timeLimitSeconds)))
@@ -381,6 +441,17 @@ struct QuizRunView<Completion: View>: View {
                 } else {
                     Text(verbatim: question.prompt)
                         .font(.title2.bold())
+
+                    if question.mode != .spelling {
+                        Button {
+                            speak(question)
+                        } label: {
+                            Label("practice.audio.play", systemImage: "speaker.wave.2")
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel(Text("practice.audio.play"))
+                    }
                 }
             }
             .padding(.vertical, 4)
@@ -388,6 +459,15 @@ struct QuizRunView<Completion: View>: View {
 
         if question.mode == .spelling {
             Section {
+                Button {
+                    speak(question)
+                } label: {
+                    Label("practice.spelling.audioHint", systemImage: "speaker.wave.2")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel(Text("practice.spelling.audioHint"))
+
                 TextField("practice.spelling.placeholder", text: $spellingText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -546,13 +626,11 @@ struct QuizRunView<Completion: View>: View {
     private func advance() {
         guard let feedback = runState.currentFeedback else { return }
 
-        if feedback.isFirstAttempt {
-            do {
-                try onFirstAttempt(feedback)
-            } catch {
-                errorMessage = String(localized: "practice.save.error")
-                return
-            }
+        do {
+            try onAttempt(feedback)
+        } catch {
+            errorMessage = String(localized: "practice.save.error")
+            return
         }
 
         runState.advance()
@@ -580,12 +658,19 @@ struct QuizRunView<Completion: View>: View {
     }
 
     private func speak(_ question: QuizQuestion) {
+        if question.mode == .expressionChoice {
+            let utterance = AVSpeechUtterance(string: question.pronunciationText)
+            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+            speechSynthesizer.speak(utterance)
+            return
+        }
+
         guard let pronunciationID = question.selectedSense.pronunciationIDs.first,
               let pronunciation = question.item.pronunciations.first(where: { $0.id == pronunciationID }) else {
             return
         }
         speechSynthesizer.speak(PronunciationSpeaker.makeUtterance(
-            expression: question.item.upgradedExpression,
+            expression: question.pronunciationText,
             pronunciation: pronunciation
         ))
     }
@@ -633,7 +718,7 @@ struct DailyPracticeView: View {
                     questions: plan.quizQuestions,
                     configuration: .daily,
                     tint: AppTheme.accent,
-                    onFirstAttempt: persistAnswer
+                    onAttempt: persistAnswer
                 ) {
                     completionContent
                 }
@@ -713,42 +798,56 @@ struct DailyPracticeView: View {
     }
 
     private func persistAnswer(_ attempt: QuizAttempt) throws {
-        guard let sessionItem = session.items.first(where: {
-            $0.itemID == attempt.question.itemID && $0.answeredAt == nil
-        }), let seedItem = seedItems.first(where: { $0.id == attempt.question.itemID }) else {
+        guard let seedItem = seedItems.first(where: { $0.id == attempt.question.itemID }) else {
             throw CocoaError(.fileReadCorruptFile)
         }
 
         do {
-            let progress = try persistenceService.wordProgress(
-                for: seedItem.id,
-                level: seedItem.level,
-                in: modelContext
-            )
             let now = Date()
-            let indices = attempt.question.persistenceIndices(
-                for: attempt.submittedAnswer,
-                wasCorrect: attempt.wasCorrect
-            )
+            if attempt.isFirstAttempt {
+                guard let sessionItem = session.items.first(where: {
+                    $0.itemID == attempt.question.itemID && $0.answeredAt == nil
+                }) else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                let progress = try persistenceService.wordProgress(
+                    for: seedItem.id,
+                    level: seedItem.level,
+                    in: modelContext
+                )
+                let indices = attempt.question.persistenceIndices(
+                    for: attempt.submittedAnswer,
+                    wasCorrect: attempt.wasCorrect
+                )
 
-            sessionItem.selectedOptionIndex = indices.selected
-            sessionItem.wasCorrect = attempt.wasCorrect
-            sessionItem.answeredAt = now
-            reviewScheduler.applyAnswer(
-                to: progress,
-                wasCorrect: attempt.wasCorrect,
-                answeredAt: now,
-                context: sessionItem.reviewAnswerContext
-            )
-            if session.items.allSatisfy({ $0.answeredAt != nil }) {
-                session.completedAt = now
+                sessionItem.selectedOptionIndex = indices.selected
+                sessionItem.wasCorrect = attempt.wasCorrect
+                sessionItem.answeredAt = now
+                reviewScheduler.applyAnswer(
+                    to: progress,
+                    wasCorrect: attempt.wasCorrect,
+                    answeredAt: now,
+                    context: sessionItem.reviewAnswerContext
+                )
+                if session.items.allSatisfy({ $0.answeredAt != nil }) {
+                    session.completedAt = now
+                }
+
+                _ = try persistenceService.quizResult(
+                    dayKey: session.dayKey,
+                    itemID: seedItem.id,
+                    selectedOptionIndex: indices.selected,
+                    correctOptionIndex: indices.correct,
+                    in: modelContext
+                )
             }
 
-            _ = try persistenceService.quizResult(
-                dayKey: session.dayKey,
+            _ = try persistenceService.practiceAttempt(
+                runID: session.dayKey,
                 itemID: seedItem.id,
-                selectedOptionIndex: indices.selected,
-                correctOptionIndex: indices.correct,
+                level: seedItem.level,
+                mode: attempt.question.mode,
+                wasCorrect: attempt.wasCorrect,
                 in: modelContext
             )
             if modelContext.hasChanges {

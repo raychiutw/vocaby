@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "learning.profile.accessibility" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My learning settings"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我的學習設定"
+          }
+        }
+      }
+    },
     "common.done" : {
       "localizations" : {
         "en" : {
@@ -577,6 +593,54 @@
         }
       }
     },
+    "library.compactProgress.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld practiced"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已練習 %lld／%lld"
+          }
+        }
+      }
+    },
+    "review.estimatedTime.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About %lld min"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "約 %lld 分鐘"
+          }
+        }
+      }
+    },
+    "review.nextUp.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up next"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接著複習"
+          }
+        }
+      }
+    },
     "review.due.title" : {
       "localizations" : {
         "en" : {
@@ -721,6 +785,22 @@
         }
       }
     },
+    "practice.audio.play" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play pronunciation"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放發音"
+          }
+        }
+      }
+    },
     "practice.center.button" : {
       "localizations" : {
         "en" : {
@@ -758,13 +838,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Expression choice"
+            "value" : "Natural phrasing"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "表達選擇"
+            "value" : "選更自然的說法"
           }
         }
       }
@@ -790,13 +870,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Listening"
+            "value" : "Listen and choose"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "聽力"
+            "value" : "聽發音選答案"
           }
         }
       }
@@ -806,13 +886,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Meaning choice"
+            "value" : "Chinese meaning"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "意思選擇"
+            "value" : "選中文意思"
           }
         }
       }
@@ -822,13 +902,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mixed"
+            "value" : "Mixed modes"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "混合"
+            "value" : "混合題型"
           }
         }
       }
@@ -838,13 +918,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spelling"
+            "value" : "Spell in English"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拼寫"
+            "value" : "拼寫英文"
           }
         }
       }
@@ -1046,13 +1126,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose the upgraded expression"
+            "value" : "Choose the more natural English expression"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選出升級後的表達"
+            "value" : "選出更自然的英文說法"
           }
         }
       }
@@ -1062,13 +1142,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Listen and choose the expression"
+            "value" : "Listen to the English and choose the matching expression"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "聽發音，選出正確表達"
+            "value" : "聽英文發音，選出對應表達"
           }
         }
       }
@@ -1078,13 +1158,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose the meaning"
+            "value" : "Choose this expression's meaning"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選出正確意思"
+            "value" : "選出這句英文的中文意思"
           }
         }
       }
@@ -1094,13 +1174,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Type the upgraded expression"
+            "value" : "Type the English expression from its meaning"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "輸入升級後的表達"
+            "value" : "依照中文意思，輸入英文表達"
           }
         }
       }
@@ -1229,6 +1309,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "無法儲存這題，請再試一次。"
+          }
+        }
+      }
+    },
+    "practice.spelling.audioHint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hear pronunciation hint"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽發音提示"
           }
         }
       }
@@ -1601,6 +1697,54 @@
         }
       }
     },
+    "today.compactSummary.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld complete · %lld-day streak"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld／%lld 完成 · 連續 %lld 天"
+          }
+        }
+      }
+    },
+    "today.libraryProgress.row" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld practiced"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已練習 %lld／%lld"
+          }
+        }
+      }
+    },
+    "today.review.estimatedTime.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld due · about %lld min"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待複習 %lld 個 · 約 %lld 分鐘"
+          }
+        }
+      }
+    },
     "today.due.label" : {
       "localizations" : {
         "en" : {
@@ -1629,6 +1773,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已完成"
+          }
+        }
+      }
+    },
+    "today.extraPractice.button" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice 10 more"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再練習 10 題"
           }
         }
       }
@@ -1709,6 +1869,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "今天 10 個"
+          }
+        }
+      }
+    },
+    "today.vocabularyProgress.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vocabulary progress"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "詞彙練習進度"
+          }
+        }
+      }
+    },
+    "today.vocabularyProgress.total" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All vocabulary"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "總詞彙"
           }
         }
       }

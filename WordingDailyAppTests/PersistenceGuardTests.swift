@@ -216,12 +216,65 @@ final class PersistenceGuardTests: XCTestCase {
         XCTAssertEqual(results.first?.wasCorrect, true)
     }
 
+    func testPracticeAttemptPersistsEveryAnswerWithinTheSameRun() throws {
+        let context = try makeContext()
+        let service = ProgressPersistenceService()
+
+        _ = try service.practiceAttempt(
+            runID: "extra-001",
+            itemID: "basic-001",
+            level: .basic,
+            mode: .meaningChoice,
+            wasCorrect: false,
+            in: context
+        )
+        _ = try service.practiceAttempt(
+            runID: "extra-001",
+            itemID: "basic-001",
+            level: .basic,
+            mode: .meaningChoice,
+            wasCorrect: true,
+            in: context
+        )
+
+        let attempts = try context.fetch(FetchDescriptor<PracticeAttemptRecord>())
+        XCTAssertEqual(attempts.count, 2)
+        XCTAssertEqual(Set(attempts.map(\.id)).count, 2)
+        XCTAssertEqual(attempts.map(\.runID), ["extra-001", "extra-001"])
+        XCTAssertEqual(attempts.map(\.wasCorrect), [false, true])
+    }
+
+    func testPracticeProgressCountsEachCorrectVocabularyItemOnceByLevel() {
+        var intermediate = seedItem("intermediate-001", sortOrder: 1)
+        intermediate.level = .intermediate
+        let seedItems = [
+            seedItem("basic-001", sortOrder: 1),
+            seedItem("basic-002", sortOrder: 2),
+            intermediate
+        ]
+        let attempts = [
+            PracticeAttemptRecord(runID: "run-1", itemID: "basic-001", level: .basic, mode: .meaningChoice, wasCorrect: false),
+            PracticeAttemptRecord(runID: "run-1", itemID: "basic-001", level: .basic, mode: .meaningChoice, wasCorrect: true),
+            PracticeAttemptRecord(runID: "run-2", itemID: "basic-001", level: .basic, mode: .spelling, wasCorrect: true),
+            PracticeAttemptRecord(runID: "run-2", itemID: "intermediate-001", level: .intermediate, mode: .listeningChoice, wasCorrect: true),
+            PracticeAttemptRecord(runID: "run-2", itemID: "removed-item", level: .advanced, mode: .meaningChoice, wasCorrect: true)
+        ]
+
+        let summary = PracticeProgressService().summary(seedItems: seedItems, attempts: attempts)
+
+        XCTAssertEqual(summary.total, VocabularyPracticeProgress(correctItemCount: 2, totalItemCount: 3))
+        XCTAssertEqual(summary.progress(for: .basic), VocabularyPracticeProgress(correctItemCount: 1, totalItemCount: 2))
+        XCTAssertEqual(summary.progress(for: .intermediate), VocabularyPracticeProgress(correctItemCount: 1, totalItemCount: 1))
+        XCTAssertEqual(summary.progress(for: .advanced), VocabularyPracticeProgress(correctItemCount: 0, totalItemCount: 0))
+    }
+
     private func makeContext() throws -> ModelContext {
         let schema = Schema([
             WordProgress.self,
             DailySession.self,
             DailySessionItem.self,
-            QuizResult.self
+            QuizResult.self,
+            PracticeAttemptRecord.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: [configuration])

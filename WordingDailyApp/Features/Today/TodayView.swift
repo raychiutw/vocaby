@@ -4,10 +4,11 @@ import WidgetKit
 
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
-    @State private var isShowingSettings = false
     @State private var isShowingPractice = false
+    @State private var isShowingExtraPractice = false
     @State private var todaySession: DailySession?
     @State private var seedItems: [VocabularySeedItem] = []
+    @State private var practiceAttempts: [PracticeAttemptRecord] = []
     @State private var dueReviewCount = 0
     @State private var scheduledReviewCount = 0
     @State private var streakCount = 0
@@ -26,6 +27,7 @@ struct TodayView: View {
     private let seedLoader = SeedLoader()
     private let streakService = StreakService()
     private let widgetSnapshotWriter = WidgetSnapshotWriter.appGroupWriter()
+    private let practiceProgressService = PracticeProgressService()
 
     private var orderedSessionItems: [DailySessionItem] {
         (todaySession?.items ?? []).sorted { $0.position < $1.position }
@@ -67,53 +69,105 @@ struct TodayView: View {
         return completedCount == totalCount ? "today.completed.button" : "today.resume.button"
     }
 
+    private var vocabularyProgress: PracticeProgressSummary {
+        practiceProgressService.summary(seedItems: seedItems, attempts: practiceAttempts)
+    }
+
+    private var compactSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "today.compactSummary.format"),
+            completedCount,
+            totalCount,
+            streakCount
+        )
+    }
+
+    private var reviewSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "today.review.estimatedTime.format"),
+            dueReviewCount,
+            max(1, dueReviewCount / 3 + 1)
+        )
+    }
+
+    private var libraryProgressSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "today.libraryProgress.row"),
+            vocabularyProgress.total.correctItemCount,
+            vocabularyProgress.total.totalItemCount
+        )
+    }
+
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(Date.now, style: .date)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Image("DailyFocusCover")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                    LabeledContent("streak.label", value: "\(streakCount)")
-                        .monospacedDigit()
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(Date.now, style: .date)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
 
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("today.progress.title")
+                        Text(primaryButtonTitle)
                             .font(.headline)
-                        Spacer()
-                        Text(progressText)
-                            .font(.headline.monospacedDigit())
+
+                        Text(compactSummary)
+                            .font(.subheadline.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
-
-                    ProgressView(value: Double(completedCount), total: Double(totalCount))
-                        .tint(AppTheme.accent)
-                        .accessibilityLabel(Text("today.progress.accessibility"))
-                        .accessibilityValue(Text(progressText))
-
-                    Button {
-                        startPractice()
-                    } label: {
-                        Text(primaryButtonTitle)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(AppTheme.accent)
-                    .disabled(todaySession != nil && completedCount == totalCount)
-                    .accessibilityIdentifier("today.start")
                 }
-                .padding(.vertical, 8)
+
+                ProgressView(value: Double(completedCount), total: Double(totalCount))
+                    .tint(AppTheme.accent)
+                    .accessibilityLabel(Text("today.progress.accessibility"))
+                    .accessibilityValue(Text(progressText))
+
+                Button {
+                    if todaySession != nil && completedCount == totalCount {
+                        isShowingExtraPractice = true
+                    } else {
+                        startPractice()
+                    }
+                } label: {
+                    Text(todaySession != nil && completedCount == totalCount
+                        ? "today.extraPractice.button"
+                        : primaryButtonTitle)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.accent)
+                .accessibilityIdentifier("today.start")
             }
 
             Section {
-                LabeledContent("today.due.label", value: "\(dueReviewCount)")
-                LabeledContent("today.preview.label", value: previewText)
+                Button(action: onReview) {
+                    CompactMetadataRow(
+                        title: String(localized: "review.title"),
+                        subtitle: reviewSummary,
+                        systemImage: "arrow.triangle.2.circlepath",
+                        tint: AppTheme.reviewAmber
+                    )
+                }
+                .buttonStyle(.plain)
+
+                CompactMetadataRow(
+                    title: String(localized: "today.preview.label"),
+                    subtitle: previewText,
+                    systemImage: "text.quote",
+                    tint: AppTheme.accent
+                )
+            }
+
+            Section("today.vocabularyProgress.title") {
+                LabeledContent("today.vocabularyProgress.total", value: libraryProgressSummary)
+                LabeledContent("settings.level.basic", value: progressText(for: vocabularyProgress.progress(for: .basic)))
+                LabeledContent("settings.level.intermediate", value: progressText(for: vocabularyProgress.progress(for: .intermediate)))
+                LabeledContent("settings.level.advanced", value: progressText(for: vocabularyProgress.progress(for: .advanced)))
             }
 
             Section {
@@ -135,6 +189,7 @@ struct TodayView: View {
                 }
             }
         }
+        .listStyle(.plain)
         .navigationTitle("today.title")
         .task {
             refreshToday()
@@ -154,21 +209,16 @@ struct TodayView: View {
                 }
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    isShowingSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                }
-                .accessibilityLabel(Text("settings.title"))
-            }
+        .navigationDestination(isPresented: $isShowingExtraPractice) {
+            PracticeCenterView(
+                seedItems: seedItems,
+                selectedLevel: preferencesStore.read().selectedLevel,
+                supportLanguageCode: supportLanguageCode,
+                startsImmediately: true,
+                onUpdate: refreshToday
+            )
         }
-        .sheet(isPresented: $isShowingSettings) {
-            NavigationStack {
-                SettingsView()
-            }
-        }
+        .learningSettingsSheet()
     }
 
     private func refreshToday() {
@@ -179,6 +229,7 @@ struct TodayView: View {
             todaySession = sessions.first { $0.dayKey == dayKey }
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
+            practiceAttempts = try modelContext.fetch(FetchDescriptor<PracticeAttemptRecord>())
             dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
             scheduledReviewCount = todaySession?.scheduledReviewCount(from: progressRows) ?? 0
             streakCount = streakService.streakCount(from: sessions, currentDayKey: dayKey)
@@ -198,6 +249,10 @@ struct TodayView: View {
         } catch {
             statusMessage = String(localized: "today.load.error")
         }
+    }
+
+    private func progressText(for progress: VocabularyPracticeProgress) -> String {
+        "\(progress.correctItemCount)/\(progress.totalItemCount)"
     }
 
     private func startPractice() {
@@ -343,6 +398,7 @@ struct TodayView: View {
         WordProgress.self,
         DailySession.self,
         DailySessionItem.self,
-        QuizResult.self
+        QuizResult.self,
+        PracticeAttemptRecord.self
     ], inMemory: true)
 }

@@ -35,6 +35,8 @@
 		000000000000000000000419 /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031B /* PracticeView.swift */; };
 		00000000000000000000041A /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031C /* ThirdPartyNotices.txt */; };
 		00000000000000000000041B /* VocabularyEntryContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031D /* VocabularyEntryContentView.swift */; };
+		00000000000000000000041C /* PracticeProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031E /* PracticeProgressService.swift */; };
+		00000000000000000000041D /* LearningChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031F /* LearningChrome.swift */; };
 		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
 		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
 		000000000000000000000422 /* PersistenceGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000322 /* PersistenceGuardTests.swift */; };
@@ -80,6 +82,8 @@
 		E90F9885B16F4B2189B5D091 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000315 /* OnboardingView.swift */; };
 		FC9AE2752E1EC9A3F4B2006D /* WordingDailyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000300 /* WordingDailyApp.swift */; };
 		FD05E47103284A7DAD9AD075 /* VocabularyEntryContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031D /* VocabularyEntryContentView.swift */; };
+		A1A0B1C2D3E4F50617283940 /* PracticeProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031E /* PracticeProgressService.swift */; };
+		A1A0B1C2D3E4F50617283941 /* LearningChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031F /* LearningChrome.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -147,6 +151,8 @@
 		00000000000000000000031B /* PracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
 		00000000000000000000031C /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		00000000000000000000031D /* VocabularyEntryContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyEntryContentView.swift; sourceTree = "<group>"; };
+		00000000000000000000031E /* PracticeProgressService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeProgressService.swift; sourceTree = "<group>"; };
+		00000000000000000000031F /* LearningChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningChrome.swift; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
 		000000000000000000000322 /* PersistenceGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceGuardTests.swift; sourceTree = "<group>"; };
@@ -261,6 +267,7 @@
 		00000000000000000000005C /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				00000000000000000000031F /* LearningChrome.swift */,
 				00000000000000000000031D /* VocabularyEntryContentView.swift */,
 			);
 			path = Shared;
@@ -348,6 +355,7 @@
 				000000000000000000000311 /* WidgetSnapshotWriter.swift */,
 				000000000000000000000312 /* NotificationScheduler.swift */,
 				000000000000000000000313 /* UserPreferencesStore.swift */,
+				00000000000000000000031E /* PracticeProgressService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -506,11 +514,6 @@
 					};
 					FCED24BDC3A914E058695A01 = {
 						CreatedOnToolsVersion = 26.6;
-						SystemCapabilities = {
-							com.apple.ApplicationGroups.iOS = {
-								enabled = 1;
-							};
-						};
 					};
 				};
 			};
@@ -607,6 +610,8 @@
 				000000000000000000000418 /* QuizEngine.swift in Sources */,
 				000000000000000000000419 /* PracticeView.swift in Sources */,
 				00000000000000000000041B /* VocabularyEntryContentView.swift in Sources */,
+				00000000000000000000041C /* PracticeProgressService.swift in Sources */,
+				00000000000000000000041D /* LearningChrome.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -666,6 +671,8 @@
 				512767C29A3234458CD0DC78 /* QuizEngine.swift in Sources */,
 				2DC81A54453B4EAE4886AA56 /* PracticeView.swift in Sources */,
 				FD05E47103284A7DAD9AD075 /* VocabularyEntryContentView.swift in Sources */,
+				A1A0B1C2D3E4F50617283940 /* PracticeProgressService.swift in Sources */,
+				A1A0B1C2D3E4F50617283941 /* LearningChrome.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -944,10 +951,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Accent;
-				CODE_SIGN_ENTITLEMENTS = WordingDailyApp/WordingDailyApp.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WordingDailyApp/WordingDailyAppQA.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3LHEYBW4DC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WordingDailyApp/Info.plist;
@@ -972,10 +979,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Accent;
-				CODE_SIGN_ENTITLEMENTS = WordingDailyApp/WordingDailyApp.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WordingDailyApp/WordingDailyAppQA.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3LHEYBW4DC;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WordingDailyApp/Info.plist;

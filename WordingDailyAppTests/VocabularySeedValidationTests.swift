@@ -3,7 +3,7 @@ import XCTest
 @testable import WordingDailyApp
 
 final class VocabularySeedValidationTests: XCTestCase {
-    func testPronunciationUtteranceUsesIPAAndRequestedInstalledLocale() {
+    func testPronunciationUtteranceUsesNaturalTextSpeechAndRequestedInstalledLocale() {
         let pronunciation = VocabularyPronunciation(
             id: "lead-us-1",
             ipa: "liːd",
@@ -20,10 +20,26 @@ final class VocabularySeedValidationTests: XCTestCase {
         XCTAssertEqual(utterance.speechString, "lead")
         XCTAssertTrue(utterance.voice?.language.hasPrefix("en") == true)
         let key = NSAttributedString.Key(AVSpeechSynthesisIPANotationAttribute)
-        XCTAssertEqual(
-            utterance.attributedSpeechString.attribute(key, at: 0, effectiveRange: nil) as? String,
-            "liːd"
+        XCTAssertNil(utterance.attributedSpeechString.attribute(key, at: 0, effectiveRange: nil))
+    }
+
+    func testPhraseUtteranceUsesNaturalTextSpeechInsteadOfWholePhraseIPAOverride() {
+        let pronunciation = VocabularyPronunciation(
+            id: "give-me-a-call-us-1",
+            ipa: "ɡɪv mi ə kɔl",
+            speechLocale: "en-US",
+            region: "US"
         )
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("en") }
+        let utterance = PronunciationSpeaker.makeUtterance(
+            expression: "give me a call",
+            pronunciation: pronunciation,
+            availableVoices: voices
+        )
+
+        XCTAssertEqual(utterance.speechString, "give me a call")
+        let key = NSAttributedString.Key(AVSpeechSynthesisIPANotationAttribute)
+        XCTAssertNil(utterance.attributedSpeechString.attribute(key, at: 0, effectiveRange: nil))
     }
 
     func testBundledSeedHasCompleteRichEntries() throws {

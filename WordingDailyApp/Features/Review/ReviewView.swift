@@ -15,16 +15,39 @@ struct ReviewView: View {
     private let reviewScheduler = ReviewScheduler()
     private let seedLoader = SeedLoader()
 
+    private var estimatedMinutes: Int {
+        max(1, dueItems.count / 3 + 1)
+    }
+
+    private var reviewSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "review.estimatedTime.format"),
+            estimatedMinutes
+        )
+    }
+
     var body: some View {
         List {
             Section {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("review.due.title")
-                        .font(.headline)
-                    Spacer()
-                    Text("\(dueItems.count)")
-                        .font(.title3.monospacedDigit())
-                        .foregroundStyle(AppTheme.reviewAmber)
+                HStack(spacing: 12) {
+                    Image("ReviewCover")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("review.due.title")
+                            .font(.headline)
+
+                        Text("\(dueItems.count)")
+                            .font(.title2.monospacedDigit())
+                            .foregroundStyle(AppTheme.reviewAmber)
+
+                        Text(reviewSummary)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Button {
@@ -44,6 +67,17 @@ struct ReviewView: View {
                     Text("review.empty.message")
                         .foregroundStyle(.secondary)
                 }
+            } else {
+                Section("review.nextUp.title") {
+                    ForEach(dueItems.prefix(3)) { item in
+                        CompactMetadataRow(
+                            title: item.upgradedExpression,
+                            subtitle: item.plainExpression,
+                            systemImage: "text.quote",
+                            tint: AppTheme.reviewAmber
+                        )
+                    }
+                }
             }
 
             if let statusMessage {
@@ -53,6 +87,7 @@ struct ReviewView: View {
                 }
             }
         }
+        .listStyle(.plain)
         .navigationTitle("review.title")
         .task {
             refreshReviewQueue()
@@ -67,6 +102,7 @@ struct ReviewView: View {
                 refreshReviewQueue()
             }
         }
+        .learningSettingsSheet()
     }
 
     private func refreshReviewQueue() {
@@ -126,7 +162,7 @@ private struct ReviewSessionView: View {
                 retriesWrongAnswers: true
             ),
             tint: AppTheme.reviewAmber,
-            onFirstAttempt: persistAnswer
+            onAttempt: persistAnswer
         ) {
             completionContent
         }
@@ -149,34 +185,44 @@ private struct ReviewSessionView: View {
     }
 
     private func persistAnswer(_ attempt: QuizAttempt) throws {
-        guard attempt.isFirstAttempt,
-              let item = items.first(where: { $0.id == attempt.question.itemID }) else {
+        guard let item = items.first(where: { $0.id == attempt.question.itemID }) else {
             throw CocoaError(.fileReadCorruptFile)
         }
 
         do {
             let now = Date()
-            let indices = attempt.question.persistenceIndices(
-                for: attempt.submittedAnswer,
-                wasCorrect: attempt.wasCorrect
-            )
-            guard let progress = try persistenceService.existingWordProgress(
-                for: item.id,
-                in: modelContext
-            ) else {
-                throw CocoaError(.fileReadCorruptFile)
+            if attempt.isFirstAttempt {
+                let indices = attempt.question.persistenceIndices(
+                    for: attempt.submittedAnswer,
+                    wasCorrect: attempt.wasCorrect
+                )
+                guard let progress = try persistenceService.existingWordProgress(
+                    for: item.id,
+                    in: modelContext
+                ) else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                reviewScheduler.applyAnswer(
+                    to: progress,
+                    wasCorrect: attempt.wasCorrect,
+                    answeredAt: now,
+                    context: .review
+                )
+                _ = try persistenceService.quizResult(
+                    dayKey: dayKeyService.dayKey(for: now),
+                    itemID: item.id,
+                    selectedOptionIndex: indices.selected,
+                    correctOptionIndex: indices.correct,
+                    in: modelContext
+                )
             }
-            reviewScheduler.applyAnswer(
-                to: progress,
-                wasCorrect: attempt.wasCorrect,
-                answeredAt: now,
-                context: .review
-            )
-            _ = try persistenceService.quizResult(
-                dayKey: dayKeyService.dayKey(for: now),
+
+            _ = try persistenceService.practiceAttempt(
+                runID: dayKey,
                 itemID: item.id,
-                selectedOptionIndex: indices.selected,
-                correctOptionIndex: indices.correct,
+                level: item.level,
+                mode: attempt.question.mode,
+                wasCorrect: attempt.wasCorrect,
                 in: modelContext
             )
             if modelContext.hasChanges {
@@ -197,6 +243,7 @@ private struct ReviewSessionView: View {
         WordProgress.self,
         DailySession.self,
         DailySessionItem.self,
-        QuizResult.self
+        QuizResult.self,
+        PracticeAttemptRecord.self
     ], inMemory: true)
 }

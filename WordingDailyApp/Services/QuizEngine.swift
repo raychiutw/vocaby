@@ -39,6 +39,9 @@ struct QuizQuestion: Identifiable, Equatable {
     var itemID: String { item.id }
     var selectedSense: VocabularySense { item.senses.first { $0.id == senseID }! }
     var correctOptionIndex: Int? { options.firstIndex(of: correctAnswer) }
+    var pronunciationText: String {
+        mode == .expressionChoice ? prompt : item.upgradedExpression
+    }
 }
 
 struct QuizPersistenceIndices: Equatable {

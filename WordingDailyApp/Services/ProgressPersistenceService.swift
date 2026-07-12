@@ -103,6 +103,26 @@ struct ProgressPersistenceService {
         return result
     }
 
+    func practiceAttempt(
+        runID: String,
+        itemID: String,
+        level: VocabularyLevel,
+        mode: PracticeMode,
+        wasCorrect: Bool,
+        in context: ModelContext
+    ) throws -> PracticeAttemptRecord {
+        let attempt = PracticeAttemptRecord(
+            runID: runID,
+            itemID: itemID,
+            level: level,
+            mode: mode,
+            wasCorrect: wasCorrect
+        )
+        context.insert(attempt)
+        try context.save()
+        return attempt
+    }
+
     private static func quizResultID(dayKey: String, itemID: String) -> String {
         "\(dayKey)#\(itemID)"
     }

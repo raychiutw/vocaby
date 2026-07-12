@@ -131,3 +131,32 @@ final class QuizResult {
         self.wasCorrect = selectedOptionIndex == correctOptionIndex
     }
 }
+
+@Model
+final class PracticeAttemptRecord {
+    @Attribute(.unique) var id: String
+    var runID: String
+    var itemID: String
+    var levelRawValue: String
+    var modeRawValue: String
+    var wasCorrect: Bool
+    var answeredAt: Date
+
+    init(
+        id: String = UUID().uuidString,
+        runID: String,
+        itemID: String,
+        level: VocabularyLevel,
+        mode: PracticeMode,
+        wasCorrect: Bool,
+        answeredAt: Date = Date()
+    ) {
+        self.id = id
+        self.runID = runID
+        self.itemID = itemID
+        self.levelRawValue = level.rawValue
+        self.modeRawValue = mode.rawValue
+        self.wasCorrect = wasCorrect
+        self.answeredAt = answeredAt
+    }
+}

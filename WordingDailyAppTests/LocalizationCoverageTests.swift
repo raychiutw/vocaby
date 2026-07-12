@@ -37,6 +37,9 @@ final class LocalizationCoverageTests: XCTestCase {
             "today.start.button": .init(en: 24, zhHant: 12),
             "today.resume.button": .init(en: 24, zhHant: 12),
             "today.completed.button": .init(en: 24, zhHant: 12),
+            "today.extraPractice.button": .init(en: 24, zhHant: 12),
+            "today.vocabularyProgress.title": .init(en: 24, zhHant: 12),
+            "today.vocabularyProgress.total": .init(en: 24, zhHant: 12),
             "review.start.button": .init(en: 24, zhHant: 12),
             "library.detail.definition": .init(en: 20, zhHant: 8),
             "practice.learn.startQuiz": .init(en: 24, zhHant: 12),
@@ -102,6 +105,59 @@ final class LocalizationCoverageTests: XCTestCase {
             let value = try XCTUnwrap(catalog.strings[key], "\(key) is missing")
             XCTAssertFalse(value.localizations["en"]?.stringUnit.value.isEmpty ?? true)
             XCTAssertFalse(value.localizations["zh-Hant"]?.stringUnit.value.isEmpty ?? true)
+        }
+    }
+
+    func testLearningChromeStringsHaveEnglishAndTraditionalChineseTranslations() throws {
+        let catalog = try loadCatalog()
+        let keys = [
+            "learning.profile.accessibility",
+            "today.compactSummary.format",
+            "today.review.estimatedTime.format",
+            "today.libraryProgress.row",
+            "review.estimatedTime.format",
+            "review.nextUp.title",
+            "library.compactProgress.format"
+        ]
+
+        for key in keys {
+            let value = try XCTUnwrap(catalog.strings[key], "\(key) is missing")
+            XCTAssertFalse(value.localizations["en"]?.stringUnit.value.isEmpty ?? true)
+            XCTAssertFalse(value.localizations["zh-Hant"]?.stringUnit.value.isEmpty ?? true)
+        }
+    }
+
+    func testSpellingInstructionsExplainTheExpectedLanguageAndOfferAnAudioHint() throws {
+        let catalog = try loadCatalog()
+        let prompt = try XCTUnwrap(catalog.strings["practice.mode.spelling.prompt"])
+        let audioHint = try XCTUnwrap(catalog.strings["practice.spelling.audioHint"])
+
+        XCTAssertEqual(
+            prompt.localizations["zh-Hant"]?.stringUnit.value,
+            "依照中文意思，輸入英文表達"
+        )
+        XCTAssertEqual(
+            audioHint.localizations["zh-Hant"]?.stringUnit.value,
+            "聽發音提示"
+        )
+    }
+
+    func testQuizInstructionsDescribeEachActionWithoutInternalTerminology() throws {
+        let catalog = try loadCatalog()
+        let expectedTraditionalChinese = [
+            "practice.mode.expression.prompt": "選出更自然的英文說法",
+            "practice.mode.meaning.prompt": "選出這句英文的中文意思",
+            "practice.mode.listening.prompt": "聽英文發音，選出對應表達",
+            "practice.mode.spelling.prompt": "依照中文意思，輸入英文表達",
+            "practice.center.mode.expression": "選更自然的說法",
+            "practice.center.mode.meaning": "選中文意思",
+            "practice.center.mode.listening": "聽發音選答案",
+            "practice.center.mode.spelling": "拼寫英文",
+            "practice.center.mode.mixed": "混合題型"
+        ]
+
+        for (key, expected) in expectedTraditionalChinese {
+            XCTAssertEqual(catalog.strings[key]?.localizations["zh-Hant"]?.stringUnit.value, expected, key)
         }
     }
 
