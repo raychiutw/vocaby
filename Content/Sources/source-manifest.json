@@ -197,6 +197,32 @@
       "decision": "Historical/GPL reference only; do not copy definitions or examples into the app."
     },
     {
+      "id": "grundwortschatz-voc-en-004977a",
+      "name": "WortUniversum English Vocabulary Database",
+      "version": "Hugging Face commit 004977ae2c475fcf12f8b73a02dbb9552e3b6577",
+      "retrievedAt": "2026-07-12",
+      "canonicalURL": "https://huggingface.co/datasets/cstr/grundwortschatz-voc-en",
+      "adapter": "grundwortschatz_sqlite_gzip",
+      "rawFile": {
+        "path": "Content/Sources/Raw/grundwortschatz-voc-en/grundwortschatz_en-004977a.db.gz",
+        "sha256": "dd0639b3f7dc96469a644cd4fff525a49f531ef2b58a3d6670601357422c9867",
+        "bytes": 19256361
+      },
+      "license": "CC BY-SA 4.0",
+      "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/grundwortschatz-voc-en/README-004977a.md",
+          "sha256": "db8e4412543e2a65037706ab8a37c8f0c3821ecdb7442d1a5e7eab63ffb6cc60",
+          "bytes": 9443
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Contains adapted data from WortUniversum English Vocabulary Database (cstr/grundwortschatz-voc-en), used under CC BY-SA 4.0. Wording Daily retains the required attribution and share-alike notice for the adapted vocabulary data.",
+      "decision": "Approved for entries carrying explicit CEFR-J A1-B2 evidence, with source attribution and CC BY-SA 4.0 notice. Grade-only estimates are not promoted as CEFR evidence."
+    },
+    {
       "id": "nawl-1.2",
       "name": "New Academic Word List 1.2",
       "version": "1.2",

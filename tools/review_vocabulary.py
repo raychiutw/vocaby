@@ -323,6 +323,10 @@ def wrapped_example_translation(value: str) -> str | None:
     return f"「{phrase}」這個片語顯示 {target} 在語境中的用法。"
 
 
+def example_translation_fallback(target: str) -> str:
+    return f"這個例句示範「{target}」的用法。"
+
+
 def applicable_pronunciation_ids(draft: dict, sense: dict) -> list[str]:
     candidates = draft["packet"].get("candidatePronunciations", [])
     selected = []
@@ -471,13 +475,17 @@ def compile_apple_helper(swift_source: Path, output: Path) -> None:
 
 
 def run_helper(executable: Path, mode: str, payload: str) -> str:
-    result = subprocess.run(
-        [str(executable), mode],
-        input=payload,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            [str(executable), mode],
+            input=payload,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=180,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise sources.SourceError(f"Apple {mode} timed out after 180 seconds") from error
     if result.returncode:
         raise sources.SourceError(f"Apple {mode} failed: {result.stderr.strip()}")
     return result.stdout
@@ -485,24 +493,58 @@ def run_helper(executable: Path, mode: str, payload: str) -> str:
 
 def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict[str, int]:
     batches = (work_dir / "enrichment-input.jsonl").read_text(encoding="utf-8").splitlines()
+    batch_ids = {json.loads(line)["batchID"] for line in batches}
+    if len(batch_ids) != len(batches):
+        raise sources.SourceError("duplicate enrichment batch ID")
+    output_path = work_dir / "enrichment-output.jsonl"
+    completed = {}
+    if output_path.exists():
+        for output in sources.read_jsonl(output_path):
+            batch_id = output.get("batchID")
+            if batch_id not in batch_ids or batch_id in completed:
+                raise sources.SourceError("invalid saved enrichment batch")
+            completed[batch_id] = output
+    pending = [line for line in batches if json.loads(line)["batchID"] not in completed]
+
+    def checkpoint() -> None:
+        sources.atomic_write(
+            output_path,
+            jsonl(sorted(completed.values(), key=lambda item: item["batchID"])),
+        )
+
     with tempfile.TemporaryDirectory() as directory:
         executable = Path(directory) / "apple-language-services"
         compile_apple_helper(swift_source, executable)
-        outputs = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(run_helper, executable, "enrich", line + "\n"): line
-                for line in batches
+                pool.submit(run_helper, executable, "enrich", line + "\n"): json.loads(line)["batchID"]
+                for line in pending
             }
-            for completed, future in enumerate(concurrent.futures.as_completed(futures), 1):
-                outputs.extend(
-                    json.loads(line)
-                    for line in future.result().splitlines()
-                    if line.strip()
+            for enriched_count, future in enumerate(
+                concurrent.futures.as_completed(futures), 1
+            ):
+                batch_id = futures[future]
+                try:
+                    output = [
+                        json.loads(line) for line in future.result().splitlines() if line.strip()
+                    ]
+                except Exception as error:
+                    checkpoint()
+                    raise sources.SourceError(
+                        f"Apple enrich failed for batch {batch_id}: {error}"
+                    ) from error
+                for item in output:
+                    item_id = item.get("batchID")
+                    if item_id not in batch_ids or item_id in completed:
+                        checkpoint()
+                        raise sources.SourceError("invalid enrichment batch output")
+                    completed[item_id] = item
+                if enriched_count % 10 == 0 or enriched_count == len(pending):
+                    checkpoint()
+                print(
+                    f"enriched {len(completed)}/{len(batches)} batches", flush=True
                 )
-                print(f"enriched {completed}/{len(batches)} batches", flush=True)
-        outputs.sort(key=lambda item: item["batchID"])
-        sources.atomic_write(work_dir / "enrichment-output.jsonl", jsonl(outputs))
+        checkpoint()
         finish = finish_enrichment(work_dir)
         translation_payload = (work_dir / "translation-input.jsonl").read_text(encoding="utf-8")
         translated = run_helper(executable, "translate", translation_payload)
@@ -625,12 +667,15 @@ def seed_source_translations(work_dir: Path) -> int:
             }
         for sense in draft["senses"]:
             sense_id = f"{packet['id']}::{sense['id']}"
+            example_id = f"{sense_id}::example"
             translation = wrapped_example_translation(
                 draft["enrichment"][sense["id"]]["example"]
             )
-            if translation:
-                by_id[f"{sense_id}::example"] = {
-                    "id": f"{sense_id}::example",
+            if translation is None:
+                translation = example_translation_fallback(packet["target"])
+            if example_id not in by_id:
+                by_id[example_id] = {
+                    "id": example_id,
                     "text": translation,
                 }
     completed = sorted(by_id.values(), key=lambda item: item["id"])

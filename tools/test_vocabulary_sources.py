@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -20,6 +21,98 @@ SIMILARITY_SCRIPT = Path(__file__).with_name("definition_similarity.swift")
 
 
 class VocabularySourcesTests(unittest.TestCase):
+    def test_validate_seed_record_rejects_pronunciation_region_id_mismatch(self):
+        record = {
+            "id": "basic-0001",
+            "level": "basic",
+            "sortOrder": 1,
+            "cefr": "A1",
+            "contentLanguageCode": "en",
+            "supportLanguageCodes": ["zh-Hant"],
+            "plainExpression": "ask for",
+            "upgradedExpression": "request",
+            "primarySenseID": "basic-0001-sense-1",
+            "pronunciations": [{
+                "id": "request-us-1",
+                "ipa": "ɹɪˈkwɛst",
+                "speechLocale": "en-US",
+                "region": "General",
+            }],
+            "senses": [{
+                "id": "basic-0001-sense-1",
+                "partOfSpeech": "verb",
+                "pronunciationIDs": ["request-us-1"],
+                "meaning": {"en": "Ask for something.", "zh-Hant": "要求某事物。"},
+                "example": {
+                    "text": "I request a receipt.",
+                    "translation": {"zh-Hant": "我要求一張收據。"},
+                },
+            }],
+            "quiz": {
+                "prompt": {"en": "Choose request.", "zh-Hant": "選出 request。"},
+                "options": ["ask", "request", "say", "tell"],
+                "correctOptionIndex": 1,
+            },
+            "reviewStatus": "approved",
+            "englishReviewer": "test",
+            "zhHantReviewer": "test",
+            "sourceRefs": [{"sourceID": "test-source", "sourceEntryRef": "request"}],
+        }
+
+        with self.assertRaisesRegex(vocabulary_sources.SourceError, "inconsistent pronunciation"):
+            vocabulary_sources.validate_seed_item(record)
+
+    def test_grundwortschatz_sqlite_gzip_adapter_keeps_cefr_and_grade_six_advanced_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "words.db"
+            connection = sqlite3.connect(database)
+            connection.execute(
+                "CREATE TABLE words (original_id TEXT, word TEXT, lemma TEXT, word_type TEXT, grade_level INTEGER, enrichment_json TEXT, metadata_json TEXT)"
+            )
+            connection.executemany(
+                "INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [
+                    (
+                        "word_en_00001",
+                        "add",
+                        "add",
+                        "verb",
+                        2,
+                        json.dumps({"definitions": ["To join or combine."], "examples": ["Add the numbers."]}),
+                        json.dumps({
+                            "cefr_level": "A1",
+                            "pronunciation": {"ipa": "æd"},
+                            "gutenberg_examples": ["We add the numbers."],
+                        }),
+                    ),
+                    (
+                        "word_en_00002",
+                        "moraine",
+                        "moraine",
+                        "noun",
+                        6,
+                        json.dumps({"definitions": ["A glacial deposit."]}),
+                        json.dumps({"gradeLevelEstimate": 6}),
+                    ),
+                ],
+            )
+            connection.commit()
+            connection.close()
+            source = Path(directory) / "words.db.gz"
+            with database.open("rb") as input_stream, gzip.open(source, "wb") as output_stream:
+                output_stream.write(input_stream.read())
+
+            records = list(vocabulary_sources.parse_grundwortschatz_sqlite_gzip(source, "grundwortschatz-voc-en"))
+
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["headword"], "add")
+        self.assertEqual(records[0]["cefr"], "A1")
+        self.assertEqual(records[0]["definitions"], ["To join or combine."])
+        self.assertEqual(records[0]["examples"], ["Add the numbers.", "We add the numbers."])
+        self.assertEqual(records[0]["pronunciations"][0]["value"], "æd")
+        self.assertEqual(records[1]["headword"], "moraine")
+        self.assertEqual(records[1]["cefr"], "C1")
+
     def test_bare_ipa_selects_one_reading_from_wiktextract_variants(self):
         cases = {
             "/t͡ʃæns/[t͡ʃʰæns]": "t͡ʃæns",
@@ -336,6 +429,97 @@ class VocabularySourcesTests(unittest.TestCase):
                     "region": "UK",
                 }
             ],
+        )
+
+    def test_review_pronunciations_uses_region_tags_and_labels_unmarked_ipa_general(self):
+        pronunciations, _ = vocabulary_sources.review_pronunciations(
+            "ambiguous",
+            [
+                {
+                    "notation": "ipa",
+                    "value": "æmˈbɪɡ.ju.əs",
+                    "region": "Canada",
+                    "tags": ["Canada", "General-American"],
+                },
+                {
+                    "notation": "ipa",
+                    "value": "ɛəmˈbɪɡ.ju.əs",
+                    "region": None,
+                    "tags": [],
+                },
+            ],
+            {},
+        )
+
+        self.assertEqual(
+            pronunciations,
+            [
+                {
+                    "id": "ambiguous-us-1",
+                    "ipa": "æmˈbɪɡ.ju.əs",
+                    "speechLocale": "en-US",
+                    "region": "US",
+                },
+                {
+                    "id": "ambiguous-general-2",
+                    "ipa": "ɛəmˈbɪɡ.ju.əs",
+                    "speechLocale": "en-US",
+                    "region": "General",
+                },
+            ],
+        )
+
+    def test_review_pronunciations_keeps_matching_ipa_for_distinct_regions(self):
+        pronunciations, _ = vocabulary_sources.review_pronunciations(
+            "ambiguous",
+            [
+                {
+                    "notation": "ipa",
+                    "value": "æmˈbɪɡ.ju.əs",
+                    "region": "Received-Pronunciation",
+                    "tags": ["Received-Pronunciation"],
+                },
+                {
+                    "notation": "ipa",
+                    "value": "æmˈbɪɡ.ju.əs",
+                    "region": "Canada",
+                    "tags": ["Canada", "General-American"],
+                },
+            ],
+            {},
+        )
+
+        self.assertEqual(
+            [(item["region"], item["ipa"]) for item in pronunciations],
+            [("US", "æmˈbɪɡ.ju.əs"), ("UK", "æmˈbɪɡ.ju.əs")],
+        )
+
+    def test_review_pronunciations_adds_cmudict_us_when_other_ipa_is_unmarked(self):
+        pronunciations, references = vocabulary_sources.review_pronunciations(
+            "leverage",
+            [
+                {"notation": "ipa", "value": "ˈliːv.ə.ɹɪd͡ʒ", "region": None},
+                {"notation": "ipa", "value": "ˈlɛv.ə.ɹɪd͡ʒ", "region": None},
+            ],
+            {
+                "leverage": [
+                    {
+                        "value": "L EH1 V ER0 IH0 JH",
+                        "sourceRef": {
+                            "sourceID": "cmudict-7479086",
+                            "sourceEntryRef": "leverage",
+                        },
+                    }
+                ]
+            },
+        )
+
+        self.assertEqual([item["region"] for item in pronunciations], ["US", "General", "General"])
+        self.assertEqual(pronunciations[0]["id"], "leverage-us-1")
+        self.assertEqual(pronunciations[1]["id"], "leverage-general-2")
+        self.assertIn(
+            {"sourceID": "cmudict-7479086", "sourceEntryRef": "leverage"},
+            references,
         )
 
     def test_review_senses_keep_primary_and_common_additional_meanings(self):

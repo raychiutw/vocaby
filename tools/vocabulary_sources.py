@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -226,6 +227,61 @@ def parse_cmudict(path: Path, source_id: str) -> Iterable[dict]:
                 }
             ]
             yield record
+
+
+def parse_grundwortschatz_sqlite_gzip(path: Path, source_id: str) -> Iterable[dict]:
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temporary:
+        temporary_path = Path(temporary.name)
+        with gzip.open(path, "rb") as compressed:
+            shutil.copyfileobj(compressed, temporary)
+    try:
+        connection = sqlite3.connect(temporary_path)
+        try:
+            rows = connection.execute(
+                "SELECT original_id, word, lemma, word_type, enrichment_json, metadata_json FROM words"
+            )
+            for reference, word, lemma, part_of_speech, enrichment_json, metadata_json in rows:
+                metadata = json.loads(metadata_json or "{}")
+                cefr = metadata.get("cefr_level")
+                if cefr not in CEFR_LEVEL and metadata.get("gradeLevelEstimate") in {5, 6}:
+                    cefr = "C1"
+                if cefr not in CEFR_LEVEL:
+                    continue
+                headword = (lemma or word or "").strip()
+                if ENGLISH_TERM.fullmatch(headword) is None:
+                    continue
+                enrichment = json.loads(enrichment_json or "{}")
+                record = empty_record(source_id, reference, headword)
+                record["partOfSpeech"] = canonical_part_of_speech(part_of_speech)
+                record["cefr"] = cefr
+                record["definitions"] = [
+                    value.strip()
+                    for value in enrichment.get("definitions", [])
+                    if isinstance(value, str) and value.strip()
+                ]
+                record["examples"] = list(dict.fromkeys(
+                    value.strip()
+                    for value in [
+                        *enrichment.get("examples", []),
+                        *metadata.get("gutenberg_examples", []),
+                    ]
+                    if isinstance(value, str) and value.strip()
+                ))
+                pronunciation = metadata.get("pronunciation", {})
+                ipa = pronunciation.get("ipa") if isinstance(pronunciation, dict) else None
+                if isinstance(ipa, str) and ipa.strip():
+                    record["pronunciations"] = [{
+                        "notation": "ipa",
+                        "value": ipa.strip(),
+                        "speechLocale": "en-US",
+                        "region": "US" if pronunciation.get("source") == "cmudict" else None,
+                        "tags": [],
+                    }]
+                yield record
+        finally:
+            connection.close()
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def parse_cow(path: Path, source_id: str) -> Iterable[dict]:
@@ -564,48 +620,70 @@ def review_ipa(value: str) -> str:
     return value
 
 
+def reviewed_region(candidate: dict) -> str | None:
+    region = candidate.get("region")
+    tags = set(candidate.get("tags", []))
+    if region in {"US", "General-American"} or "General-American" in tags:
+        return "US"
+    if region in {"UK", "Received-Pronunciation"} or "Received-Pronunciation" in tags:
+        return "UK"
+    return "General" if region is None else None
+
+
 def review_pronunciations(
     expression: str,
     candidates: list[dict],
     cmudict: dict[str, list[dict]],
 ) -> tuple[list[dict], list[dict]]:
-    priority = {
-        "US": 0,
-        "General-American": 0,
-        "UK": 1,
-        "Received-Pronunciation": 1,
-        None: 2,
-    }
+    priority = {"US": 0, "UK": 1, "General": 2}
     selected: list[tuple[str, str, str, dict]] = []
-    seen: set[str] = set()
-    standard_regions = set(priority)
-    for candidate in sorted(
+    seen: set[tuple[str, str]] = set()
+    candidates = sorted(
         (
             item
             for item in candidates
             if item.get("notation") == "ipa"
-            and item.get("region") in standard_regions
+            and reviewed_region(item) is not None
             and review_ipa(item.get("value", ""))
         ),
         key=lambda item: (
-            priority.get(item.get("region"), 3),
+            priority[reviewed_region(item)],
             review_ipa(item["value"]),
             item.get("sourceRef", {}).get("sourceEntryRef", ""),
         ),
-    ):
+    )
+
+    def select(candidate: dict) -> None:
         ipa = review_ipa(candidate["value"])
-        if ipa in seen:
-            continue
-        seen.add(ipa)
-        region = candidate.get("region")
-        if region == "General-American":
-            region = "US"
-        elif region == "Received-Pronunciation":
-            region = "UK"
+        region = reviewed_region(candidate)
+        if (region, ipa) in seen:
+            return
+        seen.add((region, ipa))
         locale = "en-GB" if region == "UK" else "en-US"
-        selected.append((ipa, locale, region or "General", candidate.get("sourceRef", {})))
+        selected.append((ipa, locale, region, candidate.get("sourceRef", {})))
+
+    for region in priority:
+        candidate = next(
+            (item for item in candidates if reviewed_region(item) == region),
+            None,
+        )
+        if candidate is not None:
+            select(candidate)
+    for candidate in candidates:
         if len(selected) == 3:
             break
+        select(candidate)
+
+    words = re.findall(r"[a-z]+(?:'[a-z]+)?", normalized(expression))
+    if len(words) == 1 and not any(region == "US" for _, _, region, _ in selected):
+        values = cmudict.get(words[0], [])
+        if values:
+            value = values[0]
+            ipa = arpabet_to_ipa(value["value"])
+            if ("US", ipa) not in seen:
+                selected.append((ipa, "en-US", "US", value.get("sourceRef", {})))
+                selected.sort(key=lambda item: (priority[item[2]], item[0]))
+                selected = selected[:3]
 
     if not selected:
         arpabet = next(
@@ -622,7 +700,6 @@ def review_pronunciations(
             )
 
     if not selected:
-        words = re.findall(r"[a-z]+(?:'[a-z]+)?", normalized(expression))
         if not words or any(word not in cmudict for word in words):
             return [], []
         values = [cmudict[word][0] for word in words]
@@ -643,9 +720,10 @@ def review_pronunciations(
         )
 
     slug = expression_slug(expression)
+    region_slug = {"US": "us", "UK": "gb", "General": "general"}
     pronunciations = [
         {
-            "id": f"{slug}-{locale.removeprefix('en-').casefold()}-{index}",
+            "id": f"{slug}-{region_slug[region]}-{index}",
             "ipa": ipa,
             "speechLocale": locale,
             "region": region,
@@ -943,6 +1021,7 @@ def snapshot_wiktextract(source_url: str, seed_path: Path, output: Path) -> dict
 PARSERS = {
     "lemma_csv": parse_lemma_csv,
     "cmudict": parse_cmudict,
+    "grundwortschatz_sqlite_gzip": parse_grundwortschatz_sqlite_gzip,
     "cow_tsv": parse_cow,
     "oewn_json_zip": parse_oewn,
     "cefr_j_xlsx_zip": parse_cefr_j,
@@ -1295,7 +1374,11 @@ def prepare_enrichment(
             cefr_any.setdefault(key, value)
         if record.get("sourceID", "").split("-", 1)[0] in {"bsl", "nawl", "ngsl", "tsl"}:
             reference_sources.setdefault(key, set()).add(record["sourceID"])
-        if record.get("sourceID", "").startswith("oewn") and record.get("definitions"):
+        if (
+            record.get("sourceID", "").startswith(("oewn", "grundwortschatz"))
+            and record.get("definitions")
+            and record.get("examples")
+        ):
             lexical.append(record)
 
     converted_word_values = traditionalize([value for _, value in word_translation_records])
@@ -1531,7 +1614,7 @@ def prepare_enrichment(
             for item in translation_options
             if "cedict" in item["sourceID"].casefold()
         ]
-        if requires_sense_translation:
+        if requires_sense_translation and aligned_options:
             translation_options = sorted(
                 aligned_options,
                 key=lambda item: (
@@ -1782,6 +1865,27 @@ def prepare_enrichment(
     selected.sort(
         key=lambda item: (LEVEL_ORDER[item["level"]], normalized(item["target"]))
     )
+    positions = {level: 0 for level in LEVEL_ORDER}
+    for item in selected:
+        level = item["level"]
+        positions[level] += 1
+        key = normalized(item["target"])
+        if current_seed is None:
+            item["id"] = f"bank-{level}-{positions[level]:04d}"
+            item["sortOrder"] = positions[level]
+        item["candidateSenses"] = merged_list(senses_by_headword.get(key, []))
+        item["candidatePronunciations"] = merged_list(
+            pronunciations_by_headword.get(key, [])
+        )
+        item["candidatePlainExpressions"] = sorted(
+            plain_expressions_by_headword.get(key, set()),
+            key=lambda value: (len(value.split()), len(value), normalized(value)),
+        )
+        item["validationSourceIDs"] = sorted(
+            validation_sources_by_headword.get(key, set())
+        )
+        if current_seed is None:
+            item["issues"] = []
     content = "".join(
         json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         + "\n"
@@ -2073,7 +2177,7 @@ def validate_seed_item(item: dict) -> None:
         if not all(
             isinstance(pronunciation.get(key), str)
             and pronunciation[key].strip()
-            for key in ("id", "ipa", "speechLocale")
+            for key in ("id", "ipa", "speechLocale", "region")
         ):
             raise SourceError(f"seed item {item['id']} has malformed pronunciation")
         if (
@@ -2081,6 +2185,15 @@ def validate_seed_item(item: dict) -> None:
             or not pronunciation["speechLocale"].startswith("en-")
         ):
             raise SourceError(f"seed item {item['id']} has malformed pronunciation")
+        expected = {
+            "US": ("us", "en-US"),
+            "UK": ("gb", "en-GB"),
+            "General": ("general", "en-US"),
+        }.get(pronunciation["region"])
+        if expected is None or pronunciation["speechLocale"] != expected[1] or not re.search(
+            rf"-{expected[0]}-\d+$", pronunciation["id"]
+        ):
+            raise SourceError(f"seed item {item['id']} has inconsistent pronunciation region")
 
     sense_ids = [value.get("id") for value in senses]
     if (

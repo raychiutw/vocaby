@@ -89,6 +89,12 @@ Title to copyright in this software, database and any associated
 documentation shall at all times remain with the copyright holders and
 LICENSEE agrees to preserve same.
 
+WortUniversum English Vocabulary Database (Hugging Face commit 004977ae2c475fcf12f8b73a02dbb9552e3b6577)
+Source: https://huggingface.co/datasets/cstr/grundwortschatz-voc-en
+License: CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/
+Contains adapted data from WortUniversum English Vocabulary Database (cstr/grundwortschatz-voc-en), used under CC BY-SA 4.0. Wording Daily retains the required attribution and share-alike notice for the adapted vocabulary data.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.
+
 Open English WordNet (2025 edition, git dc343f2683279ecbb13fab4e2fd778d7b162d287)
 Source: https://github.com/globalwordnet/english-wordnet
 License: Princeton WordNet license and CC BY 4.0 https://github.com/globalwordnet/english-wordnet/blob/main/LICENSE.md

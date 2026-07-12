@@ -2,11 +2,67 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tools import review_vocabulary
 
 
 class ReviewVocabularyTests(unittest.TestCase):
+    def test_run_helper_reports_a_timeout(self):
+        with mock.patch.object(
+            review_vocabulary.subprocess,
+            "run",
+            side_effect=review_vocabulary.subprocess.TimeoutExpired(["helper", "enrich"], 180),
+        ):
+            with self.assertRaisesRegex(
+                review_vocabulary.sources.SourceError, "timed out"
+            ):
+                review_vocabulary.run_helper(Path("/tmp/helper"), "enrich", "{}\n")
+
+    def test_run_local_services_resumes_completed_enrichment_batches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batches = [
+                {"batchID": "batch-1", "items": []},
+                {"batchID": "batch-2", "items": []},
+            ]
+            (work / "enrichment-input.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in batches), encoding="utf-8"
+            )
+            completed = {"batchID": "batch-1", "items": []}
+            (work / "enrichment-output.jsonl").write_text(
+                json.dumps(completed) + "\n", encoding="utf-8"
+            )
+            calls = []
+
+            def helper(_executable, mode, payload):
+                calls.append((mode, payload))
+                if mode == "enrich":
+                    batch = json.loads(payload)
+                    return json.dumps({"batchID": batch["batchID"], "items": []}) + "\n"
+                return ""
+
+            def finish(output_work):
+                self.assertEqual(
+                    [item["batchID"] for item in review_vocabulary.sources.read_jsonl(output_work / "enrichment-output.jsonl")],
+                    ["batch-1", "batch-2"],
+                )
+                (output_work / "translation-input.jsonl").write_text("", encoding="utf-8")
+                return {"items": 2, "translations": 0}
+
+            with mock.patch.object(review_vocabulary, "compile_apple_helper"), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ), mock.patch.object(review_vocabulary, "finish_enrichment", side_effect=finish):
+                result = review_vocabulary.run_local_services(work, root / "helper.swift", 1)
+
+            self.assertEqual(result, {"batches": 2, "items": 2, "translations": 0})
+            self.assertEqual(
+                [json.loads(payload)["batchID"] for mode, payload in calls if mode == "enrich"],
+                ["batch-2"],
+            )
+
     def test_validate_enrichment_requires_the_target_in_a_full_sentence(self):
         item = {
             "id": "bank-basic-0001::sense-1",
@@ -60,6 +116,12 @@ class ReviewVocabularyTests(unittest.TestCase):
                 "The phrase “Italian cooking” shows how Italian is used in context."
             ),
             "「Italian cooking」這個片語顯示 Italian 在語境中的用法。",
+        )
+
+    def test_example_translation_fallback_is_a_clear_usage_hint(self):
+        self.assertEqual(
+            review_vocabulary.example_translation_fallback("Italian"),
+            "這個例句示範「Italian」的用法。",
         )
 
     def test_prepare_review_rejects_only_items_without_verified_pronunciation(self):

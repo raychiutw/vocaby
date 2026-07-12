@@ -29,10 +29,10 @@ final class VocabularySeedValidationTests: XCTestCase {
     func testBundledSeedHasCompleteRichEntries() throws {
         let items = try SeedLoader().loadBundledSeed()
 
-        XCTAssertEqual(items.count, 5_221)
-        XCTAssertEqual(items.filter { $0.level == .basic }.count, 980)
-        XCTAssertEqual(items.filter { $0.level == .intermediate }.count, 1_630)
-        XCTAssertEqual(items.filter { $0.level == .advanced }.count, 2_611)
+        XCTAssertEqual(items.count, 10_021)
+        XCTAssertEqual(items.filter { $0.level == .basic }.count, 1_588)
+        XCTAssertEqual(items.filter { $0.level == .intermediate }.count, 2_983)
+        XCTAssertEqual(items.filter { $0.level == .advanced }.count, 5_450)
         for item in items {
             XCTAssertFalse(item.pronunciations.isEmpty, item.id)
             XCTAssertTrue((1...3).contains(item.senses.count), item.id)
