@@ -1,0 +1,89 @@
+name: TestFlight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wording-daily-testflight
+  cancel-in-progress: false
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+jobs:
+  test:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Run Swift tests
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodebuild test \
+            -project WordingDailyApp.xcodeproj \
+            -scheme WordingDailyApp \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Run Python tests
+        run: python3 -m unittest discover -s tools -p 'test_*.py'
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: macos-26
+    timeout-minutes: 45
+    environment: testflight
+    env:
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Archive and upload to TestFlight
+        run: |
+          set -euo pipefail
+          : "${APPLE_TEAM_ID:?Missing testflight variable APPLE_TEAM_ID}"
+          : "${ASC_KEY_ID:?Missing testflight secret ASC_KEY_ID}"
+          : "${ASC_ISSUER_ID:?Missing testflight secret ASC_ISSUER_ID}"
+          : "${ASC_PRIVATE_KEY:?Missing testflight secret ASC_PRIVATE_KEY}"
+
+          key_path="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          archive_path="$RUNNER_TEMP/WordingDailyApp.xcarchive"
+          trap 'rm -f "$key_path"' EXIT
+          umask 077
+          printf '%s\n' "$ASC_PRIVATE_KEY" > "$key_path"
+
+          xcodebuild archive \
+            -project WordingDailyApp.xcodeproj \
+            -scheme WordingDailyApp \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$archive_path" \
+            -derivedDataPath "$RUNNER_TEMP/ArchiveDerivedData" \
+            -hideShellScriptEnvironment \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$key_path" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+
+          xcodebuild -exportArchive \
+            -archivePath "$archive_path" \
+            -exportPath "$RUNNER_TEMP/TestFlightExport" \
+            -exportOptionsPlist .github/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$key_path" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
