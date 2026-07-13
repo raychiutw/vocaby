@@ -2,6 +2,7 @@ import SwiftUI
 
 enum AppTheme {
     static let accent = Color("Accent")
+    static let prominentInk = Color("ProminentInk")
     static let accentSoft = Color("AccentSoft")
     static let focusInk = Color("FocusInk")
     static let mutedInk = Color("MutedInk")

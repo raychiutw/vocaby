@@ -139,8 +139,7 @@ struct TodayView: View {
                         : primaryButtonTitle)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.accent)
+                .prominentActionStyle(tint: AppTheme.accent)
                 .accessibilityIdentifier("today.start")
             }
 

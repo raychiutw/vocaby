@@ -27,6 +27,30 @@ extension View {
     func learningSettingsSheet() -> some View {
         modifier(LearningSettingsSheet())
     }
+
+    @ViewBuilder
+    func prominentActionStyle(tint: Color = AppTheme.accent) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .buttonStyle(.glassProminent)
+                .tint(tint)
+                .foregroundStyle(AppTheme.prominentInk)
+        } else {
+            self
+                .buttonStyle(.borderedProminent)
+                .tint(tint)
+                .foregroundStyle(AppTheme.prominentInk)
+        }
+    }
+
+    @ViewBuilder
+    func bottomActionChrome() -> some View {
+        if #available(iOS 26.0, *) {
+            self
+        } else {
+            self.background(.regularMaterial)
+        }
+    }
 }
 
 struct CompactMetadataRow: View {

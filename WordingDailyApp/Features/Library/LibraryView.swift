@@ -66,9 +66,6 @@ struct LibraryView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("library.title")
-                            .font(.headline)
-
                         Text(compactProgress)
                             .font(.subheadline.monospacedDigit())
                             .foregroundStyle(.secondary)

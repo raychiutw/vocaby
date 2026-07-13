@@ -55,10 +55,11 @@ Use system colors for surfaces and text, plus one restrained accent. Define thes
 | Token | Light | Dark | Usage |
 |------|-------|------|-------|
 | `Accent` | `#0A7A6B` | `#4DD4BE` | Primary action, selected tab, progress fill |
+| `ProminentInk` | `#FFFFFF` | `#000000` | Appearance-aware label color on prominent tinted actions |
 | `AccentSoft` | `#DDF4EF` | `#123A35` | Subtle selected states and progress background |
 | `FocusInk` | `#17211F` | `#F3F7F5` | Primary text when a custom token is needed |
 | `MutedInk` | `#60716B` | `#A9B7B2` | Secondary text |
-| `ReviewAmber` | `#B06A00` | `#FFB84D` | Due review count and review emphasis |
+| `ReviewAmber` | `#AA6400` | `#FFB84D` | Due review count and review emphasis |
 | `WrongRed` | `#B42318` | `#FF6B61` | Wrong answer state |
 | `CorrectGreen` | `#157F3B` | `#60D394` | Correct answer state |
 

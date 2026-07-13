@@ -57,7 +57,7 @@ struct OnboardingView: View {
                     Text("onboarding.continue")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .prominentActionStyle()
                 .controlSize(.large)
             }
             .padding(24)

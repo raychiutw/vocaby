@@ -238,8 +238,7 @@ struct PracticeCenterView: View {
                     Text("practice.center.start")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.accent)
+                .prominentActionStyle(tint: AppTheme.accent)
                 .disabled(!hasEligibleItems)
             }
 
@@ -380,12 +379,11 @@ struct QuizRunView<Completion: View>: View {
                     Text("practice.next")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .prominentActionStyle(tint: tint)
                 .controlSize(.large)
-                .tint(tint)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(.regularMaterial)
+                .bottomActionChrome()
             }
         }
         .onChange(of: runID) {
@@ -479,8 +477,7 @@ struct QuizRunView<Completion: View>: View {
                 if runState.currentFeedback == nil {
                     Button("practice.submit", action: submitSpelling)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .buttonStyle(.borderedProminent)
-                        .tint(tint)
+                        .prominentActionStyle(tint: tint)
                         .disabled(spellingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -577,8 +574,7 @@ struct QuizRunView<Completion: View>: View {
                         Text("practice.retry.button")
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(tint)
+                    .prominentActionStyle(tint: tint)
                 }
             }
         }
@@ -755,12 +751,11 @@ struct DailyPracticeView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .prominentActionStyle(tint: AppTheme.accent)
             .controlSize(.large)
-            .tint(AppTheme.accent)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(.regularMaterial)
+            .bottomActionChrome()
         }
     }
 
@@ -786,9 +781,8 @@ struct DailyPracticeView: View {
                     Label("practice.review.button", systemImage: "arrow.triangle.2.circlepath")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .prominentActionStyle(tint: AppTheme.accent)
                 .controlSize(.large)
-                .tint(AppTheme.accent)
             }
 
             Button("common.done") {

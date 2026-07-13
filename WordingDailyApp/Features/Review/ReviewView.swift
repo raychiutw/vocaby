@@ -56,9 +56,8 @@ struct ReviewView: View {
                     Label("review.start.button", systemImage: "arrow.triangle.2.circlepath")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .prominentActionStyle(tint: AppTheme.reviewAmber)
                 .controlSize(.large)
-                .tint(AppTheme.reviewAmber)
                 .disabled(dueItems.isEmpty)
             }
 
