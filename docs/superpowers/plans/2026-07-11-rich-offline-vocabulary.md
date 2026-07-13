@@ -36,32 +36,32 @@
 - `Content/Sources/Raw/wiktextract-en/`: tracked target-only raw JSONL subset and official license/source evidence; excluded from Xcode.
 - `Content/Reviews/vocabulary-rich-2026-07-11.jsonl`: tracked Agent-reviewed, source-aligned records used to reproduce the App seed.
 - `Content/VocabularyProvenance.json`: repository-only field evidence, validation sources, review status, and stable item identity.
-- `WordingDailyApp/Resources/VocabularySeed.json`: promoted App-only rich bank.
-- `WordingDailyApp/Resources/ThirdPartyNotices.txt`: generated notices for every shipping source.
+- `Vocaby/Resources/VocabularySeed.json`: promoted App-only rich bank.
+- `Vocaby/Resources/ThirdPartyNotices.txt`: generated notices for every shipping source.
 
 ### Swift App
 
-- `WordingDailyApp/Models/VocabularyModels.swift`: rich seed DTOs and primary-sense lookup.
-- `WordingDailyApp/Services/SeedLoader.swift`: sample data and fail-closed rich seed validation.
-- `WordingDailyApp/Services/QuizEngine.swift`: quiz questions carry the selected item/sense and support language.
-- `WordingDailyApp/Features/Shared/VocabularyEntryContentView.swift`: shared meaning/example/POS/pronunciation presentation and native speech utterance creation.
-- `WordingDailyApp/Features/Practice/PracticeView.swift`: listening playback, post-answer explanation, and learn view integration.
-- `WordingDailyApp/Features/Library/LibraryView.swift`: rich read-only detail integration.
-- `WordingDailyApp/Resources/Localizable.xcstrings`: POS, pronunciation, meaning, example, and additional-sense labels.
-- `WordingDailyApp.xcodeproj/project.pbxproj`: add the shared Swift file to formal and QA App targets only.
+- `Vocaby/Models/VocabularyModels.swift`: rich seed DTOs and primary-sense lookup.
+- `Vocaby/Services/SeedLoader.swift`: sample data and fail-closed rich seed validation.
+- `Vocaby/Services/QuizEngine.swift`: quiz questions carry the selected item/sense and support language.
+- `Vocaby/Features/Shared/VocabularyEntryContentView.swift`: shared meaning/example/POS/pronunciation presentation and native speech utterance creation.
+- `Vocaby/Features/Practice/PracticeView.swift`: listening playback, post-answer explanation, and learn view integration.
+- `Vocaby/Features/Library/LibraryView.swift`: rich read-only detail integration.
+- `Vocaby/Resources/Localizable.xcstrings`: POS, pronunciation, meaning, example, and additional-sense labels.
+- `Vocaby.xcodeproj/project.pbxproj`: add the shared Swift file to formal and QA App targets only.
 
 ### Tests and docs
 
-- `WordingDailyAppTests/VocabularySeedValidationTests.swift`: full-bank rich-schema and speech-utterance assertions.
-- `WordingDailyAppTests/QuizEngineTests.swift`: selected-sense propagation and answer-feedback data.
-- `WordingDailyAppTests/DailySelectionServiceTests.swift`: update rich seed fixture.
-- `WordingDailyAppTests/LibraryServiceTests.swift`: update rich seed fixture.
-- `WordingDailyAppTests/PersistenceGuardTests.swift`: update rich seed fixture.
-- `WordingDailyAppTests/ReviewQueueServiceTests.swift`: update rich seed fixture.
-- `WordingDailyAppTests/LocalizationCoverageTests.swift`: require new en/zh-Hant keys.
+- `VocabyTests/VocabularySeedValidationTests.swift`: full-bank rich-schema and speech-utterance assertions.
+- `VocabyTests/QuizEngineTests.swift`: selected-sense propagation and answer-feedback data.
+- `VocabyTests/DailySelectionServiceTests.swift`: update rich seed fixture.
+- `VocabyTests/LibraryServiceTests.swift`: update rich seed fixture.
+- `VocabyTests/PersistenceGuardTests.swift`: update rich seed fixture.
+- `VocabyTests/ReviewQueueServiceTests.swift`: update rich seed fixture.
+- `VocabyTests/LocalizationCoverageTests.swift`: require new en/zh-Hant keys.
 - `docs/question-bank-sources-and-levels.md`: rich review contract and source restrictions.
 - `docs/content-review.md`: pronunciation, POS, multiple-sense, and full-sentence translation checks.
-- `.agents/skills/wording-daily-vocabulary-import/SKILL.md`: repeatable Wiktextract and rich-review workflow.
+- `.agents/skills/vocaby-vocabulary-import/SKILL.md`: repeatable Wiktextract and rich-review workflow.
 
 ---
 
@@ -168,7 +168,7 @@ def snapshot_wiktextract(source_url: str, seed_path: Path, output: Path) -> dict
         normalized(item["upgradedExpression"])
         for item in load_json(seed_path, list)
     }
-    request = urllib.request.Request(source_url, headers={"User-Agent": "WordingDailyVocabularyBuilder/1.0"})
+    request = urllib.request.Request(source_url, headers={"User-Agent": "VocabyVocabularyBuilder/1.0"})
     kept: list[bytes] = []
     with urllib.request.urlopen(request) as response, gzip.GzipFile(fileobj=response) as source:
         for raw_line in source:
@@ -276,7 +276,7 @@ curl -L https://en.wiktionary.org/wiki/Wiktionary:Copyrights \
   -o Content/Sources/Raw/wiktextract-en/Wiktionary-Copyrights.html
 python3 tools/vocabulary_sources.py snapshot-wiktextract \
   --source-url https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz \
-  --seed WordingDailyApp/Resources/VocabularySeed.json \
+  --seed Vocaby/Resources/VocabularySeed.json \
   --output Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09.jsonl.gz
 ```
 
@@ -291,7 +291,7 @@ python3 tools/vocabulary_sources.py verify --source wiktextract-en-2026-07-09
 python3 tools/vocabulary_sources.py import-source wiktextract-en-2026-07-09 --output /tmp/wiktextract-a.jsonl
 python3 tools/vocabulary_sources.py import-source wiktextract-en-2026-07-09 --output /tmp/wiktextract-b.jsonl
 cmp /tmp/wiktextract-a.jsonl /tmp/wiktextract-b.jsonl
-! rg -n 'Content/Sources' WordingDailyApp.xcodeproj/project.pbxproj
+! rg -n 'Content/Sources' Vocaby.xcodeproj/project.pbxproj
 python3 -m unittest tools/test_vocabulary_sources.py
 ```
 
@@ -513,7 +513,7 @@ python3 tools/vocabulary_sources.py verify
 python3 tools/vocabulary_sources.py prepare-enrichment \
   --input-dir Content/Sources/Imported \
   --existing-seed Content/Baselines/legacy-90.json \
-  --current-seed WordingDailyApp/Resources/VocabularySeed.json \
+  --current-seed Vocaby/Resources/VocabularySeed.json \
   --output /tmp/vocabulary-rich-review-queue.jsonl
 ```
 
@@ -533,9 +533,9 @@ git commit -m "feat: validate rich vocabulary reviews"
 
 **Files:**
 - Create: `Content/Reviews/vocabulary-rich-2026-07-11.jsonl`
-- Modify: `WordingDailyApp/Resources/VocabularySeed.json`
+- Modify: `Vocaby/Resources/VocabularySeed.json`
 - Modify: `Content/VocabularyProvenance.json`
-- Modify: `WordingDailyApp/Resources/ThirdPartyNotices.txt`
+- Modify: `Vocaby/Resources/ThirdPartyNotices.txt`
 
 **Interfaces:**
 - Consumes `/tmp/vocabulary-rich-review-queue.jsonl` from Task 2.
@@ -634,17 +634,17 @@ git commit -m "content: review rich offline vocabulary bank"
 ### Task 4: Cut over the Swift seed DTO and promote the rich resource atomically
 
 **Files:**
-- Modify: `WordingDailyApp/Models/VocabularyModels.swift`
-- Modify: `WordingDailyApp/Services/SeedLoader.swift`
-- Modify: `WordingDailyAppTests/VocabularySeedValidationTests.swift`
-- Modify: `WordingDailyAppTests/QuizEngineTests.swift`
-- Modify: `WordingDailyAppTests/DailySelectionServiceTests.swift`
-- Modify: `WordingDailyAppTests/LibraryServiceTests.swift`
-- Modify: `WordingDailyAppTests/PersistenceGuardTests.swift`
-- Modify: `WordingDailyAppTests/ReviewQueueServiceTests.swift`
-- Modify: `WordingDailyApp/Resources/VocabularySeed.json`
+- Modify: `Vocaby/Models/VocabularyModels.swift`
+- Modify: `Vocaby/Services/SeedLoader.swift`
+- Modify: `VocabyTests/VocabularySeedValidationTests.swift`
+- Modify: `VocabyTests/QuizEngineTests.swift`
+- Modify: `VocabyTests/DailySelectionServiceTests.swift`
+- Modify: `VocabyTests/LibraryServiceTests.swift`
+- Modify: `VocabyTests/PersistenceGuardTests.swift`
+- Modify: `VocabyTests/ReviewQueueServiceTests.swift`
+- Modify: `Vocaby/Resources/VocabularySeed.json`
 - Modify: `Content/VocabularyProvenance.json`
-- Modify: `WordingDailyApp/Resources/ThirdPartyNotices.txt`
+- Modify: `Vocaby/Resources/ThirdPartyNotices.txt`
 
 **Interfaces:**
 - Produces `VocabularyPronunciation`, `VocabularyPartOfSpeech`, and `VocabularySense`.
@@ -687,9 +687,9 @@ func testValidationRejectsUnknownPronunciationReference() throws {
 Run:
 
 ```sh
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A' \
-  -only-testing:WordingDailyAppTests/VocabularySeedValidationTests
+  -only-testing:VocabyTests/VocabularySeedValidationTests
 ```
 
 Expected: compile failure because the rich DTO properties do not exist.
@@ -774,9 +774,9 @@ In each existing test helper, derive `pronunciationID = "\(id)-pronunciation-1"`
 Run:
 
 ```sh
-cp /tmp/VocabularySeed.rich.json WordingDailyApp/Resources/VocabularySeed.json
+cp /tmp/VocabularySeed.rich.json Vocaby/Resources/VocabularySeed.json
 cp /tmp/VocabularyProvenance.rich-a.json Content/VocabularyProvenance.json
-cp /tmp/ThirdPartyNotices.rich-a.txt WordingDailyApp/Resources/ThirdPartyNotices.txt
+cp /tmp/ThirdPartyNotices.rich-a.txt Vocaby/Resources/ThirdPartyNotices.txt
 ```
 
 This is a bulk generated-resource replacement, not a hand edit. Confirm `VocabularySeed.json` has no singular top-level meaning/example/pronunciation keys.
@@ -786,7 +786,7 @@ This is a bulk generated-resource replacement, not a hand edit. Confirm `Vocabul
 Run:
 
 ```sh
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A'
 ```
 
@@ -795,10 +795,10 @@ Expected: all tests pass with 5,221 rich entries and unchanged persisted item ID
 - [ ] **Step 8: Commit the atomic schema and resource cutover**
 
 ```sh
-git add WordingDailyApp/Models/VocabularyModels.swift \
-  WordingDailyApp/Services/SeedLoader.swift WordingDailyAppTests \
-  WordingDailyApp/Resources/VocabularySeed.json \
-  WordingDailyApp/Resources/ThirdPartyNotices.txt Content/VocabularyProvenance.json
+git add Vocaby/Models/VocabularyModels.swift \
+  Vocaby/Services/SeedLoader.swift VocabyTests \
+  Vocaby/Resources/VocabularySeed.json \
+  Vocaby/Resources/ThirdPartyNotices.txt Content/VocabularyProvenance.json
 git diff --cached --check
 git commit -m "feat: ship rich offline vocabulary entries"
 ```
@@ -808,8 +808,8 @@ git commit -m "feat: ship rich offline vocabulary entries"
 ### Task 5: Carry the selected sense through every quiz question
 
 **Files:**
-- Modify: `WordingDailyApp/Services/QuizEngine.swift`
-- Modify: `WordingDailyAppTests/QuizEngineTests.swift`
+- Modify: `Vocaby/Services/QuizEngine.swift`
+- Modify: `VocabyTests/QuizEngineTests.swift`
 
 **Interfaces:**
 - `QuizQuestion.item` carries the complete immutable seed item for a ten-item run.
@@ -844,9 +844,9 @@ func testQuestionCarriesPrimarySenseAndSupportLanguage() throws {
 Run:
 
 ```sh
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A' \
-  -only-testing:WordingDailyAppTests/QuizEngineTests
+  -only-testing:VocabyTests/QuizEngineTests
 ```
 
 Expected: compile failure because `item`, `senseID`, and `selectedSense` do not exist.
@@ -893,10 +893,10 @@ Keep the existing same-level distractor and persistence behavior unchanged.
 Run:
 
 ```sh
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A' \
-  -only-testing:WordingDailyAppTests/QuizEngineTests \
-  -only-testing:WordingDailyAppTests/PersistenceGuardTests
+  -only-testing:VocabyTests/QuizEngineTests \
+  -only-testing:VocabyTests/PersistenceGuardTests
 ```
 
 Expected: PASS; spelling, retry, timeout, and saved quiz indices remain unchanged.
@@ -904,7 +904,7 @@ Expected: PASS; spelling, retry, timeout, and saved quiz indices remain unchange
 - [ ] **Step 6: Commit quiz context**
 
 ```sh
-git add WordingDailyApp/Services/QuizEngine.swift WordingDailyAppTests/QuizEngineTests.swift
+git add Vocaby/Services/QuizEngine.swift VocabyTests/QuizEngineTests.swift
 git diff --cached --check
 git commit -m "feat: preserve sense context in quizzes"
 ```
@@ -914,13 +914,13 @@ git commit -m "feat: preserve sense context in quizzes"
 ### Task 6: Add native pronunciation and bilingual post-answer details
 
 **Files:**
-- Create: `WordingDailyApp/Features/Shared/VocabularyEntryContentView.swift`
-- Modify: `WordingDailyApp/Features/Practice/PracticeView.swift`
-- Modify: `WordingDailyApp/Features/Library/LibraryView.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Modify: `WordingDailyApp.xcodeproj/project.pbxproj`
-- Modify: `WordingDailyAppTests/VocabularySeedValidationTests.swift`
-- Modify: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Create: `Vocaby/Features/Shared/VocabularyEntryContentView.swift`
+- Modify: `Vocaby/Features/Practice/PracticeView.swift`
+- Modify: `Vocaby/Features/Library/LibraryView.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Modify: `Vocaby.xcodeproj/project.pbxproj`
+- Modify: `VocabyTests/VocabularySeedValidationTests.swift`
+- Modify: `VocabyTests/LocalizationCoverageTests.swift`
 
 **Interfaces:**
 - `PronunciationSpeaker.makeUtterance(expression:pronunciation:availableVoices:)` creates native offline speech.
@@ -975,10 +975,10 @@ vocabulary.pos.phrase
 Run:
 
 ```sh
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A' \
-  -only-testing:WordingDailyAppTests/VocabularySeedValidationTests \
-  -only-testing:WordingDailyAppTests/LocalizationCoverageTests
+  -only-testing:VocabyTests/VocabularySeedValidationTests \
+  -only-testing:VocabyTests/LocalizationCoverageTests
 ```
 
 Expected: compile failure for `PronunciationSpeaker` and missing localization keys.
@@ -1183,9 +1183,9 @@ Add natural en/zh-Hant strings. Add `VocabularyEntryContentView.swift` to the fo
 Run:
 
 ```sh
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A'
-xcodebuild build -project WordingDailyApp.xcodeproj -scheme WordingDailyAppQA \
+xcodebuild build -project Vocaby.xcodeproj -scheme VocabyQA \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A'
 ```
 
@@ -1194,11 +1194,11 @@ Manually verify zh-Hant and English at normal and accessibility Dynamic Type, Vo
 - [ ] **Step 9: Commit UI and native speech**
 
 ```sh
-git add WordingDailyApp/Features/Shared/VocabularyEntryContentView.swift \
-  WordingDailyApp/Features/Practice/PracticeView.swift \
-  WordingDailyApp/Features/Library/LibraryView.swift \
-  WordingDailyApp/Resources/Localizable.xcstrings \
-  WordingDailyApp.xcodeproj/project.pbxproj WordingDailyAppTests
+git add Vocaby/Features/Shared/VocabularyEntryContentView.swift \
+  Vocaby/Features/Practice/PracticeView.swift \
+  Vocaby/Features/Library/LibraryView.swift \
+  Vocaby/Resources/Localizable.xcstrings \
+  Vocaby.xcodeproj/project.pbxproj VocabyTests
 git diff --cached --check
 git commit -m "feat: explain and pronounce quiz answers"
 ```
@@ -1208,9 +1208,9 @@ git commit -m "feat: explain and pronounce quiz answers"
 ### Task 7: Update the reusable import skill and content policy
 
 **Files:**
-- Modify: `.agents/skills/wording-daily-vocabulary-import/SKILL.md`
-- Modify: `.agents/skills/wording-daily-vocabulary-import/assets/evals/evals.json`
-- Modify: `.agents/skills/wording-daily-vocabulary-import/references/quality_checklist.md`
+- Modify: `.agents/skills/vocaby-vocabulary-import/SKILL.md`
+- Modify: `.agents/skills/vocaby-vocabulary-import/assets/evals/evals.json`
+- Modify: `.agents/skills/vocaby-vocabulary-import/references/quality_checklist.md`
 - Modify: `docs/question-bank-sources-and-levels.md`
 - Modify: `docs/content-review.md`
 
@@ -1232,7 +1232,7 @@ Use the repository's existing strict format, eval, reference, packaging, and arc
 - [ ] **Step 4: Commit docs and skill**
 
 ```sh
-git add .agents/skills/wording-daily-vocabulary-import docs/question-bank-sources-and-levels.md docs/content-review.md
+git add .agents/skills/vocaby-vocabulary-import docs/question-bank-sources-and-levels.md docs/content-review.md
 git diff --cached --check
 git commit -m "docs: document rich vocabulary review workflow"
 ```
@@ -1267,9 +1267,9 @@ Rebuild twice using the Task 3 commands, compare every output, promote to `/tmp/
 - [ ] **Step 3: Run the complete simulator stack**
 
 ```sh
-xcodebuild clean test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild clean test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A'
-xcodebuild build -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild build -project Vocaby.xcodeproj -scheme Vocaby \
   -configuration Release -destination 'generic/platform=iOS Simulator'
 ```
 
@@ -1280,12 +1280,12 @@ Expected: all XCTest targets pass and Release builds.
 Run:
 
 ```sh
-APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*Release-iphonesimulator/WordingDailyApp.app' -print -quit)
+APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*Release-iphonesimulator/Vocaby.app' -print -quit)
 test -f "$APP/VocabularySeed.json"
 test -f "$APP/ThirdPartyNotices.txt"
 ! find "$APP" -iname '*Raw*' -o -iname '*Imported*' -o -iname '*Provenance*' -o -iname '*source-manifest*' | grep .
 ! rg -n 'URLSession|import Network|NWConnection|CloudKit|CKContainer|ASAuthorization|apiKey|https?://' \
-  WordingDailyApp WordingDailyWidget --glob '*.swift'
+  Vocaby VocabyWidget --glob '*.swift'
 ```
 
 Expected: only seed/notices ship and Swift runtime contains no network/account/cloud path.
@@ -1295,17 +1295,17 @@ Expected: only seed/notices ship and Swift runtime contains no network/account/c
 Run:
 
 ```sh
-rm -rf /tmp/WordingDailyQA-device
-xcodebuild build -project WordingDailyApp.xcodeproj -scheme WordingDailyAppQA \
+rm -rf /tmp/VocabyQA-device
+xcodebuild build -project Vocaby.xcodeproj -scheme VocabyQA \
   -configuration Debug -destination 'generic/platform=iOS' \
-  -derivedDataPath /tmp/WordingDailyQA-device \
+  -derivedDataPath /tmp/VocabyQA-device \
   DEVELOPMENT_TEAM=8Z6WVFJ574 CODE_SIGN_STYLE=Automatic CODE_SIGN_ENTITLEMENTS=
 xcrun devicectl device install app \
   --device 77F2E6C0-ECF9-5E25-81E4-5554094C6960 \
-  /tmp/WordingDailyQA-device/Build/Products/Debug-iphoneos/WordingDailyAppQA.app
+  /tmp/VocabyQA-device/Build/Products/Debug-iphoneos/VocabyQA.app
 xcrun devicectl device process launch \
   --device 77F2E6C0-ECF9-5E25-81E4-5554094C6960 \
-  com.raychiutw.WordingDaily.QA
+  com.raychiutw.Vocaby.QA
 ```
 
 Expected: Personal Team build installs and launches without App Group entitlement.
@@ -1320,10 +1320,10 @@ Run:
 
 ```sh
 codebase-memory-mcp cli index_repository \
-  --repo-path /Users/ray/Projects/wording-daily-complete-v1 \
+  --repo-path /Users/ray/Projects/vocaby-complete-v1 \
   --persistence true --mode full
 codebase-memory-mcp cli search_graph \
-  --project Users-ray-Projects-wording-daily-complete-v1 \
+  --project Users-ray-Projects-vocaby-complete-v1 \
   --query VocabularyEntryContentView --limit 5
 zstd -t .codebase-memory/graph.db.zst
 ```

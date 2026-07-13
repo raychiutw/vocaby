@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make Wording Daily feel like a compact native iPhone learning app: Apple Music supplies navigation and list density; Nintendo Switch Parental Controls supplies a friendly, local activity summary.
+Make Vocaby feel like a compact native iPhone learning app: Apple Music supplies navigation and list density; Nintendo Switch Parental Controls supplies a friendly, local activity summary.
 
 ## Constraints
 

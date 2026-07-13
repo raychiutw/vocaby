@@ -1,8 +1,8 @@
-# Agent Instructions - Wording Daily
+# Agent Instructions - Vocaby
 
 ## Product Scope
 
-Wording Daily is a native iOS app for daily English vocabulary practice. It targets Traditional Chinese users first, with English vocabulary content and Traditional Chinese support.
+Vocaby is a native iOS app for daily English vocabulary practice. It targets Traditional Chinese users first, with English vocabulary content and Traditional Chinese support.
 
 V1 scope:
 
@@ -34,20 +34,20 @@ Key constraints:
 - Use small pure services for day keys, daily selection, review scheduling, seed loading/validation, notifications, and widget snapshots.
 - The app is the only writer of the App Group widget snapshot.
 - The widget reads a small derived snapshot, not SwiftData.
-- Notification scheduling must use Wording Daily-specific request identifiers.
+- Notification scheduling must use Vocaby-specific request identifiers.
 - Do not add network, repository, dependency-injection, or sync abstractions in v1.
 
 ## GStack Context
 
 Primary plan artifact:
 
-- `~/.gstack/projects/raychiutw-wording-daily/ray-main-design-20260710-110304.md`
+- `~/.gstack/projects/raychiutw-vocaby/ray-main-design-20260710-110304.md`
 
 Review artifacts:
 
-- `~/.gstack/projects/raychiutw-wording-daily/ray-main-eng-review-test-plan-20260710-112635.md`
-- `~/.gstack/projects/raychiutw-wording-daily/tasks-eng-review-20260710-112635.jsonl`
-- `~/.gstack/projects/raychiutw-wording-daily/tasks-design-review-20260710-112635.jsonl`
+- `~/.gstack/projects/raychiutw-vocaby/ray-main-eng-review-test-plan-20260710-112635.md`
+- `~/.gstack/projects/raychiutw-vocaby/tasks-eng-review-20260710-112635.jsonl`
+- `~/.gstack/projects/raychiutw-vocaby/tasks-design-review-20260710-112635.jsonl`
 
 The current plan review state is cleared for planning:
 

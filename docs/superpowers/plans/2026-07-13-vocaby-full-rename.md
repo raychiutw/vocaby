@@ -96,11 +96,11 @@ Do not commit the red state separately; Task 2 makes this contract green in the 
 ### Task 2: Rename Every Local Artifact and Reference
 
 **Files:**
-- Rename: `WordingDailyApp.xcodeproj` to `Vocaby.xcodeproj`
-- Rename: `WordingDailyApp` to `Vocaby`
-- Rename: `WordingDailyAppTests` to `VocabyTests`
-- Rename: `WordingDailyWidget` to `VocabyWidget`
-- Rename: `.agents/skills/wording-daily-vocabulary-import` to `.agents/skills/vocaby-vocabulary-import`
+- Rename: `Vocaby.xcodeproj` to `Vocaby.xcodeproj`
+- Rename: `Vocaby` to `Vocaby`
+- Rename: `VocabyTests` to `VocabyTests`
+- Rename: `VocabyWidget` to `VocabyWidget`
+- Rename: `.agents/skills/vocaby-vocabulary-import` to `.agents/skills/vocaby-vocabulary-import`
 - Rename: matching scheme, Swift entry-point, entitlements, and widget files to Vocaby names
 - Modify: every tracked text file returned by the contract test
 
@@ -111,16 +111,16 @@ Do not commit the red state separately; Task 2 makes this contract green in the 
 - [ ] **Step 1: Rename the top-level tracked paths**
 
 ```bash
-git mv WordingDailyApp.xcodeproj Vocaby.xcodeproj
-git mv WordingDailyApp Vocaby
-git mv WordingDailyAppTests VocabyTests
-git mv WordingDailyWidget VocabyWidget
-git mv .agents/skills/wording-daily-vocabulary-import .agents/skills/vocaby-vocabulary-import
-git mv Vocaby.xcodeproj/xcshareddata/xcschemes/WordingDailyApp.xcscheme Vocaby.xcodeproj/xcshareddata/xcschemes/Vocaby.xcscheme
-git mv Vocaby/App/WordingDailyApp.swift Vocaby/App/VocabyApp.swift
-git mv Vocaby/WordingDailyApp.entitlements Vocaby/Vocaby.entitlements
-git mv VocabyWidget/WordingDailyWidget.swift VocabyWidget/VocabyWidget.swift
-git mv VocabyWidget/WordingDailyWidget.entitlements VocabyWidget/VocabyWidget.entitlements
+git mv Vocaby.xcodeproj Vocaby.xcodeproj
+git mv Vocaby Vocaby
+git mv VocabyTests VocabyTests
+git mv VocabyWidget VocabyWidget
+git mv .agents/skills/vocaby-vocabulary-import .agents/skills/vocaby-vocabulary-import
+git mv Vocaby.xcodeproj/xcshareddata/xcschemes/Vocaby.xcscheme Vocaby.xcodeproj/xcshareddata/xcschemes/Vocaby.xcscheme
+git mv Vocaby/App/Vocaby.swift Vocaby/App/VocabyApp.swift
+git mv Vocaby/Vocaby.entitlements Vocaby/Vocaby.entitlements
+git mv VocabyWidget/VocabyWidget.swift VocabyWidget/VocabyWidget.swift
+git mv VocabyWidget/VocabyWidget.entitlements VocabyWidget/VocabyWidget.entitlements
 ```
 
 - [ ] **Step 2: Replace former-name spellings in tracked text**
@@ -129,7 +129,7 @@ Run the mechanical replacement in longest-name-first order:
 
 ```bash
 git grep -Il -i -E 'wording[-_ ]?daily' -- . | while IFS= read -r file; do
-  perl -pi -e 's/WordingDailyAppTests/VocabyTests/g; s/WordingDailyWidget/VocabyWidget/g; s/WordingDailyApp/Vocaby/g; s/WordingDaily/Vocaby/g; s/Wording Daily/Vocaby/g; s/wording-daily/vocaby/g; s/wordingdaily/vocaby/g' "$file"
+  perl -pi -e 's/VocabyTests/VocabyTests/g; s/VocabyWidget/VocabyWidget/g; s/Vocaby/Vocaby/g; s/Vocaby/Vocaby/g; s/Vocaby/Vocaby/g; s/vocaby/vocaby/g; s/vocaby/vocaby/g' "$file"
 done
 ```
 
@@ -240,8 +240,8 @@ git commit -m "ci: install OpenCC for vocabulary tests"
 ### Task 4: Rename the GitHub Repository and Local Checkout
 
 **Files:**
-- Move: `/Users/ray/Projects/wording-daily` to `/Users/ray/Projects/vocaby`
-- Modify external resource: GitHub repository `raychiutw/wording-daily` to `raychiutw/vocaby`
+- Move: `/Users/ray/Projects/vocaby` to `/Users/ray/Projects/vocaby`
+- Modify external resource: GitHub repository `raychiutw/vocaby` to `raychiutw/vocaby`
 - Modify local git configuration: `origin`
 
 **Interfaces:**
@@ -251,7 +251,7 @@ git commit -m "ci: install OpenCC for vocabulary tests"
 - [ ] **Step 1: Rename the GitHub repository**
 
 ```bash
-gh api --method PATCH repos/raychiutw/wording-daily -f name=vocaby
+gh api --method PATCH repos/raychiutw/vocaby -f name=vocaby
 git remote set-url origin https://github.com/raychiutw/vocaby.git
 ```
 
@@ -265,7 +265,7 @@ Expected: `main` pushes successfully to `raychiutw/vocaby`.
 
 ```bash
 test ! -e /Users/ray/Projects/vocaby
-mv /Users/ray/Projects/wording-daily /Users/ray/Projects/vocaby
+mv /Users/ray/Projects/vocaby /Users/ray/Projects/vocaby
 ```
 
 - [ ] **Step 4: Verify repository identity and GitHub settings from the new path**
@@ -354,8 +354,8 @@ Verify the new build appears under Vocaby in TestFlight. Record the build number
 
 ```bash
 git -C /Users/ray/Projects/vocaby status --short --branch
-git -C /Users/ray/Projects/vocaby ls-files | rg -i 'wording[-_ ]?daily|wordingdaily'
-git -C /Users/ray/Projects/vocaby grep -Il -i -E 'wording[-_ ]?daily|wordingdaily' -- .
+git -C /Users/ray/Projects/vocaby ls-files | rg -i 'wording[-_ ]?daily|vocaby'
+git -C /Users/ray/Projects/vocaby grep -Il -i -E 'wording[-_ ]?daily|vocaby' -- .
 python3 -m unittest discover -s /Users/ray/Projects/vocaby/tools -p 'test_*.py'
 ```
 

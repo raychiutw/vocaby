@@ -3,13 +3,13 @@
 Status: implemented V1 policy
 Last reviewed: 2026-07-11
 
-This document defines how Wording Daily imports, enriches, reviews, levels, and
+This document defines how Vocaby imports, enriches, reviews, levels, and
 ships vocabulary content. It is an engineering and editorial policy, not legal
 advice.
 
 ## Product Boundary
 
-- The SwiftUI app reads only `WordingDailyApp/Resources/VocabularySeed.json` and
+- The SwiftUI app reads only `Vocaby/Resources/VocabularySeed.json` and
   the bundled `ThirdPartyNotices.txt`.
 - The app has no runtime vocabulary download, account, sign-in, credential, API
   key, backend, iCloud, or sync path.
@@ -23,7 +23,7 @@ advice.
 
 ## Current Bundled Bank
 
-Audit target: `WordingDailyApp/Resources/VocabularySeed.json` on 2026-07-11.
+Audit target: `Vocaby/Resources/VocabularySeed.json` on 2026-07-11.
 
 | App level | CEFR range | Items |
 |---|---|---:|
@@ -61,7 +61,7 @@ eligible to ship.
 | `tsl-1.2` | research candidate list | blocked |
 | `wiktextract-en-2026-07-09` | target-only English Wiktionary POS, gloss, translation, example, and IPA evidence | approved |
 
-The shipping provenance catalog also contains `wording-daily-original` for the
+The shipping provenance catalog also contains `vocaby-original` for the
 90 project-owned legacy items. Exact versions, canonical URLs, hashes, license
 evidence, rights fields, required notices, and current `appUse` decisions live in
 `Content/Sources/source-manifest.json`.
@@ -148,7 +148,7 @@ The provenance file is never decoded by the App. Promotion requires a one-to-one
 ID match between provenance and seed and rejects unapproved sources or incomplete
 review fields.
 
-`WordingDailyApp/Resources/ThirdPartyNotices.txt` is generated deterministically
+`Vocaby/Resources/ThirdPartyNotices.txt` is generated deterministically
 from required notices and retained license files. The App exposes it through a
 native Settings screen; it does not open a web page or fetch license text.
 
@@ -163,7 +163,7 @@ python3 tools/vocabulary_sources.py report
 python3 tools/vocabulary_sources.py prepare-enrichment \
   --input-dir Content/Sources/Imported \
   --existing-seed Content/Baselines/legacy-90.json \
-  --current-seed WordingDailyApp/Resources/VocabularySeed.json \
+  --current-seed Vocaby/Resources/VocabularySeed.json \
   --output /tmp/vocabulary-rich-review-queue.jsonl
 python3 tools/review_vocabulary.py prepare \
   --queue /tmp/vocabulary-rich-review-queue.jsonl \
@@ -198,7 +198,7 @@ examples, and valid per-sense pronunciation IDs. The resulting review JSONL is
 tracked for maintainers but never linked to the app. Agent or local language
 service output is not approved until `audit-reviewed`, deterministic
 seed/provenance/notices builds, promotion, and release review pass. The reusable
-operational guide is `.agents/skills/wording-daily-vocabulary-import/SKILL.md`.
+operational guide is `.agents/skills/vocaby-vocabulary-import/SKILL.md`.
 
 ## Release Gates
 

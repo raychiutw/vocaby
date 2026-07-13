@@ -406,7 +406,7 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
                     *packet["sourceRefs"],
                     *draft["pronunciationSourceRefs"],
                     *(sense.get("sourceRef", {}) for sense in draft["senses"]),
-                    {"sourceID": "wording-daily-original", "sourceEntryRef": packet["id"]},
+                    {"sourceID": "vocaby-original", "sourceEntryRef": packet["id"]},
                 ]
                 if ref.get("sourceID") and ref.get("sourceEntryRef")
             )

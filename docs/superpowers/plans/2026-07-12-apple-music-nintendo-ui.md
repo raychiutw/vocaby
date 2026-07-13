@@ -21,11 +21,11 @@
 ### Task 1: Shared local-profile toolbar and compact row components
 
 **Files:**
-- Create: `WordingDailyApp/Features/Shared/LearningChrome.swift`
-- Modify: `WordingDailyApp/Features/Today/TodayView.swift`
-- Modify: `WordingDailyApp/Features/Review/ReviewView.swift`
-- Modify: `WordingDailyApp/Features/Library/LibraryView.swift`
-- Test: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Create: `Vocaby/Features/Shared/LearningChrome.swift`
+- Modify: `Vocaby/Features/Today/TodayView.swift`
+- Modify: `Vocaby/Features/Review/ReviewView.swift`
+- Modify: `Vocaby/Features/Library/LibraryView.swift`
+- Test: `VocabyTests/LocalizationCoverageTests.swift`
 
 **Interfaces:**
 - Produces `View.learningSettingsSheet()` to attach one My Learning button and Settings sheet to a tab root.
@@ -46,7 +46,7 @@ func testAppleMusicChromeStringsHaveEnglishAndTraditionalChineseTranslations() t
 
 - [ ] **Step 2: Run the focused test and confirm it fails for the new keys**
 
-Run: `xcodebuild test -quiet -project WordingDailyApp.xcodeproj -scheme WordingDailyApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:WordingDailyAppTests/LocalizationCoverageTests`
+Run: `xcodebuild test -quiet -project Vocaby.xcodeproj -scheme Vocaby -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:VocabyTests/LocalizationCoverageTests`
 
 Expected: failure naming the missing localization keys.
 
@@ -89,9 +89,9 @@ Expected: `LocalizationCoverageTests` passes.
 ### Task 2: Generate and add focused study-cover assets
 
 **Files:**
-- Create: `WordingDailyApp/Resources/Assets.xcassets/DailyFocusCover.imageset/`
-- Create: `WordingDailyApp/Resources/Assets.xcassets/ReviewCover.imageset/`
-- Create: `WordingDailyApp/Resources/Assets.xcassets/LibraryCover.imageset/`
+- Create: `Vocaby/Resources/Assets.xcassets/DailyFocusCover.imageset/`
+- Create: `Vocaby/Resources/Assets.xcassets/ReviewCover.imageset/`
+- Create: `Vocaby/Resources/Assets.xcassets/LibraryCover.imageset/`
 
 **Interfaces:**
 - Produces `Image("DailyFocusCover")`, `Image("ReviewCover")`, and `Image("LibraryCover")` for top-level focused surfaces.
@@ -106,16 +106,16 @@ Each `Contents.json` must use the image at 1x only with `preserves-vector-repres
 
 - [ ] **Step 3: Build the app to verify asset compilation**
 
-Run: `xcodebuild build -quiet -project WordingDailyApp.xcodeproj -scheme WordingDailyApp -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
+Run: `xcodebuild build -quiet -project Vocaby.xcodeproj -scheme Vocaby -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
 
 Expected: build succeeds and no missing-image warnings occur.
 
 ### Task 3: Rebuild Today as a compact daily-focus screen
 
 **Files:**
-- Modify: `WordingDailyApp/Features/Today/TodayView.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Test: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Modify: `Vocaby/Features/Today/TodayView.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Test: `VocabyTests/LocalizationCoverageTests.swift`
 
 **Interfaces:**
 - Keeps `startPractice()`, `refreshToday()`, `PracticeCenterView`, `ReviewView` routing, and `PracticeProgressService` unchanged.
@@ -180,9 +180,9 @@ Expected: localized test passes.
 ### Task 4: Rebuild Review as a compact queue
 
 **Files:**
-- Modify: `WordingDailyApp/Features/Review/ReviewView.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Test: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Modify: `Vocaby/Features/Review/ReviewView.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Test: `VocabyTests/LocalizationCoverageTests.swift`
 
 **Interfaces:**
 - Keeps `ReviewSessionView`, `ReviewScheduler`, and `persistAnswer(_:)` unchanged.
@@ -210,9 +210,9 @@ Section("review.nextUp.title") { ForEach(dueItems.prefix(3)) { item in Text(item
 ### Task 5: Rebuild Library as a dense Apple Music-style list
 
 **Files:**
-- Modify: `WordingDailyApp/Features/Library/LibraryView.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Test: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Modify: `Vocaby/Features/Library/LibraryView.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Test: `VocabyTests/LocalizationCoverageTests.swift`
 
 **Interfaces:**
 - Keeps `LibraryService`, `LibraryDetailView`, deep-link handling, and `LibraryScope` filtering unchanged.
@@ -248,13 +248,13 @@ Expected: no output.
 
 - [ ] **Step 2: Run the full test suite**
 
-Run: `xcodebuild test -quiet -project WordingDailyApp.xcodeproj -scheme WordingDailyApp -destination 'platform=iOS Simulator,id=1D057E15-7F4F-4885-A638-5EF1FD299B65' -derivedDataPath /tmp/WDUIDesignTest -resultBundlePath /tmp/WDUIDesignTest.xcresult`
+Run: `xcodebuild test -quiet -project Vocaby.xcodeproj -scheme Vocaby -destination 'platform=iOS Simulator,id=1D057E15-7F4F-4885-A638-5EF1FD299B65' -derivedDataPath /tmp/WDUIDesignTest -resultBundlePath /tmp/WDUIDesignTest.xcresult`
 
 Expected: all tests pass.
 
 - [ ] **Step 3: Build and install the QA app on the connected phone**
 
-Run the existing `WordingDailyAppQA` device build/install flow; then capture Today, Review, Library, collapsed-title state, and My Learning screenshots.
+Run the existing `VocabyQA` device build/install flow; then capture Today, Review, Library, collapsed-title state, and My Learning screenshots.
 
 - [ ] **Step 4: Compare against the design-review report**
 

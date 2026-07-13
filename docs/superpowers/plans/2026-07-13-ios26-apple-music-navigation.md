@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make Wording Daily's titles, tabs, primary actions, contrast, and bottom action chrome match native Apple Music-style iOS 26 behavior while preserving the app's teal identity and iOS 17 minimum deployment target.
+**Goal:** Make Vocaby's titles, tabs, primary actions, contrast, and bottom action chrome match native Apple Music-style iOS 26 behavior while preserving the app's teal identity and iOS 17 minimum deployment target.
 
 **Architecture:** Keep the native `TabView` and three `NavigationStack` roots. Use modern `Tab` declarations plus iOS 26 tab minimization on iOS 26, retain the legacy tab declarations on iOS 17-25, add availability-gated modifiers in shared SwiftUI chrome, and use an asset-backed appearance-aware label color.
 
@@ -22,10 +22,10 @@
 ### Task 1: Shared iOS 26 primary action chrome and contrast tokens
 
 **Files:**
-- Create: `WordingDailyApp/Assets.xcassets/ProminentInk.colorset/Contents.json`
-- Modify: `WordingDailyApp/Assets.xcassets/ReviewAmber.colorset/Contents.json`
-- Modify: `WordingDailyApp/Design/Theme.swift`
-- Modify: `WordingDailyApp/Features/Shared/LearningChrome.swift`
+- Create: `Vocaby/Assets.xcassets/ProminentInk.colorset/Contents.json`
+- Modify: `Vocaby/Assets.xcassets/ReviewAmber.colorset/Contents.json`
+- Modify: `Vocaby/Design/Theme.swift`
+- Modify: `Vocaby/Features/Shared/LearningChrome.swift`
 
 **Interfaces:**
 - Produces: `AppTheme.prominentInk: Color`
@@ -87,8 +87,8 @@ Expected: white on light Accent `5.24:1`; black on dark Accent `11.48:1`; white 
 ### Task 2: Apple Music-style navigation hierarchy
 
 **Files:**
-- Modify: `WordingDailyApp/Features/Root/RootTabView.swift`
-- Modify: `WordingDailyApp/Features/Library/LibraryView.swift`
+- Modify: `Vocaby/Features/Root/RootTabView.swift`
+- Modify: `Vocaby/Features/Library/LibraryView.swift`
 
 **Interfaces:**
 - Consumes: existing `RootTab`, `selectedTab`, and `route(_:)`
@@ -125,8 +125,8 @@ Delete only the content-row `Text("library.title").font(.headline)`. Keep the na
 Run:
 
 ```bash
-xcodebuild -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
-  -destination 'platform=iOS Simulator,name=WordingDaily iOS26 Audit' \
+xcodebuild -project Vocaby.xcodeproj -scheme Vocaby \
+  -destination 'platform=iOS Simulator,name=Vocaby iOS26 Audit' \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
@@ -135,10 +135,10 @@ Expected: `** BUILD SUCCEEDED **` with deployment target still iOS 17.
 ### Task 3: Apply native prominent actions and remove legacy iOS 26 footer slabs
 
 **Files:**
-- Modify: `WordingDailyApp/Features/Onboarding/OnboardingView.swift`
-- Modify: `WordingDailyApp/Features/Today/TodayView.swift`
-- Modify: `WordingDailyApp/Features/Review/ReviewView.swift`
-- Modify: `WordingDailyApp/Features/Practice/PracticeView.swift`
+- Modify: `Vocaby/Features/Onboarding/OnboardingView.swift`
+- Modify: `Vocaby/Features/Today/TodayView.swift`
+- Modify: `Vocaby/Features/Review/ReviewView.swift`
+- Modify: `Vocaby/Features/Practice/PracticeView.swift`
 
 **Interfaces:**
 - Consumes: `prominentActionStyle(tint:)` and `bottomActionChrome()` from Task 1
@@ -159,8 +159,8 @@ Search production Swift files. Expected: no remaining `.buttonStyle(.borderedPro
 ### Task 4: Full verification and physical-device delivery
 
 **Files:**
-- Update: `/Users/ray/.gstack/projects/raychiutw-wording-daily/ios-design-review-2026-07-13.md`
-- Create screenshots under: `/Users/ray/.gstack/projects/raychiutw-wording-daily/ios-design-review-2026-07-13-assets/`
+- Update: `/Users/ray/.gstack/projects/raychiutw-vocaby/ios-design-review-2026-07-13.md`
+- Create screenshots under: `/Users/ray/.gstack/projects/raychiutw-vocaby/ios-design-review-2026-07-13-assets/`
 
 **Interfaces:**
 - Consumes: all prior UI changes
@@ -169,8 +169,8 @@ Search production Swift files. Expected: no remaining `.buttonStyle(.borderedPro
 - [ ] **Step 1: Run the full test suite**
 
 ```bash
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
-  -destination 'platform=iOS Simulator,name=WordingDaily iOS26 Audit' \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
+  -destination 'platform=iOS Simulator,name=Vocaby iOS26 Audit' \
   CODE_SIGNING_ALLOWED=NO
 ```
 
@@ -186,7 +186,7 @@ Use the existing HouseStore team and current local provisioning profiles. Until 
 
 - [ ] **Step 4: Install and verify the app inventory**
 
-Install with `xcrun devicectl device install app` to device `77F2E6C0-ECF9-5E25-81E4-5554094C6960`, then verify `Wording Daily 1.0 (1)` is listed. Launch if the phone is unlocked; otherwise report only the lock-state limitation.
+Install with `xcrun devicectl device install app` to device `77F2E6C0-ECF9-5E25-81E4-5554094C6960`, then verify `Vocaby 1.0 (1)` is listed. Launch if the phone is unlocked; otherwise report only the lock-state limitation.
 
 - [ ] **Step 5: Close the report**
 

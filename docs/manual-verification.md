@@ -1,4 +1,4 @@
-# Manual Verification Checklist - Wording Daily
+# Manual Verification Checklist - Vocaby
 
 Use this checklist before TestFlight builds and after changes touching UI, notifications, widgets, localization, or routing.
 
@@ -32,7 +32,7 @@ Required setup:
 - [ ] Fresh install or reset notification permission.
 - [ ] Complete onboarding, enable reminder, and allow system permission.
 - [ ] Expected: Settings shows reminders enabled with the selected time.
-- [ ] Expected: one pending request uses the Wording Daily daily reminder identifier.
+- [ ] Expected: one pending request uses the Vocaby daily reminder identifier.
 - [ ] Expected: tapping a delivered notification opens Today.
 - Evidence:
 
@@ -42,16 +42,16 @@ Required setup:
 - [ ] Complete onboarding, enable reminder, and deny system permission.
 - [ ] Expected: onboarding still completes.
 - [ ] Expected: reminder UI shows a denied/off state and offers a path to system Settings.
-- [ ] Expected: no pending Wording Daily reminder remains scheduled.
+- [ ] Expected: no pending Vocaby reminder remains scheduled.
 - Evidence:
 
 ### Reminder Reschedule And Off
 
 - [ ] Enable reminders in Settings.
 - [ ] Change the reminder time.
-- [ ] Expected: old pending request is cancelled and replaced by one Wording Daily reminder.
+- [ ] Expected: old pending request is cancelled and replaced by one Vocaby reminder.
 - [ ] Turn reminders off.
-- [ ] Expected: pending and delivered Wording Daily reminders are removed without affecting unrelated notifications.
+- [ ] Expected: pending and delivered Vocaby reminders are removed without affecting unrelated notifications.
 - Evidence:
 
 ## Widget
@@ -78,9 +78,9 @@ Required setup:
 
 - [ ] Tap small widget.
 - [ ] Expected: app opens Today.
-- [ ] From a test URL or widget-supported entry point, open `wordingdaily://review`.
+- [ ] From a test URL or widget-supported entry point, open `vocaby://review`.
 - [ ] Expected: app opens Review.
-- [ ] From a test URL or widget-supported entry point, open `wordingdaily://word/{id}` for a bundled seed item.
+- [ ] From a test URL or widget-supported entry point, open `vocaby://word/{id}` for a bundled seed item.
 - [ ] Expected: app opens Library detail for that item.
 - Evidence:
 

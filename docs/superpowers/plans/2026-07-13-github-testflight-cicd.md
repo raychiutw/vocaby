@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add automatic GitHub CI and a manually dispatched, `gh`-triggerable TestFlight deployment for Wording Daily.
+**Goal:** Add automatic GitHub CI and a manually dispatched, `gh`-triggerable TestFlight deployment for Vocaby.
 
 **Architecture:** Keep CI and deployment in two GitHub Actions workflows so pull requests never receive Apple credentials. Both workflows use GitHub-hosted macOS 26 and Xcode 26.6; deployment uses Apple-native `xcodebuild` with automatic signing and a temporary App Store Connect team API key.
 
@@ -10,10 +10,10 @@
 
 ## Global Constraints
 
-- Keep the existing native `WordingDailyApp.xcodeproj` and shared `WordingDailyApp` scheme.
+- Keep the existing native `Vocaby.xcodeproj` and shared `Vocaby` scheme.
 - Keep the iOS 17 minimum deployment target.
-- Preserve bundle IDs `com.raychiutw.WordingDaily` and `com.raychiutw.WordingDaily.Widget`.
-- Preserve App Group `group.com.raychiutw.WordingDaily` for the app and widget.
+- Preserve bundle IDs `com.raychiutw.Vocaby` and `com.raychiutw.Vocaby.Widget`.
+- Preserve App Group `group.com.raychiutw.Vocaby` for the app and widget.
 - Use GitHub-hosted `macos-26` and `/Applications/Xcode_26.6.app/Contents/Developer`.
 - Use automatic signing with an App Store Connect team API key.
 - Do not add Fastlane, Ruby setup, third-party signing actions, a certificate repository, or manually managed provisioning profiles.
@@ -30,7 +30,7 @@
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
-- Consumes: existing `WordingDailyApp.xcodeproj`, `WordingDailyApp` scheme, `WordingDailyAppTests`, and `tools/test_*.py` discovery convention.
+- Consumes: existing `Vocaby.xcodeproj`, `Vocaby` scheme, `VocabyTests`, and `tools/test_*.py` discovery convention.
 - Produces: a secret-free `CI` workflow and a reusable configuration contract test that Task 2 extends.
 
 - [ ] **Step 1: Write the failing CI workflow contract test**
@@ -118,8 +118,8 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           xcodebuild test \
-            -project WordingDailyApp.xcodeproj \
-            -scheme WordingDailyApp \
+            -project Vocaby.xcodeproj \
+            -scheme Vocaby \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO
@@ -155,10 +155,10 @@ Run:
 
 ```bash
 xcodebuild test \
-  -project WordingDailyApp.xcodeproj \
-  -scheme WordingDailyApp \
+  -project Vocaby.xcodeproj \
+  -scheme Vocaby \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
-  -derivedDataPath "$TMPDIR/WordingDaily-CI-Tests" \
+  -derivedDataPath "$TMPDIR/Vocaby-CI-Tests" \
   CODE_SIGNING_ALLOWED=NO
 python3 -m unittest discover -s tools -p 'test_*.py'
 ```
@@ -321,7 +321,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: wording-daily-testflight
+  group: vocaby-testflight
   cancel-in-progress: false
 
 env:
@@ -340,8 +340,8 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           xcodebuild test \
-            -project WordingDailyApp.xcodeproj \
-            -scheme WordingDailyApp \
+            -project Vocaby.xcodeproj \
+            -scheme Vocaby \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO
@@ -373,14 +373,14 @@ jobs:
           : "${ASC_PRIVATE_KEY:?Missing testflight secret ASC_PRIVATE_KEY}"
 
           key_path="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          archive_path="$RUNNER_TEMP/WordingDailyApp.xcarchive"
+          archive_path="$RUNNER_TEMP/Vocaby.xcarchive"
           trap 'rm -f "$key_path"' EXIT
           umask 077
           printf '%s\n' "$ASC_PRIVATE_KEY" > "$key_path"
 
           xcodebuild archive \
-            -project WordingDailyApp.xcodeproj \
-            -scheme WordingDailyApp \
+            -project Vocaby.xcodeproj \
+            -scheme Vocaby \
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$archive_path" \
@@ -432,10 +432,10 @@ Run:
 
 ```bash
 xcodebuild test \
-  -project WordingDailyApp.xcodeproj \
-  -scheme WordingDailyApp \
+  -project Vocaby.xcodeproj \
+  -scheme Vocaby \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
-  -derivedDataPath "$TMPDIR/WordingDaily-TestFlight-Tests" \
+  -derivedDataPath "$TMPDIR/Vocaby-TestFlight-Tests" \
   CODE_SIGNING_ALLOWED=NO
 python3 -m unittest discover -s tools -p 'test_*.py'
 ```
@@ -475,10 +475,10 @@ Expected: one commit containing only the TestFlight workflow, export options, an
 In Apple Developer and App Store Connect, verify all of the following exact records exist before setting GitHub secrets:
 
 ```text
-App ID:    com.raychiutw.WordingDaily
-Widget ID: com.raychiutw.WordingDaily.Widget
-App Group: group.com.raychiutw.WordingDaily
-App record bundle ID: com.raychiutw.WordingDaily
+App ID:    com.raychiutw.Vocaby
+Widget ID: com.raychiutw.Vocaby.Widget
+App Group: group.com.raychiutw.Vocaby
+App record bundle ID: com.raychiutw.Vocaby
 ```
 
 Expected: both App IDs are associated with the App Group; current agreements are accepted; the App Store Connect app record exists; a team API key with upload and cloud-managed signing access has been downloaded once as a `.p8` file.
@@ -490,7 +490,7 @@ Run:
 ```bash
 gh api \
   --method PUT \
-  repos/raychiutw/wording-daily/environments/testflight
+  repos/raychiutw/vocaby/environments/testflight
 ```
 
 Expected: GitHub returns an environment response containing `"name":"testflight"`.
@@ -593,6 +593,6 @@ Expected: tests pass, Xcode archives both the app and widget with automatic sign
 
 - [ ] **Step 8: Verify App Store Connect received the build**
 
-Open Wording Daily in App Store Connect and inspect TestFlight build uploads.
+Open Vocaby in App Store Connect and inspect TestFlight build uploads.
 
 Expected: version `1.0` appears with the build number represented by `${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}` in Processing or Complete state. Processing is an Apple-side state after upload success and is not a workflow failure.

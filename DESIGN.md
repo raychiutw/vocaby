@@ -1,15 +1,15 @@
-# Design System - Wording Daily
+# Design System - Vocaby
 
 ## Product Context
 
-- **What this is:** Wording Daily is a native iOS app for daily English vocabulary practice. Its core loop is a 10-item daily expression-upgrade session, quick quiz, lightweight review, and habit support through reminders and a small widget.
+- **What this is:** Vocaby is a native iOS app for daily English vocabulary practice. Its core loop is a 10-item daily expression-upgrade session, quick quiz, lightweight review, and habit support through reminders and a small widget.
 - **Who it is for:** Traditional Chinese users learning practical English expressions. The first content pair is English with Traditional Chinese support.
 - **Project type:** Native iOS utility and learning app, not a marketing site, course platform, game, or dictionary.
 - **Memorable thing:** It should feel like a calm daily expression coach: open it, finish today's 10 upgrades, leave with phrases you can use tomorrow.
 
 ## Design Thesis
 
-Wording Daily should feel native, quiet, and habit-forming. It borrows the discipline of Apple Fitness' daily completion loop, but without gamified pressure. The app is a compact study surface, not a dashboard and not a card gallery.
+Vocaby should feel native, quiet, and habit-forming. It borrows the discipline of Apple Fitness' daily completion loop, but without gamified pressure. The app is a compact study surface, not a dashboard and not a card gallery.
 
 ## Aesthetic Direction
 
@@ -309,7 +309,7 @@ Don't:
 |------|----------|-----------|
 | 2026-07-10 | Initial design system created | Established the native iOS visual source of truth before plan design review. |
 | 2026-07-10 | Use native TabView for Today, Review, Library | Current iOS patterns support top-level tabs when they represent stable app areas. |
-| 2026-07-10 | Use Apple platform typography instead of imported fonts | Wording Daily is a native iOS app; platform text styles give Dynamic Type, localization, and accessibility behavior by default. |
+| 2026-07-10 | Use Apple platform typography instead of imported fonts | Vocaby is a native iOS app; platform text styles give Dynamic Type, localization, and accessibility behavior by default. |
 | 2026-07-10 | Use restrained teal accent with system surfaces | Keeps the app calm and learning-focused while avoiding generic purple/blue AI palettes. |
 | 2026-07-10 | Require explicit answered state with Next action | Prevents quiz auto-advance from hiding feedback before the learner can read it. |
 | 2026-07-10 | Replace the multiple-choice-only quiz scope with four concrete modes plus mixed | The user approved expression, meaning, listening, and spelling practice with a mixed option. |

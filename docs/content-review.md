@@ -1,4 +1,4 @@
-# Content Review Checklist - Wording Daily
+# Content Review Checklist - Vocaby
 
 Use this shared checklist after `build-reviewed`, before `promote`, and before
 TestFlight whenever `VocabularySeed.json` changes. It applies to every source

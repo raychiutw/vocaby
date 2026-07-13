@@ -131,11 +131,11 @@ Commit as `feat: validate reviewed vocabulary promotion`.
 ### Task 4: Ship the 5,400-item local bank and notices
 
 **Files:**
-- Modify: `WordingDailyApp/Resources/VocabularySeed.json`
-- Create: `WordingDailyApp/Resources/ThirdPartyNotices.txt`
+- Modify: `Vocaby/Resources/VocabularySeed.json`
+- Create: `Vocaby/Resources/ThirdPartyNotices.txt`
 - Create: `Content/VocabularyProvenance.json`
-- Modify: `WordingDailyApp.xcodeproj/project.pbxproj`
-- Modify: `WordingDailyAppTests/VocabularySeedValidationTests.swift`
+- Modify: `Vocaby.xcodeproj/project.pbxproj`
+- Modify: `VocabyTests/VocabularySeedValidationTests.swift`
 
 **Interfaces:**
 - `SeedLoader.loadBundledSeed()` remains unchanged and decodes 5,400 bundled items.
@@ -164,9 +164,9 @@ Commit as `feat: ship 5400-word offline bank`.
 ### Task 5: Add the native read-only source notice screen
 
 **Files:**
-- Modify: `WordingDailyApp/Features/Settings/SettingsView.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Modify: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Modify: `Vocaby/Features/Settings/SettingsView.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Modify: `VocabyTests/LocalizationCoverageTests.swift`
 
 **Interfaces:**
 - `ThirdPartyNoticesView` reads the bundled text with `Data(contentsOf:)`/`String(contentsOf:)` only.
@@ -195,9 +195,9 @@ Commit as `feat: show vocabulary source notices`.
 ### Task 6: Update the reusable skill and documentation
 
 **Files:**
-- Modify: `.agents/skills/wording-daily-vocabulary-import/SKILL.md`
-- Modify: `.agents/skills/wording-daily-vocabulary-import/assets/evals/evals.json`
-- Modify: `.agents/skills/wording-daily-vocabulary-import/references/quality_checklist.md`
+- Modify: `.agents/skills/vocaby-vocabulary-import/SKILL.md`
+- Modify: `.agents/skills/vocaby-vocabulary-import/assets/evals/evals.json`
+- Modify: `.agents/skills/vocaby-vocabulary-import/references/quality_checklist.md`
 - Modify: `docs/question-bank-sources-and-levels.md`
 - Modify: `docs/content-review.md`
 

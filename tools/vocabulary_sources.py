@@ -974,7 +974,7 @@ def snapshot_wiktextract(source_url: str, seed_path: Path, output: Path) -> dict
     }
     request = urllib.request.Request(
         source_url,
-        headers={"User-Agent": "WordingDailyVocabularyBuilder/1.0"},
+        headers={"User-Agent": "VocabyVocabularyBuilder/1.0"},
     )
     kept: list[bytes] = []
     try:
@@ -1817,7 +1817,7 @@ def prepare_enrichment(
                     "level": current["level"],
                     "sourceRefs": [
                         {
-                            "sourceID": "wording-daily-original",
+                            "sourceID": "vocaby-original",
                             "sourceEntryRef": current["id"],
                         }
                     ],
@@ -1969,7 +1969,7 @@ def provenance_item(
         "sourceIDs": sorted({ref["sourceID"] for ref in source_refs}),
         "sourceEntryRefs": source_refs,
         "origin": origin,
-        "changesMade": "Selected, normalized, enriched for Taiwan learners, and formatted for Wording Daily.",
+        "changesMade": "Selected, normalized, enriched for Taiwan learners, and formatted for Vocaby.",
         "cefr": cefr,
         "appLevel": level,
         "revision": 1,
@@ -2006,8 +2006,8 @@ def build_reviewed(
         raise SourceError("reviewed bank is empty")
     catalog = {source["id"]: source for source in manifest["sources"]}
     owned_source = {
-        "id": "wording-daily-original",
-        "owner": "Wording Daily",
+        "id": "vocaby-original",
+        "owner": "Vocaby",
         "sourceURL": None,
         "sourceVersion": "project-owned",
         "retrievedAt": None,
@@ -2036,7 +2036,7 @@ def build_reviewed(
         source_ids = sorted({reference["sourceID"] for reference in source_refs})
         validation_source_ids = sorted(set(item["validationSourceIDs"]))
         for source_id in source_ids:
-            if source_id == "wording-daily-original":
+            if source_id == "vocaby-original":
                 uses_owned_source = True
                 continue
             source = catalog.get(source_id)
@@ -2044,7 +2044,7 @@ def build_reviewed(
                 raise SourceError(f"source {source_id} is not approved for app use")
             used_source_ids.add(source_id)
         for source_id in validation_source_ids:
-            if source_id != "wording-daily-original" and source_id not in catalog:
+            if source_id != "vocaby-original" and source_id not in catalog:
                 raise SourceError(f"unknown validation source {source_id}")
         seed.append({key: item[key] for key in SEED_KEYS})
         difficulty = {"basic": 2, "intermediate": 5, "advanced": 8}[
@@ -2061,7 +2061,7 @@ def build_reviewed(
                 "sourceEntryRefs": source_refs,
                 "validationSourceIDs": validation_source_ids,
                 "origin": "agent-reviewed",
-                "changesMade": "Selected, sense-aligned, translated, reviewed, and formatted for Wording Daily.",
+                "changesMade": "Selected, sense-aligned, translated, reviewed, and formatted for Vocaby.",
                 "cefr": item["cefr"],
                 "appLevel": item["level"],
                 "revision": 1,
@@ -2103,7 +2103,7 @@ def build_reviewed(
         "sources": sources,
         "items": provenance_items,
     }
-    notice_lines = ["Wording Daily Vocabulary Data Notices", ""]
+    notice_lines = ["Vocaby Vocabulary Data Notices", ""]
     for source_id in sorted(used_source_ids):
         source = catalog[source_id]
         notice_lines.extend(
@@ -2112,7 +2112,7 @@ def build_reviewed(
                 f"Source: {source.get('canonicalURL', '')}",
                 f"License: {source.get('license', 'Documented source terms')} {source.get('licenseURL', '')}".rstrip(),
                 source.get("requiredNotice", ""),
-                "Changes: selected, normalized, translated, sense-aligned, and adapted for Wording Daily.",
+                "Changes: selected, normalized, translated, sense-aligned, and adapted for Vocaby.",
                 "",
             ]
         )
@@ -2371,7 +2371,7 @@ def promote(
             raise SourceError(f"provenance item {item_id} uses an unknown source")
         validation_source_ids = item.get("validationSourceIDs")
         if not isinstance(validation_source_ids, list) or any(
-            source_id != "wording-daily-original" and source_id not in external
+            source_id != "vocaby-original" and source_id not in external
             for source_id in validation_source_ids
         ):
             raise SourceError(
@@ -2449,7 +2449,7 @@ def main(argv: list[str] | None = None) -> int:
         sources = selected_sources(manifest, args.source)
         for source in sources:
             verify_source(root, source)
-        project = root / "WordingDailyApp.xcodeproj/project.pbxproj"
+        project = root / "Vocaby.xcodeproj/project.pbxproj"
         if project.is_file() and "Content/Sources" in project.read_text(encoding="utf-8"):
             raise SourceError("Content/Sources must not be included in the Xcode project")
         print(f"verified {len(sources)} source(s)")

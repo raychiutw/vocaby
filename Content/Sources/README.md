@@ -15,7 +15,7 @@ python3 tools/vocabulary_sources.py report
 python3 tools/vocabulary_sources.py prepare-enrichment \
   --input-dir Content/Sources/Imported \
   --existing-seed Content/Baselines/legacy-90.json \
-  --current-seed WordingDailyApp/Resources/VocabularySeed.json \
+  --current-seed Vocaby/Resources/VocabularySeed.json \
   --output /tmp/vocabulary-rich-review-queue.jsonl
 python3 tools/review_vocabulary.py prepare \
   --queue /tmp/vocabulary-rich-review-queue.jsonl \
@@ -49,7 +49,7 @@ python3 -m unittest tools/test_vocabulary_sources.py tools/test_review_vocabular
 
 Generated candidate JSONL belongs under `Imported/` and is ignored by Git. It is
 research input, not shipping content. An entry can reach
-`WordingDailyApp/Resources/VocabularySeed.json` only through `promote`, after a
+`Vocaby/Resources/VocabularySeed.json` only through `promote`, after a
 reviewed seed, provenance, and notices pass every fail-closed gate. A source
 marked `reference_only` or `blocked` cannot contribute shipping fields.
 
@@ -70,6 +70,6 @@ corrections but are not required for a deterministic full-bank build. None of
 these tools, language services, review files, or source snapshots is linked into
 the iOS app. The shipping App remains fully offline.
 
-See `.agents/skills/wording-daily-vocabulary-import/SKILL.md` for the repeatable
+See `.agents/skills/vocaby-vocabulary-import/SKILL.md` for the repeatable
 one-source workflow. Licensing decisions in the manifest are engineering gates,
 not legal advice.

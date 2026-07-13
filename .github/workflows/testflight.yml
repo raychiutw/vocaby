@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: wording-daily-testflight
+  group: vocaby-testflight
   cancel-in-progress: false
 
 env:
@@ -26,8 +26,8 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           xcodebuild test \
-            -project WordingDailyApp.xcodeproj \
-            -scheme WordingDailyApp \
+            -project Vocaby.xcodeproj \
+            -scheme Vocaby \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO
@@ -59,14 +59,14 @@ jobs:
           : "${ASC_PRIVATE_KEY:?Missing testflight secret ASC_PRIVATE_KEY}"
 
           key_path="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          archive_path="$RUNNER_TEMP/WordingDailyApp.xcarchive"
+          archive_path="$RUNNER_TEMP/Vocaby.xcarchive"
           trap 'rm -f "$key_path"' EXIT
           umask 077
           printf '%s\n' "$ASC_PRIVATE_KEY" > "$key_path"
 
           xcodebuild archive \
-            -project WordingDailyApp.xcodeproj \
-            -scheme WordingDailyApp \
+            -project Vocaby.xcodeproj \
+            -scheme Vocaby \
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$archive_path" \

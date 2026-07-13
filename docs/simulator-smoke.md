@@ -1,4 +1,4 @@
-# Simulator and qa-ios Smoke QA - Wording Daily
+# Simulator and qa-ios Smoke QA - Vocaby
 
 Last run: 2026-07-11
 
@@ -7,10 +7,10 @@ Last run: 2026-07-11
 - Branch: `codex/complete-v1` working tree.
 - Simulator: `iPhone 17 Pro`, iOS 26.5.
 - Simulator ID: `642EFBFD-4D1B-4946-8BD4-8FE6A852E59A`.
-- Formal scheme/bundle: `WordingDailyApp` / `com.raychiutw.WordingDaily`.
-- QA scheme/bundle: `WordingDailyAppQA` / `com.raychiutw.WordingDaily.QA`.
+- Formal scheme/bundle: `Vocaby` / `com.raychiutw.Vocaby`.
+- QA scheme/bundle: `VocabyQA` / `com.raychiutw.Vocaby.QA`.
 
-`WordingDailyAppQA` is an independent internal target. Only its Debug
+`VocabyQA` is an independent internal target. Only its Debug
 configuration defines `GSTACK_IOS_QA` and links the repo-local `DebugBridge`
 package. The formal target has no DebugBridge product dependency.
 
@@ -19,26 +19,26 @@ package. The formal target has no DebugBridge product dependency.
 ```sh
 xcrun simctl terminate \
   642EFBFD-4D1B-4946-8BD4-8FE6A852E59A \
-  com.raychiutw.WordingDaily.QA 2>/dev/null || true
+  com.raychiutw.Vocaby.QA 2>/dev/null || true
 swift test --package-path DebugBridge
 
 xcodebuild test \
-  -project WordingDailyApp.xcodeproj \
-  -scheme WordingDailyApp \
+  -project Vocaby.xcodeproj \
+  -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A' \
-  -only-testing:WordingDailyAppTests \
+  -only-testing:VocabyTests \
   CODE_SIGNING_ALLOWED=NO
 
 xcodebuild build \
-  -project WordingDailyApp.xcodeproj \
-  -scheme WordingDailyAppQA \
+  -project Vocaby.xcodeproj \
+  -scheme VocabyQA \
   -configuration Debug \
   -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A' \
   CODE_SIGNING_ALLOWED=NO
 
 xcodebuild build \
-  -project WordingDailyApp.xcodeproj \
-  -scheme WordingDailyApp \
+  -project Vocaby.xcodeproj \
+  -scheme Vocaby \
   -configuration Release \
   -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO

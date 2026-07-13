@@ -134,7 +134,7 @@
       ],
       "repositoryRedistribution": "allowed",
       "appUse": "approved",
-      "requiredNotice": "Chinese Open Wordnet Copyright 2013, 2014 by Francis Bond and Shan Wang. Adapted by Wording Daily with the required copyright and license notice preserved.",
+      "requiredNotice": "Chinese Open Wordnet Copyright 2013, 2014 by Francis Bond and Shan Wang. Adapted by Vocaby with the required copyright and license notice preserved.",
       "decision": "Approved only through exact ILI sense alignment, OpenCC Taiwan conversion, and the shared content review gates."
     },
     {
@@ -168,7 +168,7 @@
       ],
       "repositoryRedistribution": "allowed",
       "appUse": "approved",
-      "requiredNotice": "English-Chinese FreeDict Dictionary 2025.11.23. Adapted by Wording Daily under CC BY-SA 3.0; the adapted vocabulary data is available under the same license.",
+      "requiredNotice": "English-Chinese FreeDict Dictionary 2025.11.23. Adapted by Vocaby under CC BY-SA 3.0; the adapted vocabulary data is available under the same license.",
       "decision": "Approved for reviewed Chinese meaning drafts; the adapted data notice preserves attribution and CC BY-SA 3.0 share-alike terms."
     },
     {
@@ -219,7 +219,7 @@
       ],
       "repositoryRedistribution": "allowed",
       "appUse": "approved",
-      "requiredNotice": "Contains adapted data from WortUniversum English Vocabulary Database (cstr/grundwortschatz-voc-en), used under CC BY-SA 4.0. Wording Daily retains the required attribution and share-alike notice for the adapted vocabulary data.",
+      "requiredNotice": "Contains adapted data from WortUniversum English Vocabulary Database (cstr/grundwortschatz-voc-en), used under CC BY-SA 4.0. Vocaby retains the required attribution and share-alike notice for the adapted vocabulary data.",
       "decision": "Approved for entries carrying explicit CEFR-J A1-B2 evidence, with source attribution and CC BY-SA 4.0 notice. Grade-only estimates are not promoted as CEFR evidence."
     },
     {
@@ -423,7 +423,7 @@
       ],
       "repositoryRedistribution": "allowed",
       "appUse": "approved",
-      "requiredNotice": "Contains adapted English Wiktionary data extracted by Wiktextract from the 2026-07-06 enwiktionary dump, used under CC BY-SA 4.0. Wording Daily selected, normalized, translated, and reformatted the data; the adapted vocabulary data remains available under CC BY-SA 4.0.",
+      "requiredNotice": "Contains adapted English Wiktionary data extracted by Wiktextract from the 2026-07-06 enwiktionary dump, used under CC BY-SA 4.0. Vocaby selected, normalized, translated, and reformatted the data; the adapted vocabulary data remains available under CC BY-SA 4.0.",
       "decision": "Approved only for cleaned parts of speech, glosses, translations, and IPA. Quotations, audio, images, and externally licensed or fair-use media are excluded."
     }
   ]

@@ -583,7 +583,7 @@ class VocabularySourcesTests(unittest.TestCase):
                 "example": "Poor communication can exacerbate the delay.",
                 "partOfSpeech": "",
                 "sourceRefs": [
-                    {"sourceID": "wording-daily-original", "sourceEntryRef": "advanced-001"}
+                    {"sourceID": "vocaby-original", "sourceEntryRef": "advanced-001"}
                 ],
                 "candidateSenses": [
                     {

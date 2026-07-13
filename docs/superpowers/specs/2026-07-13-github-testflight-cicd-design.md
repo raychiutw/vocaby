@@ -8,12 +8,12 @@ Add GitHub Actions CI for every pull request and push to `main`, plus a manually
 
 ## Current Project Context
 
-- The native project is `WordingDailyApp.xcodeproj` with the shared `WordingDailyApp` scheme.
-- The scheme builds the app and widget, runs `WordingDailyAppTests`, and archives the Release configuration.
+- The native project is `Vocaby.xcodeproj` with the shared `Vocaby` scheme.
+- The scheme builds the app and widget, runs `VocabyTests`, and archives the Release configuration.
 - The app targets iOS 17 or later and currently builds with Xcode 26.6.
-- The app bundle ID is `com.raychiutw.WordingDaily`.
-- The widget bundle ID is `com.raychiutw.WordingDaily.Widget`.
-- Both targets require the App Group `group.com.raychiutw.WordingDaily`.
+- The app bundle ID is `com.raychiutw.Vocaby`.
+- The widget bundle ID is `com.raychiutw.Vocaby.Widget`.
+- Both targets require the App Group `group.com.raychiutw.Vocaby`.
 - Automatic signing is enabled, but the repository does not contain a Development Team value.
 - The repository has no existing GitHub Actions workflow, Fastlane setup, or App Store export configuration.
 
@@ -46,7 +46,7 @@ This is the smallest setup that covers testing, automatic cloud signing, archivi
 - Use the same runner, Xcode, Swift tests, and Python tests as CI.
 - Perform all tests before creating the temporary App Store Connect key file.
 - Set `CURRENT_PROJECT_VERSION` to `${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}` so every workflow run and rerun has a unique build number.
-- Archive the `WordingDailyApp` Release scheme for `generic/platform=iOS`.
+- Archive the `Vocaby` Release scheme for `generic/platform=iOS`.
 - Pass the Development Team and App Store Connect authentication directly to `xcodebuild`; do not commit signing identities or provisioning profiles.
 - Upload with `xcodebuild -exportArchive` and remove the temporary `.p8` file even if archive or upload fails.
 - Do not enable `testFlightInternalTestingOnly`, keeping the build eligible for external TestFlight and a later App Store submission.
@@ -81,9 +81,9 @@ The workflow must fail before archiving with a clear message when any value is a
 Before the first successful deployment:
 
 1. Accept the current Apple Developer and App Store Connect agreements.
-2. Register explicit App IDs for `com.raychiutw.WordingDaily` and `com.raychiutw.WordingDaily.Widget`.
-3. Register `group.com.raychiutw.WordingDaily` and associate it with both App IDs.
-4. Create the Wording Daily app record in App Store Connect using `com.raychiutw.WordingDaily`.
+2. Register explicit App IDs for `com.raychiutw.Vocaby` and `com.raychiutw.Vocaby.Widget`.
+3. Register `group.com.raychiutw.Vocaby` and associate it with both App IDs.
+4. Create the Vocaby app record in App Store Connect using `com.raychiutw.Vocaby`.
 5. Create a team App Store Connect API key with permission to upload builds and use cloud-managed signing. Store its values only in the GitHub `testflight` environment.
 
 Automatic signing may create or refresh certificates and provisioning profiles, but it must not be relied on to invent the App Group relationship or App Store Connect app record.

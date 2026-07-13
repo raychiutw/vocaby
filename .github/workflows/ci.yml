@@ -29,8 +29,8 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           xcodebuild test \
-            -project WordingDailyApp.xcodeproj \
-            -scheme WordingDailyApp \
+            -project Vocaby.xcodeproj \
+            -scheme Vocaby \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO

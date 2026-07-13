@@ -1,0 +1,88 @@
+{
+  "skill_name": "vocaby-vocabulary-import",
+  "evals": [
+    {
+      "id": 1,
+      "name": "add-one-source",
+      "prompt": "我下載了一個新的外部英文詞庫 ZIP，請加入 Vocaby，之後要能重複匯入。",
+      "expected_output": "A verified manifest entry and deterministic repository-only candidate import, without adding source data to the app target.",
+      "files": [
+        "Content/Sources/source-manifest.json"
+      ],
+      "expectations": [
+        "Records source identity, version, license evidence, bytes, checksum, adapter, and app-use decision.",
+        "Runs verify before import-source.",
+        "Keeps raw and generated source data out of the Xcode project.",
+        "Does not claim candidate rows are approved App content."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "reimport-encoding-change",
+      "prompt": "NAWL CSV 更新後重跑失敗，出現 UnicodeDecodeError；請找原因並讓同一指令可重跑。",
+      "expected_output": "A tested root-cause fix that declares the source encoding and preserves deterministic output.",
+      "files": [
+        "Content/Sources/Raw/nawl/NAWL_12_lemmatized_for_research.csv"
+      ],
+      "expectations": [
+        "Identifies the actual file encoding instead of using replacement characters.",
+        "Adds a failing test before changing the shared CSV parser.",
+        "Declares encoding in the source manifest.",
+        "Re-runs all importer tests and source verification."
+      ]
+    },
+    {
+      "id": 3,
+      "name": "blocked-promotion",
+      "prompt": "直接把 FreeDict 候選資料放進 App 題庫，授權欄位之後再補。",
+      "expected_output": "A fail-closed refusal to promote while preserving the candidate import and naming the exact rights/editorial gates.",
+      "files": [
+        "Content/Sources/source-manifest.json"
+      ],
+      "expectations": [
+        "Does not change VocabularySeed.json.",
+        "Cites blocked or reference-only app use and incomplete rights review.",
+        "Keeps the imported candidate file available for offline editorial work.",
+        "States what reviewed artifacts are required before promotion."
+      ]
+    },
+    {
+      "id": 4,
+      "name": "two-formats-one-shared-pipeline",
+      "prompt": "新增一份 TEI TAR 英漢字典和一份 XLSX ZIP 等級表。兩種格式各自解析，但後面的繁中翻譯、例句、題目、來源審核與放進 App 必須共用同一流程。",
+      "expected_output": "Two minimal source adapters ending at canonical JSONL, followed by one shared enrichment, review, provenance, notices, and promotion path.",
+      "files": [
+        "Content/Sources/source-manifest.json",
+        "tools/vocabulary_sources.py"
+      ],
+      "expectations": [
+        "Uses a separate minimal adapter for each real raw format.",
+        "Stops all source-specific behavior at canonical candidate JSONL.",
+        "Runs prepare-enrichment and build-reviewed once over the canonical pool.",
+        "Uses the same content, rights, provenance, notices, and promote gates for both sources.",
+        "Keeps raw, imported, report, and provenance files out of the iOS target."
+      ]
+    },
+    {
+      "id": 5,
+      "name": "wiktextract-rich-review",
+      "prompt": "用一份新的 Wiktextract 來源補強現有題庫，並用 CMUdict 與 OEWN 交叉驗證。保留同字多讀音、每筆最多三個常用詞義，每個詞義都要有詞性、中英文意思與完整雙語例句；原始檔與 review JSONL 要簽入版控但不能進 Xcode target。請把這套流程做成可重跑的匯入。",
+      "expected_output": "A target-only Wiktextract snapshot and adapter feeding the shared structured review pipeline, with pronunciation and sense cross-checks, full-bank audit, deterministic promotion, and proof that raw/review artifacts stay outside the App target.",
+      "files": [
+        "Content/Sources/source-manifest.json",
+        "tools/vocabulary_sources.py",
+        "tools/review_vocabulary.py",
+        "Vocaby.xcodeproj/project.pbxproj"
+      ],
+      "expectations": [
+        "Snapshots only target Wiktextract entries and records official source, license evidence, bytes, and checksum.",
+        "Ends the source-specific adapter at canonical structured pronunciations and senses before the shared review path.",
+        "Cross-checks Wiktextract with CMUdict and OEWN, stripping CMUdict inline comments before comparison.",
+        "Keeps at most three common senses with part of speech, English and Traditional Chinese meanings, complete bilingual examples, and pronunciation IDs on every sense.",
+        "Excludes Wiktextract quotations and audio, and never promotes a usage-note translation as a meaning or example translation.",
+        "Treats Agent output as unapproved until audit-reviewed and release review pass, then uses deterministic build-reviewed and promote gates.",
+        "Proves raw snapshots and review JSONL are tracked for maintainers but absent from every Xcode target and App bundle."
+      ]
+    }
+  ]
+}

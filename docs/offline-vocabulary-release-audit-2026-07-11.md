@@ -15,8 +15,8 @@ does not treat an Agent reviewer or a green simulator build as human sign-off.
 | Reproducible canonical candidates | Two `import-all` runs to `/tmp/wording-import-a` and `/tmp/wording-import-b`, then `diff -qr` | 876,093 records per run; no differences. |
 | Reproducible shipped resources | Two `build-reviewed` runs plus `cmp` for seed, provenance, and notices; promoted seed compared with the committed seed | All three outputs and the promoted seed match byte-for-byte. |
 | One-to-one identity and ordering | Local ID/concept/sort-order assertion over committed seed and provenance | 5,221 unique seed IDs, provenance IDs, and concept keys; order contiguous per level. |
-| Rich DTO and app behavior contracts | `xcodebuild clean test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A'` | `TEST SUCCEEDED`. |
-| Shipping build | `xcodebuild build -project WordingDailyApp.xcodeproj -scheme WordingDailyApp -configuration Release -destination 'generic/platform=iOS Simulator'` | `BUILD SUCCEEDED`. |
+| Rich DTO and app behavior contracts | `xcodebuild clean test -project Vocaby.xcodeproj -scheme Vocaby -destination 'platform=iOS Simulator,id=642EFBFD-4D1B-4946-8BD4-8FE6A852E59A'` | `TEST SUCCEEDED`. |
+| Shipping build | `xcodebuild build -project Vocaby.xcodeproj -scheme Vocaby -configuration Release -destination 'generic/platform=iOS Simulator'` | `BUILD SUCCEEDED`. |
 | App resource boundary and static offline surface | Release bundle inspection plus Swift scan for HTTP, Network, CloudKit, authentication, credentials, and translation APIs | Seed and notices exist; raw/import/review/manifest/provenance absent; no matching runtime code. |
 | Knowledge graph | Persisted `index_repository`, targeted graph search, and `zstd -t` | 1,605 nodes, 5,058 edges; graph archive valid. |
 

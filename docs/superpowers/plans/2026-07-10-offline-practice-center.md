@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - The app remains fully local: no network calls, account, sign-in, credentials, backend, iCloud, sync, or sync-ready abstraction.
-- New words and every distractor come only from `WordingDailyApp/Resources/VocabularySeed.json`.
+- New words and every distractor come only from `Vocaby/Resources/VocabularySeed.json`.
 - Keep the bundled seed DTOs separate from SwiftData `@Model` state.
 - Today remains a fixed 10-item daily session; Practice Center counts are 5, 10, 15, or 20.
 - Practice Center modes are expression choice, meaning choice, listening choice, spelling, and mixed.
@@ -31,9 +31,9 @@
 ### Task 3: Pure local quiz engine
 
 **Files:**
-- Create: `WordingDailyApp/Services/QuizEngine.swift`
-- Create: `WordingDailyAppTests/QuizEngineTests.swift`
-- Modify: `WordingDailyApp.xcodeproj/project.pbxproj`
+- Create: `Vocaby/Services/QuizEngine.swift`
+- Create: `VocabyTests/QuizEngineTests.swift`
+- Modify: `Vocaby.xcodeproj/project.pbxproj`
 
 **Interfaces:**
 - Produces: `PracticeMode`, `PracticeConfiguration`, `QuizQuestion`, `QuizAttempt`, and `QuizEngine`.
@@ -185,9 +185,9 @@ private struct IncrementingRandomNumberGenerator: RandomNumberGenerator {
 Run:
 
 ```bash
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=F6E47DF4-6357-4304-B68F-7EB4A203C1DC' \
-  -only-testing:WordingDailyAppTests/QuizEngineTests
+  -only-testing:VocabyTests/QuizEngineTests
 ```
 
 Expected: FAIL because `QuizEngine` and its models do not exist.
@@ -240,7 +240,7 @@ Run the focused command above, then the full `xcodebuild test` command. Expected
 - [ ] **Step 5: Commit**
 
 ```bash
-git add WordingDailyApp/Services/QuizEngine.swift WordingDailyAppTests/QuizEngineTests.swift WordingDailyApp.xcodeproj/project.pbxproj
+git add Vocaby/Services/QuizEngine.swift VocabyTests/QuizEngineTests.swift Vocaby.xcodeproj/project.pbxproj
 git diff --check
 git commit -m "feat: add offline quiz engine"
 ```
@@ -250,8 +250,8 @@ git commit -m "feat: add offline quiz engine"
 ### Task 4: Add testable run, timeout, retry, and persistence mapping state
 
 **Files:**
-- Modify: `WordingDailyApp/Services/QuizEngine.swift`
-- Modify: `WordingDailyAppTests/QuizEngineTests.swift`
+- Modify: `Vocaby/Services/QuizEngine.swift`
+- Modify: `VocabyTests/QuizEngineTests.swift`
 
 **Interfaces:**
 - Consumes: `QuizQuestion` and `QuizAttempt` from Task 3.
@@ -271,7 +271,7 @@ Add tests proving:
 
 - [ ] **Step 2: Run RED**
 
-Run `-only-testing:WordingDailyAppTests/QuizEngineTests`. Expected: compile failure for `QuizRunState` and the persistence-index mapping.
+Run `-only-testing:VocabyTests/QuizEngineTests`. Expected: compile failure for `QuizRunState` and the persistence-index mapping.
 
 - [ ] **Step 3: Implement the smallest state machine**
 
@@ -298,12 +298,12 @@ extension QuizQuestion {
 
 - [ ] **Step 4: Run GREEN and full tests**
 
-Expected: engine/state tests and full suite pass. Confirm `git diff -- WordingDailyApp/Models WordingDailyApp/Services/ProgressPersistenceService.swift` is empty.
+Expected: engine/state tests and full suite pass. Confirm `git diff -- Vocaby/Models Vocaby/Services/ProgressPersistenceService.swift` is empty.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add WordingDailyApp/Services/QuizEngine.swift WordingDailyAppTests/QuizEngineTests.swift
+git add Vocaby/Services/QuizEngine.swift VocabyTests/QuizEngineTests.swift
 git diff --check
 git commit -m "feat: add quiz run state"
 ```
@@ -313,12 +313,12 @@ git commit -m "feat: add quiz run state"
 ### Task 5: Replace daily answer leakage with Learn → mixed Quiz
 
 **Files:**
-- Create: `WordingDailyApp/Features/Practice/PracticeView.swift`
-- Modify: `WordingDailyApp/Features/Today/TodayView.swift`
-- Modify: `WordingDailyApp/Features/Review/ReviewView.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Modify: `WordingDailyAppTests/LocalizationCoverageTests.swift`
-- Modify: `WordingDailyApp.xcodeproj/project.pbxproj`
+- Create: `Vocaby/Features/Practice/PracticeView.swift`
+- Modify: `Vocaby/Features/Today/TodayView.swift`
+- Modify: `Vocaby/Features/Review/ReviewView.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Modify: `VocabyTests/LocalizationCoverageTests.swift`
+- Modify: `Vocaby.xcodeproj/project.pbxproj`
 - Modify: `DESIGN.md`
 
 **Interfaces:**
@@ -373,7 +373,7 @@ Run localization tests, full tests, and `xcodebuild build`. Expected: no missing
 - [ ] **Step 6: Commit**
 
 ```bash
-git add WordingDailyApp/Features/Practice/PracticeView.swift WordingDailyApp/Features/Today/TodayView.swift WordingDailyApp/Features/Review/ReviewView.swift WordingDailyApp/Resources/Localizable.xcstrings WordingDailyAppTests/LocalizationCoverageTests.swift WordingDailyApp.xcodeproj/project.pbxproj DESIGN.md
+git add Vocaby/Features/Practice/PracticeView.swift Vocaby/Features/Today/TodayView.swift Vocaby/Features/Review/ReviewView.swift Vocaby/Resources/Localizable.xcstrings VocabyTests/LocalizationCoverageTests.swift Vocaby.xcodeproj/project.pbxproj DESIGN.md
 git diff --check
 git commit -m "feat: replace daily flow with mixed quiz"
 ```
@@ -383,10 +383,10 @@ git commit -m "feat: replace daily flow with mixed quiz"
 ### Task 6: Add the configurable offline Practice Center
 
 **Files:**
-- Modify: `WordingDailyApp/Features/Practice/PracticeView.swift`
-- Modify: `WordingDailyApp/Features/Today/TodayView.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Modify: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Modify: `Vocaby/Features/Practice/PracticeView.swift`
+- Modify: `Vocaby/Features/Today/TodayView.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Modify: `VocabyTests/LocalizationCoverageTests.swift`
 
 **Interfaces:**
 - Consumes: `QuizEngine`, `PracticeConfiguration`, selected vocabulary level, local progress, and bundled seed.
@@ -417,7 +417,7 @@ Add one native secondary `NavigationLink` labeled `practice.center.button` below
 Run localization tests, full tests, and build. Then:
 
 ```bash
-git add WordingDailyApp/Features/Practice/PracticeView.swift WordingDailyApp/Features/Today/TodayView.swift WordingDailyApp/Resources/Localizable.xcstrings WordingDailyAppTests/LocalizationCoverageTests.swift
+git add Vocaby/Features/Practice/PracticeView.swift Vocaby/Features/Today/TodayView.swift Vocaby/Resources/Localizable.xcstrings VocabyTests/LocalizationCoverageTests.swift
 git diff --check
 git commit -m "feat: add offline practice center"
 ```
@@ -427,11 +427,11 @@ git commit -m "feat: add offline practice center"
 ### Task 7: Finish widget stale/schema/completed states
 
 **Files:**
-- Modify: `WordingDailyApp/Services/WidgetSnapshotWriter.swift`
-- Modify: `WordingDailyWidget/WordingDailyWidget.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Modify: `WordingDailyAppTests/WidgetSnapshotWriterTests.swift`
-- Modify: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Modify: `Vocaby/Services/WidgetSnapshotWriter.swift`
+- Modify: `VocabyWidget/VocabyWidget.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Modify: `VocabyTests/WidgetSnapshotWriterTests.swift`
+- Modify: `VocabyTests/LocalizationCoverageTests.swift`
 
 - [ ] **Step 1: Write RED tests**
 
@@ -463,18 +463,18 @@ Run widget/localization tests, full tests, and build; commit as `fix: handle sta
 ### Task 8: Route notification taps to Today
 
 **Files:**
-- Modify: `WordingDailyApp/Services/NotificationScheduler.swift`
-- Modify: `WordingDailyApp/App/WordingDailyApp.swift`
-- Modify: `WordingDailyApp/Features/Root/RootTabView.swift`
-- Modify: `WordingDailyAppTests/NotificationSchedulerTests.swift`
+- Modify: `Vocaby/Services/NotificationScheduler.swift`
+- Modify: `Vocaby/App/Vocaby.swift`
+- Modify: `Vocaby/Features/Root/RootTabView.swift`
+- Modify: `VocabyTests/NotificationSchedulerTests.swift`
 
 - [ ] **Step 1: Write RED test**
 
-Assert `dailyReminderRequest(...).content.userInfo` contains the internal URL `wordingdaily://today` under a Wording Daily-specific key.
+Assert `dailyReminderRequest(...).content.userInfo` contains the internal URL `vocaby://today` under a Vocaby-specific key.
 
 - [ ] **Step 2: Add minimal native routing**
 
-Set the URL in the notification content. Add one `UIApplicationDelegate`/`UNUserNotificationCenterDelegate` in `WordingDailyApp.swift` that posts the URL through `NotificationCenter` when the Wording Daily reminder is tapped. Have `RootTabView` feed that URL through its existing `route(_:)` method so an already-running app changes back to Today.
+Set the URL in the notification content. Add one `UIApplicationDelegate`/`UNUserNotificationCenterDelegate` in `Vocaby.swift` that posts the URL through `NotificationCenter` when the Vocaby reminder is tapped. Have `RootTabView` feed that URL through its existing `route(_:)` method so an already-running app changes back to Today.
 
 - [ ] **Step 3: Verify and commit**
 
@@ -485,10 +485,10 @@ Run notification/deep-link tests, full tests, and build; commit as `fix: route r
 ### Task 9: Close seed and Library content gaps
 
 **Files:**
-- Modify: `WordingDailyApp/Features/Library/LibraryView.swift`
-- Modify: `WordingDailyApp/Resources/Localizable.xcstrings`
-- Modify: `WordingDailyAppTests/VocabularySeedValidationTests.swift`
-- Modify: `WordingDailyAppTests/LocalizationCoverageTests.swift`
+- Modify: `Vocaby/Features/Library/LibraryView.swift`
+- Modify: `Vocaby/Resources/Localizable.xcstrings`
+- Modify: `VocabyTests/VocabularySeedValidationTests.swift`
+- Modify: `VocabyTests/LocalizationCoverageTests.swift`
 
 - [ ] **Step 1: Add missing-field regression**
 
@@ -516,7 +516,7 @@ Record per-level item counts, duplicate IDs, duplicate upgraded expressions, mis
 
 - [ ] **Step 2: Research source licensing from authoritative pages**
 
-For every recommended candidate source, record owner, canonical URL, current license URL, redistribution/attribution requirements, commercial-use status, and whether derived Traditional Chinese content may be distributed. Prefer public-domain, CC0, compatible CC BY, or content authored for Wording Daily. Reject unknown, non-commercial-only, share-alike-incompatible, scraped, or account-gated sources.
+For every recommended candidate source, record owner, canonical URL, current license URL, redistribution/attribution requirements, commercial-use status, and whether derived Traditional Chinese content may be distributed. Prefer public-domain, CC0, compatible CC BY, or content authored for Vocaby. Reject unknown, non-commercial-only, share-alike-incompatible, scraped, or account-gated sources.
 
 - [ ] **Step 3: Define the three-level model**
 
@@ -547,9 +547,9 @@ Check the document against `AGENTS.md`, `DESIGN.md`, and `docs/content-review.md
 
 ```bash
 set -o pipefail
-xcodebuild test -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild test -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=F6E47DF4-6357-4304-B68F-7EB4A203C1DC'
-xcodebuild build -project WordingDailyApp.xcodeproj -scheme WordingDailyApp \
+xcodebuild build -project Vocaby.xcodeproj -scheme Vocaby \
   -destination 'platform=iOS Simulator,id=F6E47DF4-6357-4304-B68F-7EB4A203C1DC'
 git diff --check
 ```

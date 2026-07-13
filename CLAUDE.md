@@ -1,4 +1,4 @@
-# Wording Daily Agent Notes
+# Vocaby Agent Notes
 
 ## Design System
 
