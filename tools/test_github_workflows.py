@@ -27,6 +27,7 @@ class GitHubWorkflowTests(unittest.TestCase):
             "python3 -m unittest discover -s tools -p 'test_*.py'",
             workflow,
         )
+        self.assertIn("brew install opencc", workflow)
 
     def test_testflight_workflow_is_manual_main_only_and_secret_backed(self):
         path = ROOT / ".github/workflows/testflight.yml"
@@ -52,6 +53,7 @@ class GitHubWorkflowTests(unittest.TestCase):
         self.assertIn("-exportOptionsPlist .github/ExportOptions.plist", workflow)
         self.assertIn("trap 'rm -f \"$key_path\"' EXIT", workflow)
         self.assertNotIn("set -x", workflow)
+        self.assertIn("brew install opencc", workflow)
 
     def test_export_options_upload_without_internal_only_lock(self):
         path = ROOT / ".github/ExportOptions.plist"

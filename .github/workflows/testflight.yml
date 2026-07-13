@@ -32,6 +32,9 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Install OpenCC
+        run: brew install opencc
+
       - name: Run Python tests
         run: python3 -m unittest discover -s tools -p 'test_*.py'
 
