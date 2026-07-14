@@ -159,8 +159,7 @@ Completion requires all of the following from a current build:
 ## Non-goals
 
 - No custom tab bar or navigation framework.
-- No new dependency or design-system abstraction.
+- No new dependency. A shared learner-presentation component or system is allowed when at least two screens need the same hierarchy or behavior; do not create speculative framework layers.
 - No account/profile feature.
 - No backend, sync, analytics, or content-schema expansion solely for this redesign.
 - No literal Apple Music album/player metaphor.
-
