@@ -21,52 +21,39 @@ struct ReviewView: View {
 
     private var reviewSummary: String {
         String.localizedStringWithFormat(
-            String(localized: "review.estimatedTime.format"),
+            String(localized: "review.queue.summary.format"),
+            dueItems.count,
             estimatedMinutes
         )
     }
 
     var body: some View {
         List {
-            Section {
-                HStack(spacing: 12) {
-                    Image("ReviewCover")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 64, height: 64)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("review.due.title")
-                            .font(.headline)
-
-                        Text("\(dueItems.count)")
-                            .font(.title2.monospacedDigit())
-                            .foregroundStyle(AppTheme.reviewAmber)
-
-                        Text(reviewSummary)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Button {
-                    isShowingReview = true
-                } label: {
-                    Label("review.start.button", systemImage: "arrow.triangle.2.circlepath")
-                        .frame(maxWidth: .infinity)
-                }
-                .prominentActionStyle(tint: AppTheme.reviewAmber)
-                .controlSize(.large)
-                .disabled(dueItems.isEmpty)
-            }
-
             if dueItems.isEmpty {
                 Section {
-                    Text("review.empty.message")
-                        .foregroundStyle(.secondary)
+                    ContentUnavailableView(
+                        "review.empty.title",
+                        systemImage: "checkmark.circle",
+                        description: Text("review.empty.description")
+                    )
+                    .frame(maxWidth: .infinity)
+                    .listRowSeparator(.hidden)
                 }
             } else {
+                Section {
+                    Text(reviewSummary)
+                        .font(.title3.weight(.semibold))
+
+                    Button {
+                        isShowingReview = true
+                    } label: {
+                        Label("review.start.button", systemImage: "arrow.triangle.2.circlepath")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .prominentActionStyle(tint: AppTheme.reviewAmber)
+                    .controlSize(.large)
+                }
+
                 Section("review.nextUp.title") {
                     ForEach(dueItems.prefix(3)) { item in
                         CompactMetadataRow(

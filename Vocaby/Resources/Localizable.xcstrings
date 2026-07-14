@@ -641,6 +641,22 @@
         }
       }
     },
+    "review.queue.summary.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld due · about %lld min"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 個待複習 · 約 %lld 分鐘"
+          }
+        }
+      }
+    },
     "review.nextUp.title" : {
       "localizations" : {
         "en" : {
@@ -701,6 +717,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "目前沒有需要複習的項目。"
+          }
+        }
+      }
+    },
+    "review.empty.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words that need another look will appear here after practice."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成練習後，需要再加強的詞會出現在這裡。"
+          }
+        }
+      }
+    },
+    "review.empty.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're All Caught Up"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天不用複習"
           }
         }
       }

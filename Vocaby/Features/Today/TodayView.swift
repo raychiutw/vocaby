@@ -8,7 +8,6 @@ struct TodayView: View {
     @State private var isShowingExtraPractice = false
     @State private var todaySession: DailySession?
     @State private var seedItems: [VocabularySeedItem] = []
-    @State private var practiceAttempts: [PracticeAttemptRecord] = []
     @State private var dueReviewCount = 0
     @State private var scheduledReviewCount = 0
     @State private var streakCount = 0
@@ -27,7 +26,6 @@ struct TodayView: View {
     private let seedLoader = SeedLoader()
     private let streakService = StreakService()
     private let widgetSnapshotWriter = WidgetSnapshotWriter.appGroupWriter()
-    private let practiceProgressService = PracticeProgressService()
 
     private var orderedSessionItems: [DailySessionItem] {
         (todaySession?.items ?? []).sorted { $0.position < $1.position }
@@ -46,14 +44,6 @@ struct TodayView: View {
         "\(completedCount)/\(totalCount)"
     }
 
-    private var previewText: String {
-        guard let previewItem = nextSeedItem else {
-            return String(localized: "today.preview.empty")
-        }
-
-        return previewItem.upgradedExpression
-    }
-
     private var nextSeedItem: VocabularySeedItem? {
         let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
         return orderedSessionItems
@@ -69,19 +59,6 @@ struct TodayView: View {
         return completedCount == totalCount ? "today.completed.button" : "today.resume.button"
     }
 
-    private var vocabularyProgress: PracticeProgressSummary {
-        practiceProgressService.summary(seedItems: seedItems, attempts: practiceAttempts)
-    }
-
-    private var compactSummary: String {
-        String.localizedStringWithFormat(
-            String(localized: "today.compactSummary.format"),
-            completedCount,
-            totalCount,
-            streakCount
-        )
-    }
-
     private var reviewSummary: String {
         String.localizedStringWithFormat(
             String(localized: "today.review.estimatedTime.format"),
@@ -90,35 +67,20 @@ struct TodayView: View {
         )
     }
 
-    private var libraryProgressSummary: String {
-        String.localizedStringWithFormat(
-            String(localized: "today.libraryProgress.row"),
-            vocabularyProgress.total.correctItemCount,
-            vocabularyProgress.total.totalItemCount
-        )
-    }
-
     var body: some View {
         List {
             Section {
-                HStack(spacing: 12) {
-                    Image("DailyFocusCover")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 64, height: 64)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                HStack(alignment: .firstTextBaseline) {
+                    Text(progressText)
+                        .font(.title2.bold().monospacedDigit())
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(Date.now, style: .date)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    Spacer()
 
-                        Text(primaryButtonTitle)
-                            .font(.headline)
-
-                        Text(compactSummary)
+                    if streakCount > 0 {
+                        Label("\(streakCount)", systemImage: "flame.fill")
                             .font(.subheadline.monospacedDigit())
                             .foregroundStyle(.secondary)
+                            .accessibilityLabel(Text("streak.label"))
                     }
                 }
 
@@ -143,7 +105,8 @@ struct TodayView: View {
                 .accessibilityIdentifier("today.start")
             }
 
-            Section {
+            if dueReviewCount > 0 {
+                Section {
                 Button(action: onReview) {
                     CompactMetadataRow(
                         title: String(localized: "review.title"),
@@ -153,20 +116,18 @@ struct TodayView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                }
+            }
 
+            if let nextSeedItem {
+                Section {
                 CompactMetadataRow(
-                    title: String(localized: "today.preview.label"),
-                    subtitle: previewText,
+                    title: nextSeedItem.upgradedExpression,
+                    subtitle: nextSeedItem.plainExpression,
                     systemImage: "text.quote",
                     tint: AppTheme.accent
                 )
-            }
-
-            Section("today.vocabularyProgress.title") {
-                LabeledContent("today.vocabularyProgress.total", value: libraryProgressSummary)
-                LabeledContent("settings.level.basic", value: progressText(for: vocabularyProgress.progress(for: .basic)))
-                LabeledContent("settings.level.intermediate", value: progressText(for: vocabularyProgress.progress(for: .intermediate)))
-                LabeledContent("settings.level.advanced", value: progressText(for: vocabularyProgress.progress(for: .advanced)))
+                }
             }
 
             Section {
@@ -228,7 +189,6 @@ struct TodayView: View {
             todaySession = sessions.first { $0.dayKey == dayKey }
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            practiceAttempts = try modelContext.fetch(FetchDescriptor<PracticeAttemptRecord>())
             dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
             scheduledReviewCount = todaySession?.scheduledReviewCount(from: progressRows) ?? 0
             streakCount = streakService.streakCount(from: sessions, currentDayKey: dayKey)
@@ -248,10 +208,6 @@ struct TodayView: View {
         } catch {
             statusMessage = String(localized: "today.load.error")
         }
-    }
-
-    private func progressText(for progress: VocabularyPracticeProgress) -> String {
-        "\(progress.correctItemCount)/\(progress.totalItemCount)"
     }
 
     private func startPractice() {
