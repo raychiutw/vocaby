@@ -401,6 +401,54 @@
         }
       }
     },
+    "library.detail.save" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存"
+          }
+        }
+      }
+    },
+    "library.detail.removeSaved" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from Saved"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消儲存"
+          }
+        }
+      }
+    },
+    "library.detail.summary.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld correct · %lld missed"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "答對 %lld 次 · 答錯 %lld 次"
+          }
+        }
+      }
+    },
     "library.detail.review" : {
       "localizations" : {
         "en" : {
@@ -2125,6 +2173,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "繁體中文意思"
+          }
+        }
+      }
+    },
+    "vocabulary.more" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Definition and more meanings"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英文定義與更多意思"
           }
         }
       }

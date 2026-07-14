@@ -22,6 +22,7 @@ struct VocabularyEntryContentView: View {
     let supportLanguageCode: String
     let showsAdditionalSenses: Bool
     let synthesizer: AVSpeechSynthesizer
+    var showsExpression = true
 
     private var selectedSense: VocabularySense {
         item.senses.first { $0.id == senseID }!
@@ -34,20 +35,51 @@ struct VocabularyEntryContentView: View {
 
     var body: some View {
         Section {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(verbatim: item.upgradedExpression)
-                    .font(.title2.bold())
-                Text(verbatim: item.plainExpression)
-                    .foregroundStyle(.secondary)
-            }
-            senseDetails(selectedSense)
-        }
+            VStack(alignment: .leading, spacing: 16) {
+                if showsExpression {
+                    Text(verbatim: item.upgradedExpression)
+                        .font(.title2.bold())
+                }
 
-        if !additionalSenses.isEmpty {
-            Section {
-                DisclosureGroup("vocabulary.additionalSenses") {
-                    ForEach(additionalSenses) { sense in
-                        senseDetails(sense)
+                pronunciationRow(for: selectedSense)
+
+                Text(verbatim: localized(selectedSense.meaning))
+                    .font(.title3.weight(.semibold))
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: item.plainExpression)
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "arrow.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
+                    Text(verbatim: item.upgradedExpression)
+                        .fontWeight(.semibold)
+                }
+                .accessibilityElement(children: .combine)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: selectedSense.example.text)
+                    Text(verbatim: localized(selectedSense.example.translation))
+                        .foregroundStyle(.secondary)
+                }
+
+                DisclosureGroup("vocabulary.more") {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(verbatim: selectedSense.meaning["en"] ?? "")
+
+                        ForEach(additionalSenses) { sense in
+                            Divider()
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(partOfSpeechKey(sense.partOfSpeech))
+                                    .font(.subheadline.weight(.semibold))
+                                Text(verbatim: localized(sense.meaning))
+                                if supportLanguageCode != "en" {
+                                    Text(verbatim: sense.meaning["en"] ?? "")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -55,51 +87,37 @@ struct VocabularyEntryContentView: View {
     }
 
     @ViewBuilder
-    private func senseDetails(_ sense: VocabularySense) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private func pronunciationRow(for sense: VocabularySense) -> some View {
+        HStack(alignment: .top, spacing: 12) {
             Text(partOfSpeechKey(sense.partOfSpeech))
-                .font(.subheadline.weight(.semibold))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
 
-            Text("vocabulary.pronunciation")
-                .font(.subheadline.weight(.semibold))
+            Spacer(minLength: 8)
 
-            ForEach(pronunciations(for: sense)) { pronunciation in
-                let region = regionLabel(pronunciation.region)
-                Button {
-                    synthesizer.speak(PronunciationSpeaker.makeUtterance(
-                        expression: item.upgradedExpression,
-                        pronunciation: pronunciation
-                    ))
-                } label: {
-                    Label {
-                        Text(verbatim: "\(region) /\(pronunciation.ipa)/")
-                    } icon: {
-                        Image(systemName: "speaker.wave.2")
-                            .accessibilityHidden(true)
+            VStack(alignment: .trailing, spacing: 0) {
+                ForEach(pronunciations(for: sense)) { pronunciation in
+                    let region = regionLabel(pronunciation.region)
+                    Button {
+                        synthesizer.speak(PronunciationSpeaker.makeUtterance(
+                            expression: item.upgradedExpression,
+                            pronunciation: pronunciation
+                        ))
+                    } label: {
+                        Label {
+                            Text(verbatim: "\(region) /\(pronunciation.ipa)/")
+                        } icon: {
+                            Image(systemName: "speaker.wave.2")
+                                .accessibilityHidden(true)
+                        }
+                        .font(.subheadline)
+                        .frame(minHeight: 44)
                     }
-                    .frame(minHeight: 44)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(verbatim: "\(item.upgradedExpression), \(region), /\(pronunciation.ipa)/"))
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel(Text(verbatim: "\(item.upgradedExpression), \(region), /\(pronunciation.ipa)/"))
-            }
-
-            LabeledContent("vocabulary.meaning.english") {
-                Text(verbatim: sense.meaning["en"] ?? "")
-            }
-            if supportLanguageCode != "en" {
-                LabeledContent("vocabulary.meaning.support") {
-                    Text(verbatim: localized(sense.meaning))
-                }
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Text("vocabulary.example")
-                    .font(.subheadline.weight(.semibold))
-                Text(verbatim: sense.example.text)
-                Text(verbatim: localized(sense.example.translation))
-                    .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 4)
     }
 
     private func pronunciations(for sense: VocabularySense) -> [VocabularyPronunciation] {

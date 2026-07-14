@@ -43,36 +43,45 @@ struct LibraryView: View {
         return selectedScope == .learned ? "library.empty.learned" : "library.empty.saved"
     }
 
-    private var practicedItemCount: Int {
-        progressRows.filter { $0.firstSeenAt != nil }.count
-    }
-
-    private var compactProgress: String {
-        String.localizedStringWithFormat(
-            String(localized: "library.compactProgress.format"),
-            practicedItemCount,
-            seedItems.count
-        )
+    private var hasSearchableContent: Bool {
+        progressRows.contains { $0.firstSeenAt != nil || $0.isSaved }
     }
 
     var body: some View {
-        List {
-            Section {
-                HStack(spacing: 12) {
-                    Image("LibraryCover")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(compactProgress)
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(.secondary)
+        Group {
+            if hasSearchableContent {
+                libraryList
+                    .searchable(text: $query, prompt: Text("library.search.prompt"))
+            } else {
+                libraryList
+            }
+        }
+        .navigationTitle("library.title")
+        .navigationDestination(item: $selectedDetailItemID) { itemID in
+            Group {
+                if let item = detailItem(for: itemID) {
+                    LibraryDetailView(
+                        item: item,
+                        supportLanguageCode: supportLanguageCode
+                    ) {
+                        refreshLibrary()
                     }
+                } else {
+                    Text("library.empty.search")
                 }
             }
+        }
+        .task {
+            refreshLibrary()
+        }
+        .onChange(of: deepLinkedItemID) { _, _ in
+            refreshLibrary()
+        }
+        .learningSettingsSheet()
+    }
 
+    private var libraryList: some View {
+        List {
             Picker("library.scope.accessibility", selection: $selectedScope) {
                 Text("library.scope.learned").tag(LibraryScope.learned)
                 Text("library.scope.saved").tag(LibraryScope.saved)
@@ -82,8 +91,7 @@ struct LibraryView: View {
 
             if libraryItems.isEmpty {
                 Section {
-                    Text(emptyMessageKey)
-                        .foregroundStyle(.secondary)
+                    ContentUnavailableView(emptyMessageKey, systemImage: "books.vertical")
                 }
             } else {
                 Section {
@@ -110,29 +118,6 @@ struct LibraryView: View {
             }
         }
         .listStyle(.plain)
-        .navigationTitle("library.title")
-        .searchable(text: $query, prompt: Text("library.search.prompt"))
-        .navigationDestination(item: $selectedDetailItemID) { itemID in
-            Group {
-                if let item = detailItem(for: itemID) {
-                    LibraryDetailView(
-                        item: item,
-                        supportLanguageCode: supportLanguageCode
-                    ) {
-                        refreshLibrary()
-                    }
-                } else {
-                    Text("library.empty.search")
-                }
-            }
-        }
-        .task {
-            refreshLibrary()
-        }
-        .onChange(of: deepLinkedItemID) { _, _ in
-            refreshLibrary()
-        }
-        .learningSettingsSheet()
     }
 
     private func refreshLibrary() {
@@ -178,31 +163,25 @@ private struct LibraryRowView: View {
     let item: LibraryListItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(item.seedItem.upgradedExpression)
-                .font(.body.weight(.semibold))
-            Text("\(item.seedItem.plainExpression) · \(statusText)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.seedItem.upgradedExpression)
+                    .font(.body.weight(.semibold))
+                Text(item.seedItem.plainExpression)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            if item.progress?.masteredAt != nil {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(AppTheme.correctGreen)
+                    .accessibilityLabel(Text("library.detail.mastered"))
+            }
         }
         .padding(.vertical, 6)
-    }
-
-    private var statusText: String {
-        guard let progress = item.progress else {
-            return String(localized: "library.row.practiced")
-        }
-
-        if progress.masteredAt != nil {
-            return String(localized: "library.row.mastered")
-        }
-
-        if progress.isSaved {
-            return String(localized: "library.row.saved")
-        }
-
-        return String(localized: "library.row.practiced")
     }
 }
 
@@ -216,7 +195,6 @@ private struct LibraryDetailView: View {
     @State private var isSaved: Bool
     @State private var progress: WordProgress?
     @State private var errorMessage: String?
-    @State private var isRestoringSavedState = false
     @State private var speechSynthesizer = AVSpeechSynthesizer()
 
     private let persistenceService = ProgressPersistenceService()
@@ -240,29 +218,19 @@ private struct LibraryDetailView: View {
                 senseID: item.seedItem.primarySenseID,
                 supportLanguageCode: supportLanguageCode,
                 showsAdditionalSenses: true,
-                synthesizer: speechSynthesizer
+                synthesizer: speechSynthesizer,
+                showsExpression: false
             )
 
-            Section {
-                Toggle(isOn: $isSaved) {
-                    Label("library.detail.saved", systemImage: isSaved ? "bookmark.fill" : "bookmark")
-                }
-                .onChange(of: isSaved) { _, newValue in
-                    guard !isRestoringSavedState else {
-                        isRestoringSavedState = false
-                        return
+            if let progress {
+                Section {
+                    Text(reviewSummary(for: progress))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if progress.masteredAt != nil {
+                        Label("library.detail.mastered", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(AppTheme.correctGreen)
                     }
-                    updateSavedState(newValue)
-                }
-            }
-
-            Section("library.detail.review") {
-                LabeledContent("library.detail.correct", value: "\(progress?.correctCount ?? 0)")
-                LabeledContent("library.detail.wrong", value: "\(progress?.wrongCount ?? 0)")
-                LabeledContent("library.detail.due", value: progress?.dueDayKey ?? String(localized: "library.detail.notScheduled"))
-                if progress?.masteredAt != nil {
-                    Label("library.detail.mastered", systemImage: "checkmark.seal.fill")
-                        .foregroundStyle(AppTheme.correctGreen)
                 }
             }
 
@@ -275,6 +243,24 @@ private struct LibraryDetailView: View {
         }
         .navigationTitle(item.seedItem.upgradedExpression)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    updateSavedState(!isSaved)
+                } label: {
+                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                }
+                .accessibilityLabel(Text(isSaved ? "library.detail.removeSaved" : "library.detail.save"))
+            }
+        }
+    }
+
+    private func reviewSummary(for progress: WordProgress) -> String {
+        String.localizedStringWithFormat(
+            String(localized: "library.detail.summary.format"),
+            progress.correctCount,
+            progress.wrongCount
+        )
     }
 
     private func updateSavedState(_ newValue: Bool) {
@@ -287,11 +273,11 @@ private struct LibraryDetailView: View {
             currentProgress.isSaved = newValue
             currentProgress.updatedAt = Date()
             try modelContext.save()
+            isSaved = newValue
             progress = currentProgress
             errorMessage = nil
             onUpdate()
         } catch {
-            isRestoringSavedState = true
             isSaved = progress?.isSaved ?? false
             errorMessage = String(localized: "library.save.error")
         }
