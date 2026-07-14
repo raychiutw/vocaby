@@ -80,7 +80,12 @@ struct ReviewPracticePlan {
 }
 
 struct PracticeCenterPlan {
-    static let defaultConfiguration = PracticeConfiguration.daily
+    static let defaultConfiguration = PracticeConfiguration(
+        mode: .mixed,
+        questionCount: 10,
+        timeLimitSeconds: 15,
+        retriesWrongAnswers: true
+    )
 
     let runID: UUID
     let configuration: PracticeConfiguration

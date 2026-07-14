@@ -28,11 +28,9 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertEqual(Set(plan.questions.prefix(2).map(\.itemID)), Set(learnedIDs.prefix(2)))
         XCTAssertEqual(plan.questions.count, 3)
         XCTAssertTrue(plan.questions.allSatisfy { Set(items.prefix(5).map(\.id)).contains($0.itemID) })
-        XCTAssertFalse(plan.questions.flatMap(\.options).contains(items[5].upgradedExpression))
-        XCTAssertFalse(plan.questions.flatMap(\.options).contains(items[6].upgradedExpression))
     }
 
-    func testPracticeCenterPlanUsesConfiguredModeCountAndFullLocalPoolForDistractors() throws {
+    func testPracticeCenterPlanUsesConfiguredModeAndCount() throws {
         let items = makeItems(count: 6)
         let configuration = PracticeConfiguration(
             mode: .meaningChoice,
@@ -97,6 +95,10 @@ final class QuizEngineTests: XCTestCase {
         )
     }
 
+    func testDailyPracticeIsUntimed() {
+        XCTAssertEqual(PracticeConfiguration.daily.timeLimitSeconds, 0)
+    }
+
     func testPracticeSelectionUsesLearnedItemsThenFillsFromLocalSeed() {
         let items = makeItems(count: 6)
         var random = IncrementingRandomNumberGenerator()
@@ -127,19 +129,24 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertEqual(Set(question.options).count, 4)
     }
 
-    func testDistractorsStayInLevelAndDeduplicateVisibleText() throws {
-        var items = makeItems(count: 6)
-        items[4].level = .advanced
-        items[5].upgradedExpression = items[1].upgradedExpression
+    func testExpressionChoiceUsesAuthoredQuizOptions() throws {
+        var items = makeItems(count: 5)
+        items[0].quiz.options = [
+            "authored-a",
+            items[0].upgradedExpression,
+            "authored-b",
+            "authored-c"
+        ]
+        items[0].quiz.correctOptionIndex = 1
         var random = IncrementingRandomNumberGenerator()
+
         let question = try XCTUnwrap(QuizEngine().makeQuestions(
             for: [items[0]], candidates: items, mode: .expressionChoice,
             supportLanguageCode: "zh-Hant", using: &random
         ).first)
 
-        XCTAssertFalse(question.options.contains(items[4].upgradedExpression))
-        XCTAssertEqual(Set(question.options).count, question.options.count)
-        XCTAssertEqual(question.options.filter { $0 == items[1].upgradedExpression }.count, 1)
+        XCTAssertEqual(Set(question.options), Set(items[0].quiz.options))
+        XCTAssertEqual(question.correctAnswer, items[0].upgradedExpression)
     }
 
     func testMeaningChoiceUsesUpgradePromptAndLocalizedMeanings() throws {
@@ -153,6 +160,25 @@ final class QuizEngineTests: XCTestCase {
         XCTAssertEqual(question.prompt, items[0].upgradedExpression)
         XCTAssertEqual(question.correctAnswer, items[0].primarySense.meaning["zh-Hant"])
         XCTAssertEqual(Set(question.options).count, 4)
+    }
+
+    func testMeaningChoiceMapsAuthoredExpressionsToLocalizedMeanings() throws {
+        var items = makeItems(count: 6)
+        items[4].level = .advanced
+        let authoredItems = [items[0], items[2], items[4], items[5]]
+        items[0].quiz.options = authoredItems.map(\.upgradedExpression)
+        items[0].quiz.correctOptionIndex = 0
+        var random = IncrementingRandomNumberGenerator()
+
+        let question = try XCTUnwrap(QuizEngine().makeQuestions(
+            for: [items[0]], candidates: items, mode: .meaningChoice,
+            supportLanguageCode: "zh-Hant", using: &random
+        ).first)
+
+        XCTAssertEqual(
+            Set(question.options),
+            Set(authoredItems.compactMap { $0.primarySense.meaning["zh-Hant"] })
+        )
     }
 
     func testQuestionCarriesPrimarySenseAndSupportLanguage() throws {
@@ -515,7 +541,13 @@ final class QuizEngineTests: XCTestCase {
                     example: .init(text: "Example \(index).", translation: ["zh-Hant": "例句 \(index)。"]),
                     pronunciationIDs: [pronunciationID]
                 )],
-                quiz: .init(prompt: ["zh-Hant": "legacy"], options: ["legacy A", "legacy B"], correctOptionIndex: 0)
+                quiz: .init(
+                    prompt: ["zh-Hant": "legacy"],
+                    options: (0..<min(4, count)).map { offset in
+                        "upgrade \(((index - 1 + offset) % count) + 1)"
+                    },
+                    correctOptionIndex: 0
+                )
             )
         }
     }

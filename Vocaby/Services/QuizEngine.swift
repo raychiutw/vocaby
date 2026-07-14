@@ -16,7 +16,7 @@ struct PracticeConfiguration: Equatable {
     static let daily = PracticeConfiguration(
         mode: .mixed,
         questionCount: 10,
-        timeLimitSeconds: 15,
+        timeLimitSeconds: 0,
         retriesWrongAnswers: true
     )
 
@@ -215,8 +215,8 @@ struct QuizEngine {
                 supportLanguageCode: supportLanguageCode
             )
             let options = questionMode == .spelling ? [] : makeOptions(
+                for: item,
                 correctAnswer: correctAnswer,
-                itemLevel: item.level,
                 candidates: candidates,
                 mode: questionMode,
                 supportLanguageCode: supportLanguageCode,
@@ -284,21 +284,34 @@ struct QuizEngine {
     }
 
     private func makeOptions<Random: RandomNumberGenerator>(
+        for item: VocabularySeedItem,
         correctAnswer: String,
-        itemLevel: VocabularyLevel,
         candidates: [VocabularySeedItem],
         mode: PracticeMode,
         supportLanguageCode: String,
         using random: inout Random
     ) -> [String] {
-        var seenAnswers = Set([correctAnswer])
-        var distractors = candidates
-            .filter { $0.level == itemLevel }
-            .map { answer(for: $0, mode: mode, supportLanguageCode: supportLanguageCode) }
-            .filter { seenAnswers.insert($0).inserted }
+        let authored: [String]
+        if mode == .meaningChoice {
+            let itemsByExpression = Dictionary(
+                candidates.map { ($0.upgradedExpression.lowercased(), $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            authored = item.quiz.options.compactMap { expression in
+                itemsByExpression[expression.lowercased()].map {
+                    localizedMeaning(for: $0, supportLanguageCode: supportLanguageCode)
+                }
+            }
+        } else {
+            authored = item.quiz.options
+        }
 
-        distractors = shuffled(distractors, using: &random)
-        return shuffled([correctAnswer] + distractors.prefix(3), using: &random)
+        var seen = Set<String>()
+        var options = authored.filter { !$0.isEmpty && seen.insert($0).inserted }
+        if seen.insert(correctAnswer).inserted {
+            options.append(correctAnswer)
+        }
+        return shuffled(options, using: &random)
     }
 
     private func shuffled<Element, Random: RandomNumberGenerator>(
