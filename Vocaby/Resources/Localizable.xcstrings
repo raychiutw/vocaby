@@ -6,13 +6,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "My learning settings"
+            "value" : "Settings"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "我的學習設定"
+            "value" : "設定"
           }
         }
       }
@@ -141,6 +141,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "開啟提醒"
+          }
+        }
+      }
+    },
+    "onboarding.reminder.everyDay" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every day"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每天"
           }
         }
       }

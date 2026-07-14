@@ -10,7 +10,7 @@ private struct LearningSettingsSheet: ViewModifier {
                     Button {
                         isShowingSettings = true
                     } label: {
-                        Image(systemName: "person.crop.circle")
+                        Image(systemName: "gearshape")
                     }
                     .accessibilityLabel(Text("learning.profile.accessibility"))
                 }

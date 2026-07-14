@@ -33,7 +33,6 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle(navigationTitle)
                 .toolbar(.hidden, for: .navigationBar)
         }
         .tint(AppTheme.accent)
@@ -62,72 +61,92 @@ struct OnboardingView: View {
             }
             .padding(24)
         case .level:
-            Form {
+            List {
                 Section {
-                    Picker("onboarding.level.title", selection: levelSelection) {
-                        Text("settings.level.basic").tag(VocabularyLevel?.some(.basic))
-                        Text("settings.level.intermediate").tag(VocabularyLevel?.some(.intermediate))
-                        Text("settings.level.advanced").tag(VocabularyLevel?.some(.advanced))
-                    }
-                    .pickerStyle(.inline)
-                } header: {
                     Text("onboarding.level.title")
-                } footer: {
+                        .font(.largeTitle.bold())
+                        .listRowSeparator(.hidden)
+
                     Text("onboarding.level.message")
+                        .foregroundStyle(.secondary)
+                        .listRowSeparator(.hidden)
                 }
 
                 Section {
-                    Button("onboarding.level.continue") {
-                        step = .reminder
+                    ForEach(VocabularyLevel.allCases, id: \.self) { level in
+                        Button {
+                            selectedLevel = level
+                        } label: {
+                            HStack {
+                                Text(levelTitleKey(for: level))
+                                Spacer()
+                                if selectedLevel == level {
+                                    Image(systemName: "checkmark")
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
                     }
-                    .disabled(selectedLevel == nil)
                 }
             }
+            .listStyle(.plain)
+            .safeAreaInset(edge: .bottom) {
+                Button("onboarding.level.continue") {
+                    step = .reminder
+                }
+                .frame(maxWidth: .infinity)
+                .prominentActionStyle()
+                .controlSize(.large)
+                .disabled(selectedLevel == nil)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .bottomActionChrome()
+            }
         case .reminder:
-            Form {
+            List {
                 Section {
+                    Text("onboarding.reminder.title")
+                        .font(.largeTitle.bold())
+                        .listRowSeparator(.hidden)
+
                     DatePicker(
-                        "settings.reminders.time",
+                        "onboarding.reminder.everyDay",
                         selection: $reminderTime,
                         displayedComponents: .hourAndMinute
                     )
-                } header: {
-                    Text("onboarding.reminder.title")
-                } footer: {
-                    Text("onboarding.reminder.message")
                 }
-
-                Section {
+            }
+            .listStyle(.plain)
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 8) {
                     Button("onboarding.reminder.enable") {
                         complete(remindersEnabled: true)
                     }
+                    .frame(maxWidth: .infinity)
+                    .prominentActionStyle()
+                    .controlSize(.large)
                     .disabled(isCompleting)
 
                     Button("onboarding.reminder.skip", role: .cancel) {
                         complete(remindersEnabled: false)
                     }
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .disabled(isCompleting)
                 }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .bottomActionChrome()
             }
         }
     }
 
-    private var navigationTitle: LocalizedStringKey {
-        switch step {
-        case .welcome:
-            "onboarding.welcome.title"
-        case .level:
-            "onboarding.level.title"
-        case .reminder:
-            "onboarding.reminder.title"
-        }
-    }
-
-    private var levelSelection: Binding<VocabularyLevel?> {
-        Binding {
-            selectedLevel
-        } set: { newValue in
-            selectedLevel = newValue
+    private func levelTitleKey(for level: VocabularyLevel) -> LocalizedStringKey {
+        switch level {
+        case .basic: "settings.level.basic"
+        case .intermediate: "settings.level.intermediate"
+        case .advanced: "settings.level.advanced"
         }
     }
 
