@@ -439,3 +439,25 @@ The concurrent workers checkpointed a sparse set before the failed future surfac
 The last accepted exact consecutive 20-batch boundary prefix remains boundary 340, whose canonical SHA-256 is `25154d1f48ec730ef20f58996df1d4a93bdb6d66ebd5a81752cd67b7dfec1c86`, matching the boundary-340 ledger entry. An offline call to the existing `deterministic_input_enrichment` for all 20 batch-`0348` inputs preserved exact IDs and order and produced zero `validate_enrichment` errors; it did not alter the active output.
 
 No enrichment process remains live. The sparse raw output remains ignored and is not tracked; this ledger records derived failure evidence only. No finish-enrichment or translation artifact was created, and nothing from this attempt may be promoted.
+
+## Regeneration — Boundary 360
+
+Audit timestamp: `2026-07-16T04:01:28+08:00`
+
+Current regeneration status: **PASS THROUGH BATCH `0359` / FULL BANK INCOMPLETE**
+
+After the rejected boundary-360 attempt above was tracked, its sparse ignored output was archived with canonical SHA-256 `b0dcb004edeb0757df7042bad5ab96ccd70139ec71d9f05f6d19d4ded6454156`. The active output was restored to the validated boundary-340 prefix, whose canonical SHA-256 remained `25154d1f48ec730ef20f58996df1d4a93bdb6d66ebd5a81752cd67b7dfec1c86`. A strict-TDD trust-boundary change now uses validated deterministic input enrichment only after three invalid singleton structural outputs; it does not retry or convert unrelated helper errors. One bounded enrichment-only recovery invocation then processed exactly 20 pending outer batches and stopped cleanly at 360 completed batches.
+
+| Boundary | Batch prefix | Output items | Expected items | Consecutive unique batch IDs | Input/output item IDs | Schema/content validation | Mismatched batches | Validator errors | Canonical prefix SHA-256 | Result |
+| ---: | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- | --- |
+| 360 | `0000`–`0359` | 7,200 | 7,200 | PASS | PASS | PASS | 0 | 0 | `e5b9913b2711f47c0c3d12afc3a64272c6b9096723e733e9fcab82772d61b5c5` | PASS |
+
+Boundary-360 recovery evidence:
+
+- Enrichment command result: `{"batches": 667, "completed": 360, "processed": 20}`.
+- Active output contains exactly 360 JSONL records and the batch IDs are exactly `0000` through `0359` in order.
+- Every output batch has the same item count and item-ID order as its corresponding immutable input batch.
+- All 7,200 output items pass `validate_enrichment` against their corresponding input targets.
+- Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
+- No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
+- All four rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
