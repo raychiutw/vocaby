@@ -80,7 +80,7 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_ID"
 
           xcodebuild -exportArchive \
             -archivePath "$archive_path" \

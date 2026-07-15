@@ -46,7 +46,7 @@ class GitHubWorkflowTests(unittest.TestCase):
         self.assertIn("secrets.ASC_ISSUER_ID", workflow)
         self.assertIn("secrets.ASC_PRIVATE_KEY", workflow)
         self.assertIn(
-            'CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"',
+            'CURRENT_PROJECT_VERSION="$GITHUB_RUN_ID"',
             workflow,
         )
         self.assertIn("-allowProvisioningUpdates", workflow)
@@ -54,6 +54,21 @@ class GitHubWorkflowTests(unittest.TestCase):
         self.assertIn("trap 'rm -f \"$key_path\"' EXIT", workflow)
         self.assertNotIn("set -x", workflow)
         self.assertIn("brew install opencc", workflow)
+
+    def test_public_version_sources_are_consistent(self):
+        version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertEqual(version, "1.0.0")
+
+        project = (ROOT / "Vocaby.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
+        self.assertEqual(project.count("MARKETING_VERSION = 1.0.0;"), 4)
+        self.assertNotIn("MARKETING_VERSION = 1.0;", project)
+
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        self.assertIn("## 1.0.0", changelog)
+
+        instructions = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("## Versioning and Releases", instructions)
+        self.assertIn("`vX.Y.Z`", instructions)
 
     def test_export_options_upload_without_internal_only_lock(self):
         path = ROOT / ".github/ExportOptions.plist"

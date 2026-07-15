@@ -79,3 +79,12 @@ Manual or UI checks must cover:
 - Stage only intentional files.
 - Before commit, run `git diff --check`.
 - If the user asks `commit + push`, finish both steps and verify `git status --short --branch`.
+
+## Versioning and Releases
+
+- `1.0.0` to `1.0.1`: bug fixes, small visual changes, and App Icon updates.
+- `1.0.0` to `1.1.0`: new backward-compatible functionality.
+- Increase the major version only for breaking changes after `1.0.0`.
+- Keep `VERSION` and every app/widget `MARKETING_VERSION` equal.
+- For a formal release, update `VERSION`, `CHANGELOG.md`, and all `MARKETING_VERSION` values, then create the matching `vX.Y.Z` tag.
+- Manual TestFlight uploads keep the public version and override the build number with `GITHUB_RUN_ID`.
