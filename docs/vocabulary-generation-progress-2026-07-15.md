@@ -367,3 +367,17 @@ Boundary-300 evidence:
 - Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
 - No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
 - Both rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
+
+## Rejected Attempt — Boundary 320
+
+Audit timestamp: `2026-07-16T03:14:21+08:00`
+
+Attempt status: **FAIL / REJECTED / NOT PROMOTABLE**
+
+The bounded boundary-320 invocation stopped when Apple Foundation Models failed batch `0310` with `LanguageModelSession.GenerationError error -1`. Unified logging shows the prompt guardrail completed successfully before the model-service XPC connection was interrupted; the underlying errors were `ModelManagerServices.ModelManagerError Code=1041` and `SensitiveContentAnalysisML Code=15`. This is an environmental Apple ModelManager interruption, not the recognized unsafe-content fallback path, so no broad `GenerationError` retry was added.
+
+The concurrent workers checkpointed a sparse set before the failed future surfaced. The ignored active output contains 312 individually valid batches and 6,240 items with IDs `0000` through `0309`, followed by `0311` and `0312`. Batch `0310` and batches `0313` through `0319` are missing. The sparse canonical SHA-256 is `38d6d46ace0611dd4ba0179e990f7109d9bd520245ee203d25b2c924d579d49b`.
+
+The last accepted exact consecutive 20-batch boundary prefix remains boundary 300: 300 batches, 6,000 items, and canonical SHA-256 `7525629c818903b588a30b536047a37ef3daf94afe77700499ceec62cbcf9e02`, matching the boundary-300 ledger entry. All post-boundary-300 output from this failed attempt is rejected until the active output is restored and a fresh boundary-320 audit passes.
+
+No enrichment process remains live. The sparse raw output remains ignored and is not tracked; this ledger records derived failure evidence only. No finish-enrichment or translation artifact was created, and nothing from this attempt may be promoted.
