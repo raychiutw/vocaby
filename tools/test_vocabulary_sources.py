@@ -2025,6 +2025,47 @@ class VocabularySourcesTests(unittest.TestCase):
                 {reference["sourceID"] for reference in packet["sourceRefs"]},
             )
 
+    def test_prepare_enrichment_prefers_aligned_cedict_over_aligned_freedict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            (input_dir / "cow.jsonl").unlink()
+            cedict = {
+                **json.loads((input_dir / "freedict.jsonl").read_text()),
+                "sourceID": "cc-cedict-2026-07-11",
+                "sourceEntryRef": "line-1:excellent",
+                "translations": {"zh-Hant": ["出色"]},
+            }
+            (input_dir / "cedict.jsonl").write_text(
+                json.dumps(cedict, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(root / "draft.jsonl"),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            packet = json.loads((root / "draft.jsonl").read_text())
+            self.assertEqual(packet["translationDraft"], "出色")
+            source_ids = {
+                reference["sourceID"] for reference in packet["sourceRefs"]
+            }
+            self.assertIn("cc-cedict-2026-07-11", source_ids)
+            self.assertNotIn("freedict", source_ids)
+
     def test_prepare_enrichment_rejects_freedict_part_of_speech_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
