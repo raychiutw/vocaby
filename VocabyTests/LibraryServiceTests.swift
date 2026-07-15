@@ -56,8 +56,80 @@ final class LibraryServiceTests: XCTestCase {
         XCTAssertEqual(rows.map(\.id), ["basic-001", "basic-002"])
     }
 
+    func testLevelSummariesCountEligibleTotalsAndDistinctLearnedItems() {
+        let seedItems = [
+            item("basic-001", level: .basic, sortOrder: 1),
+            item("basic-002", level: .basic, sortOrder: 2),
+            item("intermediate-001", level: .intermediate, sortOrder: 1),
+            item("advanced-001", level: .advanced, sortOrder: 1),
+            item("advanced-ja-001", level: .advanced, sortOrder: 2, supportLanguageCodes: ["ja"]),
+            item("advanced-fr-001", level: .advanced, sortOrder: 3, contentLanguageCode: "fr")
+        ]
+        let quizResults = [
+            QuizResult(dayKey: "2026-07-10", itemID: "basic-001", selectedOptionIndex: 0, correctOptionIndex: 0),
+            QuizResult(dayKey: "2026-07-11", itemID: "basic-001", selectedOptionIndex: 1, correctOptionIndex: 0),
+            QuizResult(dayKey: "2026-07-10", itemID: "advanced-001", selectedOptionIndex: 0, correctOptionIndex: 0),
+            QuizResult(dayKey: "2026-07-10", itemID: "removed-001", selectedOptionIndex: 0, correctOptionIndex: 0),
+            QuizResult(dayKey: "2026-07-10", itemID: "advanced-ja-001", selectedOptionIndex: 0, correctOptionIndex: 0)
+        ]
+
+        let summaries = LibraryService().levelSummaries(
+            from: seedItems,
+            quizResults: quizResults,
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant"
+        )
+
+        XCTAssertEqual(summaries, [
+            .init(level: .basic, learnedCount: 1, totalCount: 2),
+            .init(level: .intermediate, learnedCount: 0, totalCount: 1),
+            .init(level: .advanced, learnedCount: 1, totalCount: 1)
+        ])
+    }
+
+    func testLevelSummariesIncludeZeroTotalLevelsWithZeroProgress() {
+        let summaries = LibraryService().levelSummaries(
+            from: [item("basic-001", level: .basic, sortOrder: 1)],
+            quizResults: [],
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant"
+        )
+
+        XCTAssertEqual(summaries.map(\.level), [.basic, .intermediate, .advanced])
+        XCTAssertEqual(summaries[0].progress, 0)
+        XCTAssertEqual(summaries[1], .init(level: .intermediate, learnedCount: 0, totalCount: 0))
+        XCTAssertEqual(summaries[1].progress, 0)
+        XCTAssertEqual(summaries[2].progress, 0)
+    }
+
+    func testSavedOnlyItemDoesNotCountAsLearned() {
+        let seedItems = [item("basic-001", level: .basic, sortOrder: 1)]
+        let savedProgress = [WordProgress(itemID: "basic-001", level: .basic, isSaved: true)]
+        let service = LibraryService()
+
+        let savedRows = service.items(
+            from: seedItems,
+            progressRows: savedProgress,
+            quizResults: [],
+            scope: .saved,
+            query: "",
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant"
+        )
+        let summaries = service.levelSummaries(
+            from: seedItems,
+            quizResults: [],
+            contentLanguageCode: "en",
+            supportLanguageCode: "zh-Hant"
+        )
+
+        XCTAssertEqual(savedRows.map(\.id), ["basic-001"])
+        XCTAssertEqual(summaries[0], .init(level: .basic, learnedCount: 0, totalCount: 1))
+    }
+
     private func item(
         _ id: String,
+        level: VocabularyLevel = .basic,
         sortOrder: Int,
         plainExpression: String = "plain",
         upgradedExpression: String = "upgraded",
@@ -68,7 +140,7 @@ final class LibraryServiceTests: XCTestCase {
         let senseID = "\(id)-sense-1"
         return VocabularySeedItem(
             id: id,
-            level: .basic,
+            level: level,
             sortOrder: sortOrder,
             contentLanguageCode: contentLanguageCode,
             supportLanguageCodes: supportLanguageCodes,
