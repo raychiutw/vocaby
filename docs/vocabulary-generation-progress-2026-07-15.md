@@ -425,3 +425,17 @@ Boundary-340 evidence:
 - Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
 - No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
 - All three rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
+
+## Rejected Attempt — Boundary 360
+
+Audit timestamp: `2026-07-16T03:47:01+08:00`
+
+Attempt status: **FAIL / REJECTED / NOT PROMOTABLE**
+
+The bounded boundary-360 invocation stopped when batch `0348` exhausted three singleton structural-output attempts. The Apple helper returned parseable output with exit status zero, but the generated singleton item count, order, or ID did not match the immutable input contract. Unified logging contains no model-service, guardrail, or XPC failure for this attempt. The actual invalid response is discarded by the current trust boundary, so this evidence does not claim which singleton field was changed.
+
+The concurrent workers checkpointed a sparse set before the failed future surfaced. The ignored active output contains 347 individually valid batches and 6,940 items with IDs `0000` through `0345`, followed by `0347`. Batch `0346` and batches `0348` through `0359` are missing. The sparse canonical SHA-256 is `b0dcb004edeb0757df7042bad5ab96ccd70139ec71d9f05f6d19d4ded6454156`.
+
+The last accepted exact consecutive 20-batch boundary prefix remains boundary 340, whose canonical SHA-256 is `25154d1f48ec730ef20f58996df1d4a93bdb6d66ebd5a81752cd67b7dfec1c86`, matching the boundary-340 ledger entry. An offline call to the existing `deterministic_input_enrichment` for all 20 batch-`0348` inputs preserved exact IDs and order and produced zero `validate_enrichment` errors; it did not alter the active output.
+
+No enrichment process remains live. The sparse raw output remains ignored and is not tracked; this ledger records derived failure evidence only. No finish-enrichment or translation artifact was created, and nothing from this attempt may be promoted.
