@@ -1259,6 +1259,8 @@ def prepare_enrichment(
     quotas: dict[str, int],
     output: Path,
     current_seed_path: Path | None = None,
+    all_available: bool = False,
+    approved_source_ids: set[str] | None = None,
 ) -> int:
     existing = load_json(existing_seed_path, list)
     current_seed = (
@@ -1279,13 +1281,20 @@ def prepare_enrichment(
         for path in sorted(input_dir.glob("*.jsonl"))
         for record in read_jsonl(path)
     ]
+    if approved_source_ids is not None:
+        records = [
+            record
+            for record in records
+            if record.get("sourceID") in approved_source_ids
+        ]
+    index_keys = None if all_available else current_keys
     senses_by_headword: dict[str, list[dict]] = {}
     pronunciations_by_headword: dict[str, list[dict]] = {}
     plain_expressions_by_headword: dict[str, set[str]] = {}
     validation_sources_by_headword: dict[str, set[str]] = {}
     for record in records:
         key = normalized(record.get("headword", ""))
-        if not key or (current_keys is not None and key not in current_keys):
+        if not key or (index_keys is not None and key not in index_keys):
             continue
         source_ref = source_reference(record)
         senses = [
@@ -1347,7 +1356,6 @@ def prepare_enrichment(
     parallel_records: list[tuple[dict, str, str]] = []
     cefr_exact: dict[tuple[str, str], tuple[str, dict]] = {}
     cefr_any: dict[str, tuple[str, dict]] = {}
-    reference_sources: dict[str, set[str]] = {}
     lexical: list[dict] = []
     for record in records:
         key = normalized(record.get("headword", ""))
@@ -1372,8 +1380,6 @@ def prepare_enrichment(
             value = (record["cefr"], source_reference(record))
             cefr_exact.setdefault((key, part_of_speech_code(record.get("partOfSpeech"))), value)
             cefr_any.setdefault(key, value)
-        if record.get("sourceID", "").split("-", 1)[0] in {"bsl", "nawl", "ngsl", "tsl"}:
-            reference_sources.setdefault(key, set()).add(record["sourceID"])
         if (
             record.get("sourceID", "").startswith(("oewn", "grundwortschatz"))
             and record.get("definitions")
@@ -1765,7 +1771,6 @@ def prepare_enrichment(
         }
         score = (
             0 if cefr_entry else 1,
-            -len(reference_sources.get(key, set())),
             0 if parallel else 1,
             translation_entry.get("semanticDistance", 2.0),
             -translation_entry["definitionMatch"],
@@ -1848,6 +1853,49 @@ def prepare_enrichment(
                 issues.append("missing-pronunciation")
             packet["issues"] = sorted(issues)
             selected.append(packet)
+        if all_available:
+            used_ids = {item["id"] for item in current_seed}
+            for level in LEVEL_ORDER:
+                next_sort_order = max(
+                    (
+                        item["sortOrder"]
+                        for item in current_seed
+                        if item["level"] == level
+                    ),
+                    default=0,
+                )
+                numeric_ids = []
+                for item in current_seed:
+                    if item["level"] != level:
+                        continue
+                    match = re.fullmatch(rf"bank-{re.escape(level)}-(\d+)", item["id"])
+                    if match:
+                        numeric_ids.append(int(match.group(1)))
+                next_id_number = max(numeric_ids, default=0)
+                available = sorted(
+                    (
+                        item
+                        for key, item in candidates.items()
+                        if key not in current_keys and item["level"] == level
+                    ),
+                    key=lambda item: item["_score"],
+                )
+                for candidate in available:
+                    item = {
+                        key: value
+                        for key, value in candidate.items()
+                        if key != "_score"
+                    }
+                    next_sort_order += 1
+                    next_id_number += 1
+                    item["id"] = f"bank-{level}-{next_id_number:04d}"
+                    while item["id"] in used_ids:
+                        next_id_number += 1
+                        item["id"] = f"bank-{level}-{next_id_number:04d}"
+                    used_ids.add(item["id"])
+                    item["sortOrder"] = next_sort_order
+                    item["issues"] = []
+                    selected.append(item)
     else:
         for level in LEVEL_ORDER:
             available = sorted(
@@ -2410,6 +2458,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--input-dir", type=Path, required=True)
     prepare_parser.add_argument("--existing-seed", type=Path, required=True)
     prepare_parser.add_argument("--current-seed", type=Path)
+    prepare_parser.add_argument("--all-available", action="store_true")
     prepare_parser.add_argument("--basic", type=int, default=950)
     prepare_parser.add_argument("--intermediate", type=int, default=1600)
     prepare_parser.add_argument("--advanced", type=int, default=2800)
@@ -2485,12 +2534,21 @@ def main(argv: list[str] | None = None) -> int:
         }
         if any(value < 0 for value in quotas.values()):
             raise SourceError("level quotas cannot be negative")
+        if args.all_available and args.current_seed is None:
+            raise SourceError("--all-available requires --current-seed")
+        approved_source_ids = {
+            source["id"]
+            for source in manifest["sources"]
+            if source.get("appUse") == "approved"
+        }
         count = prepare_enrichment(
             args.input_dir,
             args.existing_seed,
             quotas,
             args.output,
             args.current_seed,
+            args.all_available,
+            approved_source_ids,
         )
         print(f"prepared {count} enrichment candidate(s) to {args.output}")
     elif args.command == "build-reviewed":

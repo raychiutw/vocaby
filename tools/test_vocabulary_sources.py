@@ -751,13 +751,15 @@ class VocabularySourcesTests(unittest.TestCase):
                     "canonicalURL": f"https://example.invalid/{source_id}",
                     "license": "Demo license",
                     "licenseURL": "https://example.invalid/license",
-                    "appUse": "reference_only",
+                    "appUse": "approved",
                 }
                 for source_id in (
                     "oewn-2025",
                     "freedict",
                     "cefr",
+                    "cc-cedict-2026-07-11",
                     "cow",
+                    "omw-ili-map",
                     "tatoeba-eng-cmn-2026-07-04",
                 )
             ],
@@ -1568,6 +1570,168 @@ class VocabularySourcesTests(unittest.TestCase):
             )
             self.assertEqual(packet["validationSourceIDs"], ["oewn-2025"])
             self.assertIn("level-evidence-mismatch", packet["issues"])
+
+    def test_prepare_enrichment_all_available_preserves_and_appends(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            lexical_path = input_dir / "oewn-2025.jsonl"
+            lexical = json.loads(lexical_path.read_text().splitlines()[0])
+            appended = {
+                **lexical,
+                "sourceEntryRef": "superb#a",
+                "headword": "superb",
+                "definitions": ["of very high quality"],
+                "examples": ["The team delivered a superb result."],
+                "relatedTerms": ["superb", "very good"],
+                "senseRefs": ["0002-a"],
+            }
+            lexical_path.write_text(
+                lexical_path.read_text()
+                + json.dumps(appended, ensure_ascii=False)
+                + "\n",
+                encoding="utf-8",
+            )
+            freedict_path = input_dir / "freedict.jsonl"
+            freedict = json.loads(freedict_path.read_text().splitlines()[0])
+            freedict_path.write_text(
+                freedict_path.read_text()
+                + json.dumps(
+                    {
+                        **freedict,
+                        "sourceEntryRef": "entry-superb",
+                        "headword": "superb",
+                        "definitions": ["of very high quality"],
+                        "translations": {"zh": ["極好的"]},
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            cefr_path = input_dir / "cefr.jsonl"
+            cefr = json.loads(cefr_path.read_text().splitlines()[0])
+            cefr_path.write_text(
+                cefr_path.read_text()
+                + json.dumps(
+                    {
+                        **cefr,
+                        "sourceEntryRef": "superb#adjective#A2",
+                        "headword": "superb",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"].append(
+                {
+                    "id": "blocked",
+                    "name": "blocked",
+                    "version": "1",
+                    "canonicalURL": "https://example.invalid/blocked",
+                    "license": "Demo license",
+                    "licenseURL": "https://example.invalid/license",
+                    "appUse": "reference_only",
+                }
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            (input_dir / "blocked.jsonl").write_text(
+                json.dumps(
+                    {
+                        **appended,
+                        "sourceID": "blocked",
+                        "sourceEntryRef": "blocked-superb",
+                        "pronunciations": [
+                            {
+                                "notation": "ipa",
+                                "value": "suːˈpɜːb",
+                                "speechLocale": "en-US",
+                                "region": "US",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            current_seed = root / "current-seed.json"
+            current_seed.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-1588",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "very good",
+                            "upgradedExpression": "excellent",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            first = root / "first.jsonl"
+            second = root / "second.jsonl"
+            arguments = (
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--current-seed",
+                str(current_seed),
+                "--all-available",
+                "--output",
+            )
+
+            result = self.run_cli(root, *arguments, str(first), hash_seed="1")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for path in input_dir.glob("*.jsonl"):
+                lines = path.read_text(encoding="utf-8").splitlines()
+                path.write_text(
+                    "".join(line + "\n" for line in reversed(lines)),
+                    encoding="utf-8",
+                )
+            result = self.run_cli(root, *arguments, str(second), hash_seed="2")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+
+            by_target = {
+                item["target"]: item
+                for item in map(json.loads, first.read_text().splitlines())
+            }
+            self.assertEqual(set(by_target), {"excellent", "superb"})
+            self.assertEqual(by_target["excellent"]["id"], "bank-basic-1588")
+            self.assertEqual(by_target["excellent"]["sortOrder"], 1)
+            self.assertEqual(by_target["superb"]["id"], "bank-basic-1589")
+            self.assertEqual(by_target["superb"]["sortOrder"], 2)
+            self.assertNotIn(
+                "blocked", by_target["superb"]["validationSourceIDs"]
+            )
+            self.assertNotIn(
+                "blocked",
+                {ref["sourceID"] for ref in by_target["superb"]["sourceRefs"]},
+            )
+
+    def test_all_available_requires_current_seed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--all-available",
+                "--output",
+                str(root / "queue.jsonl"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--current-seed", result.stderr)
 
     def test_prepare_enrichment_uses_a_lower_cefr_plain_term(self):
         with tempfile.TemporaryDirectory() as directory:
