@@ -12,7 +12,43 @@ struct LibraryListItem: Identifiable, Equatable {
     let progress: WordProgress?
 }
 
+struct LibraryLevelSummary: Equatable, Identifiable {
+    let level: VocabularyLevel
+    let learnedCount: Int
+    let totalCount: Int
+
+    var id: VocabularyLevel { level }
+
+    var progress: Double {
+        guard totalCount > 0 else { return 0 }
+        return Double(learnedCount) / Double(totalCount)
+    }
+}
+
 struct LibraryService {
+    func levelSummaries(
+        from seedItems: [VocabularySeedItem],
+        quizResults: [QuizResult],
+        contentLanguageCode: String,
+        supportLanguageCode: String
+    ) -> [LibraryLevelSummary] {
+        let learnedIDs = Set(quizResults.map(\.itemID))
+        let eligibleItems = seedItems.filter { item in
+            item.contentLanguageCode == contentLanguageCode
+                && item.supportLanguageCodes.contains(supportLanguageCode)
+        }
+
+        return VocabularyLevel.allCases.map { level in
+            let levelItems = eligibleItems.filter { $0.level == level }
+            let learnedCount = levelItems.lazy.filter { learnedIDs.contains($0.id) }.count
+            return LibraryLevelSummary(
+                level: level,
+                learnedCount: learnedCount,
+                totalCount: levelItems.count
+            )
+        }
+    }
+
     func items(
         from seedItems: [VocabularySeedItem],
         progressRows: [WordProgress],
