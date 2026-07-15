@@ -35,3 +35,26 @@ First validator failure, batch `0000`:
 The checkpoint predates exact chunk-output enforcement. Although all batch IDs are consecutive and unique, output item identity and content validation fail at every audited boundary. None of these prefixes may be treated as reviewed, committed as vocabulary content, used for deterministic builds, or promoted.
 
 Processing remains stopped. Regeneration must preserve the ignored input/work root, replace rejected model output only through the hardened checkpointed pipeline, and produce a PASS audit before the next progress commit.
+
+## Regeneration — Boundary 20
+
+Audit timestamp: `2026-07-16T00:12:00+08:00`
+
+Current regeneration status: **PASS THROUGH BATCH `0019` / FULL BANK INCOMPLETE**
+
+The historical FAIL evidence above remains the record for the rejected 100-batch checkpoint. After the hardened trust boundary and bounded singleton retry were committed, regeneration restarted from an empty active output and stopped cleanly after exactly 20 pending outer batches.
+
+| Boundary | Batch prefix | Output items | Expected items | Consecutive unique batch IDs | Input/output item IDs | Schema/content validation | Mismatched batches | Validator errors | Canonical prefix SHA-256 | Result |
+| ---: | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- | --- |
+| 20 | `0000`–`0019` | 400 | 400 | PASS | PASS | PASS | 0 | 0 | `b9ce605a3a876951b7737b264e67fc7d5e6be26bb07c4c7435ad8e06e6039302` | PASS |
+
+Regeneration evidence:
+
+- Enrichment command result: `{"batches": 667, "completed": 20, "processed": 20}`.
+- Active output contains exactly 20 JSONL records and the batch IDs are exactly `0000` through `0019` in order.
+- Every output batch has the same item count and item-ID order as its corresponding immutable input batch.
+- All 400 output items pass `validate_enrichment` against their corresponding input targets.
+- Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order, matching the historical audit method.
+- Finish-enrichment and translation artifacts remain absent; this checkpoint is enrichment-only and is not yet promotable as a full vocabulary bank.
+- The original rejected 100-batch output remains archived with SHA-256 `ed710299c57f3f77d654b94e29cb4b020741937b8973e856ec206013cc7440df`.
+- The interrupted seven-batch regeneration attempt remains archived with SHA-256 `1ad09fbee97ca84b492e28cd022e52820629dd9be2f8f57f6bc136f323eb0898`.
