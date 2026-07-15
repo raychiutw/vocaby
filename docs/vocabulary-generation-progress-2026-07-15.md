@@ -827,3 +827,25 @@ Boundary-667 evidence:
 - Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
 - No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
 - All five rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
+
+## Translation Preparation — Finish Enrichment
+
+Audit timestamp: `2026-07-16T07:05:57+08:00`
+
+Current translation status: **PREPARATION PASS / TRANSLATION NOT STARTED**
+
+The validated 667-batch enrichment bank was passed through `finish-enrichment` exactly once. The command emitted 13,336 enriched draft records covering 17,538 selected senses and prepared 35,076 translation requests; no translation output existed at this checkpoint.
+
+| Artifact | Records | Meaning requests | Example requests | Unique exact IDs | Expected fields/content | Canonical SHA-256 | Result |
+| --- | ---: | ---: | ---: | --- | --- | --- | --- |
+| `enriched.jsonl` | 13,336 | — | — | PASS | PASS | `942b05ab8de9eb205885a48c8b05a46da5a3d19b812fd1bce10e6ab83447afe8` | PASS |
+| `translation-input.jsonl` | 35,076 | 17,538 | 17,538 | PASS | PASS | `ada323af20ebe9e42135ed05fedb7016630536e32280fcf8aed8e0221d8a6dde` | PASS |
+
+Finish-enrichment evidence:
+
+- Command result: `{"items": 13336, "translations": 35076}`.
+- The final enrichment input and output still contain exactly 667 ordered batches and 13,336 matching primary item IDs; canonical enrichment-output SHA-256 remains `f02a6ad9f8c16d95f61a1921da448249ec5577d3d40d4c1842543eb1c1a911e1`.
+- Every enriched record equals its source draft plus an enrichment map whose sense IDs are exact. Every enrichment item contains exactly `id`, `plainExpression`, and `example`, and passes `validate_enrichment` for its target.
+- Translation requests occur in exact draft/sense order as a meaning request followed by an example request. Every request contains exactly `id` and nonempty trimmed `text`; all 35,076 IDs are unique and exact.
+- `enrichment-errors.jsonl` is empty. Translation output and its fingerprint are absent, so the partial translation count is 0.
+- All five rejected output archives remain byte-identical; no build-reviewed or promotion command was run.
