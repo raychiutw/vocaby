@@ -805,3 +805,25 @@ Boundary-660 evidence:
 - Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
 - No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
 - All five rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
+
+## Regeneration — Boundary 667
+
+Audit timestamp: `2026-07-16T06:59:52+08:00`
+
+Current regeneration status: **PASS THROUGH BATCH `0666` / ENRICHMENT BANK COMPLETE**
+
+The validated boundary-660 prefix was preserved. One bounded enrichment-only invocation processed exactly the final 7 pending outer batches and stopped cleanly at all 667 completed batches. This completes the local enrichment output only; finish-enrichment, translation, review, build, and promotion remain deliberately unrun.
+
+| Boundary | Batch prefix | Output items | Expected items | Consecutive unique batch IDs | Input/output item IDs | Schema/content validation | Mismatched batches | Validator errors | Canonical prefix SHA-256 | Result |
+| ---: | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- | --- |
+| 667 | `0000`–`0666` | 13,336 | 13,336 | PASS | PASS | PASS | 0 | 0 | `f02a6ad9f8c16d95f61a1921da448249ec5577d3d40d4c1842543eb1c1a911e1` | PASS |
+
+Boundary-667 evidence:
+
+- Enrichment command result: `{"batches": 667, "completed": 667, "processed": 7}`.
+- Active output contains exactly 667 JSONL records and the batch IDs are exactly `0000` through `0666` in order.
+- Every output batch has the same item count and item-ID order as its corresponding immutable input batch; final partial batch `0666` contains its expected 16 items.
+- All 13,336 output items pass `validate_enrichment` against their corresponding input targets.
+- Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
+- No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
+- All five rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
