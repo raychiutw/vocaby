@@ -849,3 +849,24 @@ Finish-enrichment evidence:
 - Translation requests occur in exact draft/sense order as a meaning request followed by an example request. Every request contains exactly `id` and nonempty trimmed `text`; all 35,076 IDs are unique and exact.
 - `enrichment-errors.jsonl` is empty. Translation output and its fingerprint are absent, so the partial translation count is 0.
 - All five rejected output archives remain byte-identical; no build-reviewed or promotion command was run.
+
+## Rejected Translation Attempt — Apple Timeout
+
+Audit timestamp: `2026-07-16T07:17:16+08:00`
+
+Attempt status: **FAIL / CHECKPOINT PRESERVED / NOT REVIEWABLE**
+
+The sole `translate-local --workers 2` invocation checkpointed one 200-item chunk, then a sibling chunk failed with `vocabulary_sources.SourceError: Apple translate timed out after 180 seconds`. The first translation-input chunk at indexes 0–199 timed out; the independently completed chunk at indexes 200–399 is the only output retained. No retry was started.
+
+The failed future caused the main thread to enter `ThreadPoolExecutor.shutdown(wait=True)` while queued helper work continued without being consumed or checkpointed. A process sample confirmed the main thread blocked in `PyThreadHandleObject_join`. To honor fail-fast handling and avoid untracked background work, the invocation was interrupted; it exited with status 130, and all translation helpers stopped.
+
+| Translation input | Checkpointed output | Remaining | Unique exact input IDs | Output fields/nonempty text | Fingerprint | Canonical checkpoint SHA-256 | Result |
+| ---: | ---: | ---: | --- | --- | --- | --- | --- |
+| 35,076 | 200 | 34,876 | PASS | PASS | PASS | `0a92feaab5e889e1403b753d150105529b363fc6aa0822609118f6eff236b8da` | FAIL |
+
+Rejected translation evidence:
+
+- The preserved output contains exactly the 200 request IDs at input indexes 200 through 399, sorted uniquely by ID as required by the checkpoint writer. Every record contains exactly `id` and nonempty trimmed `text`.
+- The fingerprint matches translation-input SHA-256 `ada323af20ebe9e42135ed05fedb7016630536e32280fcf8aed8e0221d8a6dde` and Apple helper source SHA-256 `611a2d5b4b6d7afcd5585066c67f53cbbcec27c376a9b217f84a0c665044b887`.
+- The 200 checkpointed drafts remain ignored maintainer output; they are not editorially approved and cannot be passed to build-reviewed or promotion.
+- No translation process remains live. The checkpoint and fingerprint were preserved byte-for-byte, and no finish-enrichment, translation-input, enrichment, or rejected-output artifact was cleared or rewritten after failure.
