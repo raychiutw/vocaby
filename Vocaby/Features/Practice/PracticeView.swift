@@ -192,7 +192,7 @@ struct PracticeCenterView: View {
                             Text("practice.center.newRun")
                                 .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.plain)
                     }
                 }
             } else {
@@ -210,10 +210,6 @@ struct PracticeCenterView: View {
     private var setupForm: some View {
         Form {
             Section {
-                LabeledContent("settings.level.label") {
-                    Text(levelTitleKey)
-                }
-
                 Picker("practice.center.mode.label", selection: $configuration.mode) {
                     ForEach(PracticeMode.allCases) { mode in
                         Text(modeTitleKey(for: mode)).tag(mode)
@@ -253,14 +249,6 @@ struct PracticeCenterView: View {
                         .foregroundStyle(AppTheme.wrongRed)
                 }
             }
-        }
-    }
-
-    private var levelTitleKey: LocalizedStringKey {
-        switch selectedLevel {
-        case .basic: "settings.level.basic"
-        case .intermediate: "settings.level.intermediate"
-        case .advanced: "settings.level.advanced"
         }
     }
 
@@ -340,6 +328,7 @@ struct QuizRunView<Completion: View>: View {
     @State private var deadline: Date
     @State private var errorMessage: String?
     @State private var speechSynthesizer = AVSpeechSynthesizer()
+    @FocusState private var isSpellingFocused: Bool
 
     init<RunID: Hashable>(
         runID: RunID,
@@ -376,6 +365,7 @@ struct QuizRunView<Completion: View>: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
             if runState.currentFeedback != nil {
                 Button {
@@ -405,13 +395,14 @@ struct QuizRunView<Completion: View>: View {
 
                 Spacer()
 
-                if runState.currentFeedback == nil {
+                if runState.currentFeedback == nil, configuration.timeLimitSeconds > 0 {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let remaining = max(0, Int(ceil(deadline.timeIntervalSince(context.date))))
 
                         HStack(spacing: 4) {
-                            Text("practice.timer.label")
-                            Text("\(remaining)")
+                            Image(systemName: "clock")
+                                .accessibilityHidden(true)
+                            Text(formattedRemainingTime(remaining))
                                 .monospacedDigit()
                         }
                         .font(.subheadline)
@@ -421,6 +412,7 @@ struct QuizRunView<Completion: View>: View {
                         .accessibilityValue(Text("\(remaining) ") + Text("practice.timer.seconds"))
                         .onChange(of: remaining, initial: true) { _, remaining in
                             if remaining == 0 {
+                                isSpellingFocused = false
                                 _ = runState.timeout()
                             }
                         }
@@ -436,45 +428,50 @@ struct QuizRunView<Completion: View>: View {
                     Button {
                         speak(question)
                     } label: {
-                        Label("practice.audio.replay", systemImage: "speaker.wave.2")
+                        Image(systemName: "speaker.wave.3.fill")
+                            .font(.title2)
                             .frame(minWidth: 44, minHeight: 44)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
                     .accessibilityLabel(Text("practice.audio.replay"))
                 } else {
-                    Text(verbatim: question.prompt)
-                        .font(.title2.bold())
+                    HStack(alignment: .top, spacing: 12) {
+                        Text(verbatim: question.prompt)
+                            .font(.title2.bold())
 
-                    if question.mode != .spelling {
-                        Button {
-                            speak(question)
-                        } label: {
-                            Label("practice.audio.play", systemImage: "speaker.wave.2")
-                                .frame(minWidth: 44, minHeight: 44)
+                        Spacer(minLength: 8)
+
+                        if question.mode != .spelling {
+                            Button {
+                                speak(question)
+                            } label: {
+                                Image(systemName: "speaker.wave.2")
+                                    .frame(minWidth: 44, minHeight: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(Text("practice.audio.play"))
                         }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel(Text("practice.audio.play"))
                     }
                 }
             }
             .padding(.vertical, 4)
-        }
 
-        if question.mode == .spelling {
-            Section {
+            if question.mode == .spelling {
                 Button {
                     speak(question)
                 } label: {
-                    Label("practice.spelling.audioHint", systemImage: "speaker.wave.2")
+                    Image(systemName: "speaker.wave.2")
                         .frame(minWidth: 44, minHeight: 44)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
                 .accessibilityLabel(Text("practice.spelling.audioHint"))
 
                 TextField("practice.spelling.placeholder", text: $spellingText)
+                    .keyboardType(.asciiCapable)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.done)
+                    .focused($isSpellingFocused)
                     .disabled(runState.currentFeedback != nil)
                     .accessibilityLabel(Text("practice.mode.spelling.prompt"))
                     .onSubmit(submitSpelling)
@@ -485,15 +482,14 @@ struct QuizRunView<Completion: View>: View {
                         .prominentActionStyle(tint: tint)
                         .disabled(spellingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-            }
-        } else {
-            Section {
+            } else {
                 ForEach(question.options, id: \.self) { option in
                     Button {
                         _ = runState.submit(option)
                     } label: {
                         HStack(spacing: 12) {
                             Text(verbatim: option)
+                                .foregroundStyle(optionColor(for: option, question: question))
                                 .multilineTextAlignment(.leading)
                                 .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 8)
@@ -502,16 +498,13 @@ struct QuizRunView<Completion: View>: View {
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.bordered)
-                    .tint(optionTint(for: option, question: question))
+                    .buttonStyle(.plain)
                     .disabled(runState.currentFeedback != nil)
                     .accessibilityLabel(Text(verbatim: option))
                 }
             }
-        }
 
-        if let feedback = runState.currentFeedback {
-            Section {
+            if let feedback = runState.currentFeedback {
                 Label {
                     Text(String(localized: feedback.timedOut
                         ? "practice.timeUp"
@@ -523,22 +516,24 @@ struct QuizRunView<Completion: View>: View {
                 .foregroundStyle(feedback.wasCorrect ? AppTheme.correctGreen : AppTheme.wrongRed)
 
                 if !feedback.wasCorrect {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("practice.correctAnswer.label")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(verbatim: feedback.question.correctAnswer)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(verbatim: feedback.question.item.upgradedExpression)
+                            .font(.title3.bold())
+                        Text(verbatim: localized(
+                            feedback.question.selectedSense.meaning,
+                            languageCode: feedback.question.supportLanguageCode
+                        ))
+                        .fontWeight(.semibold)
+                        Text(verbatim: feedback.question.selectedSense.example.text)
+                        Text(verbatim: localized(
+                            feedback.question.selectedSense.example.translation,
+                            languageCode: feedback.question.supportLanguageCode
+                        ))
+                        .foregroundStyle(.secondary)
                     }
+                    .padding(.vertical, 4)
                 }
             }
-
-            VocabularyEntryContentView(
-                item: feedback.question.item,
-                senseID: feedback.question.senseID,
-                supportLanguageCode: feedback.question.supportLanguageCode,
-                showsAdditionalSenses: true,
-                synthesizer: speechSynthesizer
-            )
         }
     }
 
@@ -549,8 +544,9 @@ struct QuizRunView<Completion: View>: View {
             : runState.firstAttempts.filter { !$0.wasCorrect }
 
         Section {
-            Text("practice.result.title")
+            Label("practice.result.title", systemImage: "checkmark.circle.fill")
                 .font(.headline)
+                .foregroundStyle(tint)
         }
 
         if !wrongAttempts.isEmpty {
@@ -561,11 +557,13 @@ struct QuizRunView<Completion: View>: View {
                             .foregroundStyle(AppTheme.wrongRed)
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 4) {
-                            if !attempt.question.prompt.isEmpty {
-                                Text(verbatim: attempt.question.prompt)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Text(verbatim: attempt.question.correctAnswer)
+                            Text(verbatim: attempt.question.item.upgradedExpression)
+                                .fontWeight(.semibold)
+                            Text(verbatim: localized(
+                                attempt.question.selectedSense.meaning,
+                                languageCode: attempt.question.supportLanguageCode
+                            ))
+                            .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -602,11 +600,19 @@ struct QuizRunView<Completion: View>: View {
         }
     }
 
-    private func optionTint(for option: String, question: QuizQuestion) -> Color {
-        guard let feedback = runState.currentFeedback else { return tint }
+    private func optionColor(for option: String, question: QuizQuestion) -> Color {
+        guard let feedback = runState.currentFeedback else { return .primary }
         if option == question.correctAnswer { return AppTheme.correctGreen }
         if !feedback.wasCorrect, option == feedback.submittedAnswer { return AppTheme.wrongRed }
-        return tint
+        return .secondary
+    }
+
+    private func formattedRemainingTime(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private func localized(_ values: [String: String], languageCode: String) -> String {
+        values[languageCode] ?? values["en"] ?? values.values.first ?? ""
     }
 
     private func promptKey(for mode: PracticeMode) -> LocalizedStringKey {
@@ -621,6 +627,7 @@ struct QuizRunView<Completion: View>: View {
 
     private func submitSpelling() {
         guard !spellingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        isSpellingFocused = false
         _ = runState.submit(spellingText)
     }
 
@@ -636,6 +643,7 @@ struct QuizRunView<Completion: View>: View {
 
         runState.advance()
         spellingText = ""
+        isSpellingFocused = false
         errorMessage = nil
         resetDeadline()
     }
@@ -643,17 +651,20 @@ struct QuizRunView<Completion: View>: View {
     private func startRetry() {
         guard runState.startRetry() else { return }
         spellingText = ""
+        isSpellingFocused = false
         errorMessage = nil
         resetDeadline()
     }
 
     private func resetDeadline() {
+        guard configuration.timeLimitSeconds > 0 else { return }
         deadline = Date().addingTimeInterval(TimeInterval(configuration.timeLimitSeconds))
     }
 
     private func resetRun() {
         runState.reset(with: questions)
         spellingText = ""
+        isSpellingFocused = false
         errorMessage = nil
         resetDeadline()
     }
@@ -767,14 +778,13 @@ struct DailyPracticeView: View {
     @ViewBuilder
     private var completionContent: some View {
         Section {
-            Label("practice.completed", systemImage: "checkmark.circle.fill")
-                .font(.headline)
-                .foregroundStyle(AppTheme.accent)
+            Text(completionSummary)
+                .font(.title3.weight(.semibold))
 
-            LabeledContent("practice.completed.count", value: "\(session.completedItemCount)")
-            LabeledContent("practice.correct.count", value: "\(session.correctItemCount)")
-            LabeledContent("practice.review.scheduled", value: "\(scheduledReviewCount)")
-            LabeledContent("streak.label", value: "\(streakCount)")
+            if scheduledReviewCount > 0 {
+                Text(scheduledReviewSummary)
+                    .foregroundStyle(.secondary)
+            }
         }
 
         Section {
@@ -786,7 +796,6 @@ struct DailyPracticeView: View {
                     Label("practice.review.button", systemImage: "arrow.triangle.2.circlepath")
                         .frame(maxWidth: .infinity)
                 }
-                .prominentActionStyle(tint: AppTheme.accent)
                 .controlSize(.large)
             }
 
@@ -794,6 +803,21 @@ struct DailyPracticeView: View {
                 dismiss()
             }
         }
+    }
+
+    private var completionSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "practice.completion.summary.format"),
+            session.correctItemCount,
+            session.completedItemCount
+        )
+    }
+
+    private var scheduledReviewSummary: String {
+        String.localizedStringWithFormat(
+            String(localized: "practice.completion.scheduled.format"),
+            scheduledReviewCount
+        )
     }
 
     private func persistAnswer(_ attempt: QuizAttempt) throws {

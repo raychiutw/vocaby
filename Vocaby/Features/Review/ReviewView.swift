@@ -161,9 +161,6 @@ private struct ReviewSessionView: View {
     @ViewBuilder
     private var completionContent: some View {
         Section {
-            Text("review.completed")
-                .font(.headline)
-
             Button("common.done") {
                 dismiss()
             }

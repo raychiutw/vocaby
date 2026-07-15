@@ -1169,6 +1169,38 @@
         }
       }
     },
+    "practice.completion.scheduled.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld expressions scheduled for review."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已安排 %lld 個表達進入複習。"
+          }
+        }
+      }
+    },
+    "practice.completion.summary.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld correct."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "答對 %lld／%lld 題。"
+          }
+        }
+      }
+    },
     "practice.correct" : {
       "localizations" : {
         "en" : {
@@ -1366,13 +1398,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Results"
+            "value" : "Practice complete"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "練習結果"
+            "value" : "練習完成"
           }
         }
       }
