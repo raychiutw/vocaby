@@ -35,6 +35,15 @@ struct LibraryView: View {
         )
     }
 
+    private var levelSummaries: [LibraryLevelSummary] {
+        libraryService.levelSummaries(
+            from: seedItems,
+            quizResults: quizResults,
+            contentLanguageCode: contentLanguageCode,
+            supportLanguageCode: supportLanguageCode
+        )
+    }
+
     private var emptyMessageKey: LocalizedStringKey {
         if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return "library.empty.search"
@@ -82,6 +91,14 @@ struct LibraryView: View {
 
     private var libraryList: some View {
         List {
+            if !seedItems.isEmpty {
+                Section("my.progress.title") {
+                    ForEach(levelSummaries) { summary in
+                        MyLevelProgressRow(summary: summary)
+                    }
+                }
+            }
+
             Picker("library.scope.accessibility", selection: $selectedScope) {
                 Text("library.scope.learned").tag(LibraryScope.learned)
                 Text("library.scope.saved").tag(LibraryScope.saved)
@@ -156,6 +173,47 @@ struct LibraryView: View {
             seedItem: seedItem,
             progress: progressRows.first { $0.itemID == itemID }
         )
+    }
+}
+
+private struct MyLevelProgressRow: View {
+    let summary: LibraryLevelSummary
+
+    private var levelTitleKey: LocalizedStringKey {
+        switch summary.level {
+        case .basic: "settings.level.basic"
+        case .intermediate: "settings.level.intermediate"
+        case .advanced: "settings.level.advanced"
+        }
+    }
+
+    private var countText: String {
+        String.localizedStringWithFormat(
+            String(localized: "my.progress.count.format"),
+            summary.learnedCount,
+            summary.totalCount
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(levelTitleKey)
+                    .font(.body.weight(.semibold))
+                Spacer(minLength: 12)
+                Text(countText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+
+            ProgressView(value: summary.progress)
+                .tint(Color("Accent"))
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(levelTitleKey))
+        .accessibilityValue(Text(countText))
     }
 }
 

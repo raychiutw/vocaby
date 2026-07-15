@@ -21,7 +21,8 @@ Vocaby should feel native, quiet, and habit-forming. It borrows the discipline o
 ## Platform Rules
 
 - Use SwiftUI-native components before custom controls.
-- Use `TabView` for the three top-level areas: Today, Review, Library.
+- Use `TabView` for the three top-level areas: Today, Review, My.
+- The tab bar remains fully visible while scrolling; on iOS 26 and later use `.tabBarMinimizeBehavior(.never)`.
 - Use a `NavigationStack` inside each tab for detail flows.
 - Use toolbar buttons for settings and contextual actions. Do not put action buttons inside the tab bar.
 - Use sheets for Settings and focused setup flows.
@@ -105,7 +106,8 @@ App
     ├── Review
     │   ├── Due queue
     │   └── Review session
-    └── Library
+    └── My
+        ├── Vocabulary progress by level
         ├── Learned list
         ├── Saved list
         ├── Search results
@@ -116,9 +118,9 @@ Tab labels:
 
 - Today: `calendar` or `sun.max`.
 - Review: `arrow.triangle.2.circlepath` or `clock.arrow.circlepath`.
-- Library: `books.vertical` or `book.closed`.
+- My: `person.crop.circle`.
 
-Do not add a Progress tab in v1. Progress belongs inside Today and Library.
+Do not add a Progress tab in v1. Progress belongs inside Today and My.
 
 ## Screen Hierarchy
 
@@ -177,12 +179,13 @@ Practice Center remains a destination under Today, not a fourth tab.
 3. Ordered due list preview when helpful.
 4. Empty state when nothing is due.
 
-### Library
+### My
 
-1. Search.
-2. Segmented control for Learned and Saved.
-3. List rows with upgraded expression, plain expression, and small status metadata.
-4. Word detail with save toggle and review stats.
+1. Vocabulary progress for Basic, Intermediate, and Advanced.
+2. Search.
+3. Segmented control for Learned and Saved.
+4. List rows with upgraded expression, plain expression, and small status metadata.
+5. Word detail with save toggle and review stats.
 
 ## Components
 
@@ -301,15 +304,16 @@ Don't:
 - Keep shared widget data in an App Group snapshot, not in SwiftData.
 - The app is the only writer of widget snapshots.
 - Use previews for light mode, dark mode, zh-Hant, English, and accessibility text sizes.
-- UI tests should include at least Today, Practice, Review empty state, Library empty state, and Settings sheet.
+- UI tests should include at least Today, Practice, Review empty state, My empty state, and Settings sheet.
 
 ## Decisions Log
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
 | 2026-07-10 | Initial design system created | Established the native iOS visual source of truth before plan design review. |
-| 2026-07-10 | Use native TabView for Today, Review, Library | Current iOS patterns support top-level tabs when they represent stable app areas. |
+| 2026-07-10 | Use native TabView for Today, Review, My | Current iOS patterns support top-level tabs when they represent stable app areas. |
 | 2026-07-10 | Use Apple platform typography instead of imported fonts | Vocaby is a native iOS app; platform text styles give Dynamic Type, localization, and accessibility behavior by default. |
 | 2026-07-10 | Use restrained teal accent with system surfaces | Keeps the app calm and learning-focused while avoiding generic purple/blue AI palettes. |
 | 2026-07-10 | Require explicit answered state with Next action | Prevents quiz auto-advance from hiding feedback before the learner can read it. |
 | 2026-07-10 | Replace the multiple-choice-only quiz scope with four concrete modes plus mixed | The user approved expression, meaning, listening, and spelling practice with a mixed option. |
+| 2026-07-15 | Rename Library to My, show three per-level learned/total summaries, and keep the tab bar fully visible | The user approved a personal progress destination and a non-minimizing native tab bar. |

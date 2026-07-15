@@ -566,13 +566,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Library filter"
+            "value" : "My filter"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "資料庫篩選"
+            "value" : "我的篩選"
           }
         }
       }
@@ -630,13 +630,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Library"
+            "value" : "My"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "資料庫"
+            "value" : "我的"
           }
         }
       }
@@ -646,13 +646,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Library"
+            "value" : "My"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "資料庫"
+            "value" : "我的"
           }
         }
       }
@@ -669,6 +669,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已練習 %lld／%lld"
+          }
+        }
+      }
+    },
+    "my.progress.count.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld learned"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已學習 %lld／%lld"
+          }
+        }
+      }
+    },
+    "my.progress.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vocabulary progress"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "詞彙進度"
           }
         }
       }

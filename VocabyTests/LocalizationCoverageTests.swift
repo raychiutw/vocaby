@@ -161,6 +161,39 @@ final class LocalizationCoverageTests: XCTestCase {
         }
     }
 
+    func testMyVocabularyProgressCopyIsLocalized() throws {
+        let catalog = try loadCatalog()
+        let expected: [String: (en: String, zhHant: String)] = [
+            "library.tab.title": ("My", "我的"),
+            "library.title": ("My", "我的"),
+            "library.scope.accessibility": ("My filter", "我的篩選"),
+            "my.progress.title": ("Vocabulary progress", "詞彙進度"),
+            "my.progress.count.format": ("%lld of %lld learned", "已學習 %lld／%lld")
+        ]
+
+        for (key, value) in expected {
+            XCTAssertEqual(catalog.strings[key]?.localizations["en"]?.stringUnit.value, value.en, key)
+            XCTAssertEqual(catalog.strings[key]?.localizations["zh-Hant"]?.stringUnit.value, value.zhHant, key)
+        }
+    }
+
+    func testMyTabUsesProfileIconAndNeverMinimizes() throws {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let projectRoot = testFile.deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: projectRoot
+                .appendingPathComponent("Vocaby")
+                .appendingPathComponent("Features")
+                .appendingPathComponent("Root")
+                .appendingPathComponent("RootTabView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertEqual(source.components(separatedBy: "systemImage: \"person.crop.circle\"").count - 1, 2)
+        XCTAssertTrue(source.contains(".tabBarMinimizeBehavior(.never)"))
+        XCTAssertFalse(source.contains(".tabBarMinimizeBehavior(.onScrollDown)"))
+    }
+
     private func loadCatalog() throws -> StringCatalog {
         let testFile = URL(fileURLWithPath: #filePath)
         let projectRoot = testFile
