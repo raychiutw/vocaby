@@ -535,6 +535,40 @@ def deterministic_enrichment_repairs(work_dir: Path) -> dict[str, dict]:
     return repairs
 
 
+def deterministic_input_enrichment(input_items: list[dict]) -> list[dict]:
+    outputs = []
+    for input_item in input_items:
+        try:
+            target = input_item["target"]
+            item = {
+                "id": input_item["id"],
+                "plainExpression": fallback_plain(
+                    {
+                        "target": target,
+                        "plain": "",
+                        "candidatePlainExpressions": input_item.get(
+                            "plainCandidates", []
+                        ),
+                        "definition": input_item.get("meaning", ""),
+                    }
+                ),
+                "example": source_example(target, input_item),
+            }
+            validate_enrichment(item, target)
+        except (
+            AttributeError,
+            IndexError,
+            KeyError,
+            TypeError,
+            sources.SourceError,
+        ) as error:
+            raise sources.SourceError(
+                f"invalid deterministic safety fallback for {input_item.get('id')}"
+            ) from error
+        outputs.append(item)
+    return outputs
+
+
 def validate_enrichment_batch(
     batch: dict,
     expected: dict,
@@ -664,6 +698,8 @@ def run_local_enrichment(
                         if value.strip()
                     ]
                 except sources.SourceError as error:
+                    if "Detected content likely to be unsafe" in str(error):
+                        return deterministic_input_enrichment(input_items)
                     if len(input_items) < 2 or "context window size" not in str(error):
                         raise
                 else:

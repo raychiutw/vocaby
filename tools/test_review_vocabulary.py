@@ -116,6 +116,128 @@ class ReviewVocabularyTests(unittest.TestCase):
             output = work / "enrichment-output.jsonl"
             self.assertFalse(output.exists() and review_vocabulary.sources.read_jsonl(output))
 
+    def test_run_local_enrichment_uses_input_fallback_after_safety_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch = {
+                "batchID": "0000",
+                "items": [
+                    {
+                        "id": "bank-basic-0001::sense-1",
+                        "target": "excellent",
+                        "partOfSpeech": "adjective",
+                        "meaning": "extremely good",
+                        "plainCandidates": ["very good"],
+                        "exampleCandidate": "She made an excellent choice",
+                    },
+                    {
+                        "id": "bank-basic-0002::sense-1",
+                        "target": "murder",
+                        "partOfSpeech": "noun",
+                        "meaning": "unlawful killing",
+                        "plainCandidates": [],
+                        "exampleCandidate": "The detective investigated the murder",
+                    },
+                ],
+            }
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            calls = []
+
+            def helper(_executable, _mode, payload):
+                calls.append(json.loads(payload))
+                raise review_vocabulary.sources.SourceError(
+                    "Apple enrich failed: error: Detected content likely to be unsafe"
+                )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
+                )
+
+            self.assertEqual(result, {"batches": 1, "completed": 1, "processed": 1})
+            self.assertEqual(len(calls), 1)
+            output = review_vocabulary.sources.read_jsonl(
+                work / "enrichment-output.jsonl"
+            )
+            self.assertEqual(
+                output,
+                [
+                    {
+                        "batchID": "0000",
+                        "items": [
+                            {
+                                "id": "bank-basic-0001::sense-1",
+                                "plainExpression": "very good",
+                                "example": "She made an excellent choice.",
+                            },
+                            {
+                                "id": "bank-basic-0002::sense-1",
+                                "plainExpression": "unlawful killing",
+                                "example": "The detective investigated the murder.",
+                            },
+                        ],
+                    }
+                ],
+            )
+            for item, input_item in zip(
+                output[0]["items"], batch["items"], strict=True
+            ):
+                review_vocabulary.validate_enrichment(item, input_item["target"])
+
+    def test_run_local_enrichment_fails_closed_when_safety_fallback_is_invalid(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch = {
+                "batchID": "0000",
+                "items": [
+                    {
+                        "id": "bank-basic-0001::sense-1",
+                        "target": "murder",
+                        "partOfSpeech": "",
+                        "meaning": "unlawful killing",
+                        "plainCandidates": [],
+                        "exampleCandidate": "",
+                    }
+                ],
+            }
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            calls = []
+
+            def helper(_executable, _mode, payload):
+                calls.append(json.loads(payload))
+                raise review_vocabulary.sources.SourceError(
+                    "Apple enrich failed: error: Detected content likely to be unsafe"
+                )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                with self.assertRaisesRegex(
+                    review_vocabulary.sources.SourceError,
+                    "invalid deterministic safety fallback",
+                ):
+                    review_vocabulary.run_local_enrichment(
+                        work, root / "helper.swift", 1
+                    )
+
+            self.assertEqual(len(calls), 1)
+            output = work / "enrichment-output.jsonl"
+            self.assertFalse(output.exists() and review_vocabulary.sources.read_jsonl(output))
+
     def test_run_local_enrichment_retries_a_transient_invalid_singleton_id(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
