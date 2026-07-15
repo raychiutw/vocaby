@@ -52,16 +52,103 @@ class ReviewVocabularyTests(unittest.TestCase):
                 (output_work / "translation-input.jsonl").write_text("", encoding="utf-8")
                 return {"items": 2, "translations": 0}
 
-            with mock.patch.object(review_vocabulary, "compile_apple_helper"), mock.patch.object(
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
                 review_vocabulary, "run_helper", side_effect=helper
-            ), mock.patch.object(review_vocabulary, "finish_enrichment", side_effect=finish):
-                result = review_vocabulary.run_local_services(work, root / "helper.swift", 1)
+            ), mock.patch.object(
+                review_vocabulary,
+                "finish_enrichment",
+                side_effect=finish,
+            ), mock.patch.object(
+                review_vocabulary,
+                "run_local_translation",
+                return_value=3,
+            ) as translate:
+                result = review_vocabulary.run_local_services(
+                    work, root / "helper.swift", 2
+                )
 
-            self.assertEqual(result, {"batches": 2, "items": 2, "translations": 0})
+            self.assertEqual(
+                result, {"batches": 2, "items": 2, "translations": 3}
+            )
+            translate.assert_called_once_with(work, root / "helper.swift", 2)
             self.assertEqual(
                 [json.loads(payload)["batchID"] for mode, payload in calls if mode == "enrich"],
                 ["batch-2"],
             )
+
+    def test_run_local_translation_resumes_parallel_chunks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            requests = [
+                {"id": f"segment-{index:03d}", "text": "text"}
+                for index in range(401)
+            ]
+            (work / "translation-input.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in requests),
+                encoding="utf-8",
+            )
+            (work / "translation-output.jsonl").write_text(
+                json.dumps({"id": "segment-000", "text": "done"}) + "\n",
+                encoding="utf-8",
+            )
+            calls = []
+
+            def helper(_executable, mode, payload):
+                self.assertEqual(mode, "translate")
+                chunk = [json.loads(line) for line in payload.splitlines()]
+                calls.append({item["id"] for item in chunk})
+                return "".join(
+                    json.dumps({"id": item["id"], "text": "translated"}) + "\n"
+                    for item in chunk
+                )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                count = review_vocabulary.run_local_translation(
+                    work, root / "helper.swift", 2
+                )
+
+            self.assertEqual(count, 401)
+            self.assertEqual(len(calls), 2)
+            self.assertNotIn("segment-000", set().union(*calls))
+            completed = review_vocabulary.sources.read_jsonl(
+                work / "translation-output.jsonl"
+            )
+            self.assertEqual(
+                {item["id"] for item in completed},
+                {item["id"] for item in requests},
+            )
+
+    def test_run_local_translation_rejects_incomplete_parallel_ids(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            (work / "translation-input.jsonl").write_text(
+                json.dumps({"id": "segment-001", "text": "text"}) + "\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", return_value=""
+            ):
+                with self.assertRaisesRegex(
+                    review_vocabulary.sources.SourceError, "incomplete IDs"
+                ):
+                    review_vocabulary.run_local_translation(
+                        work, root / "helper.swift", 2
+                    )
+
+            self.assertFalse((work / "translation-output.jsonl").exists())
 
     def test_validate_enrichment_requires_the_target_in_a_full_sentence(self):
         item = {

@@ -546,13 +546,11 @@ def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict
                 )
         checkpoint()
         finish = finish_enrichment(work_dir)
-        translation_payload = (work_dir / "translation-input.jsonl").read_text(encoding="utf-8")
-        translated = run_helper(executable, "translate", translation_payload)
-        sources.atomic_write(work_dir / "translation-output.jsonl", translated)
+        translated = run_local_translation(work_dir, swift_source, workers)
     return {
         "batches": len(batches),
         "items": finish["items"],
-        "translations": finish["translations"],
+        "translations": translated,
     }
 
 
