@@ -169,3 +169,25 @@ Boundary-120 evidence:
 - Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
 - No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
 - Both rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
+
+## Regeneration — Boundary 140
+
+Audit timestamp: `2026-07-16T01:37:19+08:00`
+
+Current regeneration status: **PASS THROUGH BATCH `0139` / FULL BANK INCOMPLETE**
+
+The validated boundary-120 prefix was preserved. One bounded enrichment-only invocation processed exactly the next 20 pending outer batches and stopped cleanly at 140 completed batches.
+
+| Boundary | Batch prefix | Output items | Expected items | Consecutive unique batch IDs | Input/output item IDs | Schema/content validation | Mismatched batches | Validator errors | Canonical prefix SHA-256 | Result |
+| ---: | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- | --- |
+| 140 | `0000`–`0139` | 2,800 | 2,800 | PASS | PASS | PASS | 0 | 0 | `6218243bb8230286e4eac05bd67c90a293fedbebd20da3b1428edab3cb5a0f49` | PASS |
+
+Boundary-140 evidence:
+
+- Enrichment command result: `{"batches": 667, "completed": 140, "processed": 20}`.
+- Active output contains exactly 140 JSONL records and the batch IDs are exactly `0000` through `0139` in order.
+- Every output batch has the same item count and item-ID order as its corresponding immutable input batch.
+- All 2,800 output items pass `validate_enrichment` against their corresponding input targets.
+- Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
+- No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
+- Both rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
