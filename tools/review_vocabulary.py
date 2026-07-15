@@ -10,6 +10,7 @@ import json
 import re
 import subprocess
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 try:
@@ -65,6 +66,13 @@ def prepare_review(
                     "level": packet["level"],
                     "sortOrder": packet["sortOrder"],
                     "reason": "no-verified-pronunciation",
+                    "sourceIDs": sorted(
+                        {
+                            ref["sourceID"]
+                            for ref in packet.get("sourceRefs", [])
+                            if ref.get("sourceID")
+                        }
+                    ),
                 }
             )
             continue
@@ -439,17 +447,36 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
                     "validationSourceIDs": validation_ids,
                     "cefr": {"basic": "A2", "intermediate": "B2", "advanced": "C1"}[level],
                     "reviewStatus": "approved",
-                    "englishReviewer": "codex-content-review-2026-07-11",
-                    "zhHantReviewer": "codex-content-review-2026-07-11",
+                    "englishReviewer": "codex-content-review-2026-07-15",
+                    "zhHantReviewer": "codex-content-review-2026-07-15",
+                    "reviewedAt": "2026-07-15",
                 }
             )
 
     sources.atomic_write(output, jsonl(reviewed))
     rejections = sources.read_jsonl(work_dir / "rejections.jsonl")
+    reason_counts = Counter(item["reason"] for item in rejections)
+    source_counts = Counter(
+        source_id
+        for item in rejections
+        for source_id in item.get("sourceIDs", [])
+    )
     report = [
         "# Vocabulary review rejections",
         "",
-        f"Rejected {len(rejections)} source slots because no verified IPA or composable CMUdict pronunciation was available.",
+        f"Selected: {len(reviewed)}",
+        f"Rejected: {len(rejections)}",
+        f"Total candidates: {len(reviewed) + len(rejections)}",
+        "",
+        "## Rejections by reason",
+        "",
+        *(f"- {reason}: {count}" for reason, count in sorted(reason_counts.items())),
+        "",
+        "## Rejections by source",
+        "",
+        *(f"- {source_id}: {count}" for source_id, count in sorted(source_counts.items())),
+        "",
+        "## Rejected candidates",
         "",
         "| ID | Level | Expression | Reason |",
         "| --- | --- | --- | --- |",

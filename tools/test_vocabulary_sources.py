@@ -1482,11 +1482,58 @@ class VocabularySourcesTests(unittest.TestCase):
                     "quiz",
                 },
             )
-            provenance_item = json.loads(provenance.read_text())["items"][0]
+            provenance_data = json.loads(provenance.read_text())
+            self.assertEqual(provenance_data["bankVersion"], "2026.07.4")
+            self.assertEqual(
+                provenance_data["items"][0]["reviewedAt"], "2026-07-15"
+            )
+            provenance_item = provenance_data["items"][0]
             self.assertEqual(provenance_item["sourceIDs"], ["demo"])
             self.assertEqual(provenance_item["validationSourceIDs"], ["demo"])
             self.assertEqual(provenance_item["status"], "approved")
             self.assertIn("Demo attribution", notices.read_text())
+
+    def test_build_reviewed_rejects_blocked_validation_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest_path = self.make_source(root)
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"][0]["appUse"] = "approved"
+            manifest["sources"].append(
+                {
+                    **manifest["sources"][0],
+                    "id": "blocked",
+                    "appUse": "reference_only",
+                }
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            item = self.rich_review_record()
+            item["sourceRefs"] = [
+                {"sourceID": "demo", "sourceEntryRef": "lead-v-1"}
+            ]
+            item["validationSourceIDs"] = ["demo", "blocked"]
+            reviewed = root / "reviewed.jsonl"
+            reviewed.write_text(json.dumps(item) + "\n", encoding="utf-8")
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "build-reviewed",
+                "--input",
+                str(reviewed),
+                "--existing-seed",
+                str(existing),
+                "--seed-output",
+                str(root / "seed.json"),
+                "--provenance-output",
+                str(root / "provenance.json"),
+                "--notices-output",
+                str(root / "notices.txt"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("not approved for app use", result.stderr)
 
     def test_prepare_enrichment_preserves_current_seed_identity_and_rich_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -2468,6 +2515,40 @@ class VocabularySourcesTests(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("validation source", result.stderr.lower())
+
+    def test_promote_rejects_blocked_validation_source_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reviewed, provenance, notices = self.make_promotable_bank(root)
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"].append(
+                {
+                    **manifest["sources"][0],
+                    "id": "blocked",
+                    "appUse": "reference_only",
+                }
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            data = json.loads(provenance.read_text())
+            data["items"][0]["validationSourceIDs"] = ["demo", "blocked"]
+            provenance.write_text(json.dumps(data), encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "promote",
+                "--reviewed",
+                str(reviewed),
+                "--provenance",
+                str(provenance),
+                "--notices",
+                str(notices),
+                "--output",
+                str(root / "seed.json"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("not approved for app use", result.stderr)
 
     def test_promote_requires_every_source_notice(self):
         with tempfile.TemporaryDirectory() as directory:

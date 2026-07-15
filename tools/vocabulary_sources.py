@@ -2015,8 +2015,8 @@ def provenance_source(source: dict) -> dict:
         "attributionParties": [source.get("name", source["id"])],
         "attributionText": source.get("decision"),
         "rights": {key: "approved" for key in RIGHTS},
-        "rightsReviewer": "codex-content-review-2026-07-11",
-        "rightsVerifiedAt": "2026-07-11",
+        "rightsReviewer": "codex-content-review-2026-07-15",
+        "rightsVerifiedAt": "2026-07-15",
     }
 
 
@@ -2089,8 +2089,8 @@ def build_reviewed(
         "attributionParties": [],
         "attributionText": None,
         "rights": {key: "approved" for key in RIGHTS},
-        "rightsReviewer": "codex-content-review-2026-07-11",
-        "rightsVerifiedAt": "2026-07-11",
+        "rightsReviewer": "codex-content-review-2026-07-15",
+        "rightsVerifiedAt": "2026-07-15",
     }
     seed = []
     provenance_items = []
@@ -2110,8 +2110,13 @@ def build_reviewed(
                 raise SourceError(f"source {source_id} is not approved for app use")
             used_source_ids.add(source_id)
         for source_id in validation_source_ids:
-            if source_id != "vocaby-original" and source_id not in catalog:
-                raise SourceError(f"unknown validation source {source_id}")
+            if source_id == "vocaby-original":
+                continue
+            source = catalog.get(source_id)
+            if source is None or source.get("appUse") != "approved":
+                raise SourceError(
+                    f"validation source {source_id} is not approved for app use"
+                )
         seed.append({key: item[key] for key in SEED_KEYS})
         difficulty = {"basic": 2, "intermediate": 5, "advanced": 8}[
             item["level"]
@@ -2147,7 +2152,7 @@ def build_reviewed(
                 "rightsReviewer": item.get(
                     "rightsReviewer", item["englishReviewer"]
                 ),
-                "reviewedAt": item.get("reviewedAt", "2026-07-11"),
+                "reviewedAt": item.get("reviewedAt", "2026-07-15"),
                 "levelOverrideReason": None,
                 "status": item["reviewStatus"],
             }
@@ -2165,7 +2170,7 @@ def build_reviewed(
     ]
     provenance = {
         "schemaVersion": 2,
-        "bankVersion": "2026.07.3",
+        "bankVersion": "2026.07.4",
         "sources": sources,
         "items": provenance_items,
     }
@@ -2437,11 +2442,16 @@ def promote(
             raise SourceError(f"provenance item {item_id} uses an unknown source")
         validation_source_ids = item.get("validationSourceIDs")
         if not isinstance(validation_source_ids, list) or any(
-            source_id != "vocaby-original" and source_id not in external
+            source_id != "vocaby-original"
+            and (
+                source_id not in external
+                or external[source_id].get("appUse") != "approved"
+            )
             for source_id in validation_source_ids
         ):
             raise SourceError(
-                f"provenance item {item_id} uses an unknown validation source"
+                f"provenance item {item_id} uses a validation source "
+                "that is not approved for app use"
             )
         if (
             CEFR_LEVEL.get(item["cefr"]) != item["appLevel"]

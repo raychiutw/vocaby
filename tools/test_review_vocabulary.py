@@ -452,8 +452,51 @@ class ReviewVocabularyTests(unittest.TestCase):
             self.assertEqual(draft["pronunciations"][0]["ipa"], "ˈɛksələnt")
             rejection = json.loads((work / "rejections.jsonl").read_text())
             self.assertEqual(rejection["reason"], "no-verified-pronunciation")
+            self.assertEqual(rejection["sourceIDs"], ["oewn-2025"])
             batch = json.loads((work / "enrichment-input.jsonl").read_text())
             self.assertEqual(batch["items"][0]["id"], "bank-basic-0001::bank-basic-0001-sense-1")
+
+    def test_build_reviewed_reconciles_rejection_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            (work / "enriched.jsonl").write_text("", encoding="utf-8")
+            (work / "translation-output.jsonl").write_text("", encoding="utf-8")
+            (work / "rejections.jsonl").write_text(
+                json.dumps(
+                    {
+                        "id": "bank-basic-0001",
+                        "level": "basic",
+                        "target": "unpronounceable",
+                        "reason": "no-verified-pronunciation",
+                        "sourceIDs": ["oewn-2025"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            output = root / "reviewed.jsonl"
+            report_path = root / "rejections.md"
+
+            with mock.patch.object(
+                review_vocabulary.sources, "traditionalize", return_value=[]
+            ), mock.patch.object(
+                review_vocabulary.sources,
+                "audit_reviewed",
+                return_value={"items": 0},
+            ):
+                result = review_vocabulary.build_reviewed(
+                    work, output, report_path
+                )
+
+            self.assertEqual(result, {"items": 0})
+            report = report_path.read_text()
+            self.assertIn("Selected: 0", report)
+            self.assertIn("Rejected: 1", report)
+            self.assertIn("Total candidates: 1", report)
+            self.assertIn("no-verified-pronunciation: 1", report)
+            self.assertIn("oewn-2025: 1", report)
 
 
 if __name__ == "__main__":
