@@ -1356,6 +1356,16 @@ def prepare_enrichment(
     parallel_records: list[tuple[dict, str, str]] = []
     cefr_exact: dict[tuple[str, str], tuple[str, dict]] = {}
     cefr_any: dict[str, tuple[str, dict]] = {}
+
+    def cefr_evidence_key(value: tuple[str, dict]) -> tuple:
+        cefr, reference = value
+        return (
+            cefr,
+            reference["sourceID"],
+            reference["sourceEntryRef"],
+            tuple(reference.get("senseRefs", [])),
+        )
+
     lexical: list[dict] = []
     for record in records:
         key = normalized(record.get("headword", ""))
@@ -1378,8 +1388,13 @@ def prepare_enrichment(
             word_translation_records.extend((record, value) for value in values)
         if record.get("cefr") in CEFR_LEVEL:
             value = (record["cefr"], source_reference(record))
-            cefr_exact.setdefault((key, part_of_speech_code(record.get("partOfSpeech"))), value)
-            cefr_any.setdefault(key, value)
+            exact_key = (key, part_of_speech_code(record.get("partOfSpeech")))
+            cefr_exact[exact_key] = min(
+                cefr_exact.get(exact_key, value), value, key=cefr_evidence_key
+            )
+            cefr_any[key] = min(
+                cefr_any.get(key, value), value, key=cefr_evidence_key
+            )
         if (
             record.get("sourceID", "").startswith(("oewn", "grundwortschatz"))
             and record.get("definitions")
@@ -1831,6 +1846,7 @@ def prepare_enrichment(
             packet = {
                 key: value for key, value in candidate.items() if key != "_score"
             }
+            packet["target"] = current["upgradedExpression"]
             packet["id"] = current["id"]
             if packet["level"] != current["level"]:
                 issues.append("level-evidence-mismatch")

@@ -1571,6 +1571,109 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(packet["validationSourceIDs"], ["oewn-2025"])
             self.assertIn("level-evidence-mismatch", packet["issues"])
 
+    def test_prepare_enrichment_preserves_current_seed_expression_exactly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            current_seed = root / "current-seed.json"
+            current_seed.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "very good",
+                            "upgradedExpression": "Excellent",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "review-queue.jsonl"
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--current-seed",
+                str(current_seed),
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(output.read_text())["target"], "Excellent")
+
+    def test_prepare_enrichment_conflicting_cefr_is_deterministic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            cefr_path = input_dir / "cefr.jsonl"
+            cefr = json.loads(cefr_path.read_text().splitlines()[0])
+            cefr_path.write_text(
+                cefr_path.read_text()
+                + json.dumps(
+                    {
+                        **cefr,
+                        "sourceEntryRef": "Excellent#adjective#B1",
+                        "headword": "Excellent",
+                        "cefr": "B1",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            current_seed = root / "current-seed.json"
+            current_seed.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "very good",
+                            "upgradedExpression": "excellent",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            first = root / "first.jsonl"
+            second = root / "second.jsonl"
+            arguments = (
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--current-seed",
+                str(current_seed),
+                "--output",
+            )
+
+            result = self.run_cli(root, *arguments, str(first), hash_seed="1")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for path in input_dir.glob("*.jsonl"):
+                lines = path.read_text(encoding="utf-8").splitlines()
+                path.write_text(
+                    "".join(line + "\n" for line in reversed(lines)),
+                    encoding="utf-8",
+                )
+            result = self.run_cli(root, *arguments, str(second), hash_seed="2")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+
+            packet = json.loads(first.read_text())
+            self.assertEqual(packet["cefr"], "A2")
+            self.assertIn(
+                "excellent#adjective#A2",
+                {ref["sourceEntryRef"] for ref in packet["sourceRefs"]},
+            )
+
     def test_prepare_enrichment_all_available_preserves_and_appends(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
