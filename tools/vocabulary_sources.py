@@ -1714,7 +1714,7 @@ def prepare_enrichment(
             )
             if context_match == 0:
                 continue
-            for option in translation_options[:40]:
+            for option_rank, option in enumerate(translation_options[:40]):
                 if option["value"] in pair["translation"]:
                     parallel_matches.append(
                         (
@@ -1726,6 +1726,7 @@ def prepare_enrichment(
                             len(pair["sentence"]),
                             pair["reference"]["sourceEntryRef"],
                             option["reference"]["sourceEntryRef"],
+                            option_rank,
                             option,
                             pair,
                         )

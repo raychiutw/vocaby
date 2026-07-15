@@ -1,5 +1,6 @@
 import json
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -103,6 +104,138 @@ class ReviewVocabularyTests(unittest.TestCase):
                 [json.loads(payload)["batchID"] for mode, payload in calls if mode == "enrich"],
                 ["batch-2"],
             )
+
+    def test_run_local_services_chunks_enrichment_helper_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch = {
+                "batchID": "batch-1",
+                "items": [{"id": f"item-{index:02d}"} for index in range(20)],
+            }
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            calls = []
+
+            def helper(_executable, mode, payload):
+                self.assertEqual(mode, "enrich")
+                chunk = json.loads(payload)
+                calls.append(chunk)
+                return json.dumps(chunk) + "\n"
+
+            def finish(output_work):
+                output = review_vocabulary.sources.read_jsonl(
+                    output_work / "enrichment-output.jsonl"
+                )
+                self.assertEqual(output, [batch])
+                return {"items": 20, "translations": 0}
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ), mock.patch.object(
+                review_vocabulary, "finish_enrichment", side_effect=finish
+            ), mock.patch.object(
+                review_vocabulary, "run_local_translation", return_value=0
+            ):
+                result = review_vocabulary.run_local_services(
+                    work, root / "helper.swift", 2
+                )
+
+            self.assertEqual(result["items"], 20)
+            self.assertEqual([len(chunk["items"]) for chunk in calls], [10, 10])
+
+    def test_run_local_services_splits_failed_or_incomplete_enrichment_chunks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch = {
+                "batchID": "batch-1",
+                "items": [{"id": f"item-{index:02d}"} for index in range(20)],
+            }
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            calls = []
+
+            def helper(_executable, _mode, payload):
+                chunk = json.loads(payload)
+                calls.append(json.loads(payload))
+                if len(chunk["items"]) == 10 and chunk["items"][0]["id"] == "item-00":
+                    raise review_vocabulary.sources.SourceError(
+                        "Exceeded model context window size"
+                    )
+                if len(chunk["items"]) == 5 and chunk["items"][0]["id"] == "item-00":
+                    chunk["items"] = chunk["items"][:-1]
+                return json.dumps(chunk) + "\n"
+
+            def finish(output_work):
+                self.assertEqual(
+                    review_vocabulary.sources.read_jsonl(
+                        output_work / "enrichment-output.jsonl"
+                    ),
+                    [batch],
+                )
+                return {"items": 20, "translations": 0}
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ), mock.patch.object(
+                review_vocabulary, "finish_enrichment", side_effect=finish
+            ), mock.patch.object(
+                review_vocabulary, "run_local_translation", return_value=0
+            ):
+                review_vocabulary.run_local_services(
+                    work, root / "helper.swift", 2
+                )
+
+            self.assertEqual(
+                [len(chunk["items"]) for chunk in calls], [10, 5, 2, 3, 5, 10]
+            )
+
+    def test_run_local_services_cancels_queued_batches_after_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batches = [
+                {"batchID": f"batch-{index:03d}", "items": []}
+                for index in range(50)
+            ]
+            (work / "enrichment-input.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in batches),
+                encoding="utf-8",
+            )
+            calls = []
+
+            def helper(_executable, _mode, payload):
+                batch = json.loads(payload)
+                calls.append(batch["batchID"])
+                if batch["batchID"] == "batch-000":
+                    raise review_vocabulary.sources.SourceError("failed")
+                time.sleep(0.02)
+                return json.dumps({"batchID": batch["batchID"], "items": []}) + "\n"
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                with self.assertRaisesRegex(
+                    review_vocabulary.sources.SourceError,
+                    "Apple enrich failed for batch batch-000",
+                ):
+                    review_vocabulary.run_local_services(
+                        work, root / "helper.swift", 1
+                    )
+
+            self.assertLess(len(calls), len(batches))
 
     def test_run_local_translation_resumes_parallel_chunks(self):
         with tempfile.TemporaryDirectory() as directory:

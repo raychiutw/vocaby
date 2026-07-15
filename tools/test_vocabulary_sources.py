@@ -1998,6 +1998,39 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["translationDraft"], "卓越")
 
+    def test_prepare_enrichment_orders_parallel_translations_from_one_source_entry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            freedict = json.loads((input_dir / "freedict.jsonl").read_text())
+            freedict["translations"] = {"zh": ["優秀品質", "優秀"]}
+            (input_dir / "freedict.jsonl").write_text(
+                json.dumps(freedict, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            output = root / "draft.jsonl"
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                json.loads(output.read_text())["translationDraft"], "優秀品質"
+            )
+
     def test_prepare_enrichment_rejects_an_unmatched_translation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

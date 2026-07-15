@@ -542,9 +542,50 @@ def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict
     with tempfile.TemporaryDirectory() as directory:
         executable = Path(directory) / "apple-language-services"
         compile_apple_helper(swift_source, executable)
+
+        def enrich(line: str) -> str:
+            batch = json.loads(line)
+
+            def enrich_items(input_items: list[dict]) -> list[dict]:
+                chunk = {**batch, "items": input_items}
+                try:
+                    output = [
+                        json.loads(value)
+                        for value in run_helper(
+                            executable, "enrich", jsonl([chunk])
+                        ).splitlines()
+                        if value.strip()
+                    ]
+                except sources.SourceError as error:
+                    if len(input_items) < 2 or "context window size" not in str(error):
+                        raise
+                else:
+                    actual = output[0].get("items", []) if len(output) == 1 else []
+                    if (
+                        len(output) == 1
+                        and output[0].get("batchID") == batch["batchID"]
+                        and all(isinstance(item, dict) for item in actual)
+                        and [item.get("id") for item in actual]
+                        == [item["id"] for item in input_items]
+                    ):
+                        return actual
+                    if len(input_items) < 2:
+                        raise sources.SourceError("invalid enrichment chunk output")
+                midpoint = len(input_items) // 2
+                return enrich_items(input_items[:midpoint]) + enrich_items(
+                    input_items[midpoint:]
+                )
+
+            items = [
+                item
+                for start in range(0, max(len(batch["items"]), 1), 10)
+                for item in enrich_items(batch["items"][start : start + 10])
+            ]
+            return jsonl([{"batchID": batch["batchID"], "items": items}])
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(run_helper, executable, "enrich", line + "\n"): json.loads(line)["batchID"]
+                pool.submit(enrich, line): json.loads(line)["batchID"]
                 for line in pending
             }
             for enriched_count, future in enumerate(
@@ -556,6 +597,8 @@ def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict
                         json.loads(line) for line in future.result().splitlines() if line.strip()
                     ]
                 except Exception as error:
+                    for pending_future in futures:
+                        pending_future.cancel()
                     checkpoint()
                     raise sources.SourceError(
                         f"Apple enrich failed for batch {batch_id}: {error}"
