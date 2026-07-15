@@ -19,6 +19,9 @@ except ModuleNotFoundError:
     import vocabulary_sources as sources
 
 
+TRANSLATION_CHUNK_SIZE = 100
+
+
 def jsonl(items: list[dict]) -> str:
     return "".join(
         json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -858,8 +861,13 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
                 checkpoint()
                 print(f"translated {len(completed)}/{len(requests)} segments", flush=True)
                 return len(completed)
-        chunks = [remaining[start : start + 200] for start in range(0, len(remaining), 200)]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        chunks = [
+            remaining[start : start + TRANSLATION_CHUNK_SIZE]
+            for start in range(0, len(remaining), TRANSLATION_CHUNK_SIZE)
+        ]
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+        futures = {}
+        try:
             futures = {
                 pool.submit(run_helper, executable, "translate", jsonl(chunk)): chunk
                 for chunk in chunks
@@ -879,6 +887,15 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
                     f"translated {len(completed)}/{len(requests)} segments",
                     flush=True,
                 )
+        except Exception:
+            for pending_future in futures:
+                pending_future.cancel()
+            if completed:
+                checkpoint()
+            pool.shutdown(wait=False, cancel_futures=True)
+            raise
+        else:
+            pool.shutdown()
     return len(completed)
 
 

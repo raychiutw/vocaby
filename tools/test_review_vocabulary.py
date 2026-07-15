@@ -1,5 +1,6 @@
 import json
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -818,7 +819,8 @@ class ReviewVocabularyTests(unittest.TestCase):
                 )
 
             self.assertEqual(count, 401)
-            self.assertEqual(len(calls), 2)
+            self.assertEqual(len(calls), 4)
+            self.assertTrue(all(len(chunk) <= 100 for chunk in calls))
             self.assertNotIn("segment-000", set().union(*calls))
             completed = review_vocabulary.sources.read_jsonl(
                 work / "translation-output.jsonl"
@@ -826,6 +828,128 @@ class ReviewVocabularyTests(unittest.TestCase):
             self.assertEqual(
                 {item["id"] for item in completed},
                 {item["id"] for item in requests},
+            )
+
+    def test_run_local_translation_limits_parallel_chunks_to_100_items(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            swift_source = root / "helper.swift"
+            swift_source.write_text("// helper v1\n", encoding="utf-8")
+            requests = [
+                {"id": f"segment-{index:03d}", "text": "text"}
+                for index in range(205)
+            ]
+            (work / "translation-input.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in requests),
+                encoding="utf-8",
+            )
+            chunk_sizes = []
+
+            def helper(_executable, mode, payload):
+                self.assertEqual(mode, "translate")
+                chunk = [json.loads(line) for line in payload.splitlines()]
+                chunk_sizes.append(len(chunk))
+                return "".join(
+                    json.dumps({"id": item["id"], "text": "translated"}) + "\n"
+                    for item in chunk
+                )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                count = review_vocabulary.run_local_translation(
+                    work, swift_source, 2
+                )
+
+            self.assertEqual(count, len(requests))
+            self.assertEqual(sorted(chunk_sizes), [5, 100, 100])
+
+    def test_run_local_translation_cancels_queued_chunks_after_helper_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            swift_source = root / "helper.swift"
+            swift_source.write_text("// helper v1\n", encoding="utf-8")
+            requests = [
+                {"id": f"segment-{index:04d}", "text": "text"}
+                for index in range(1001)
+            ]
+            input_path = work / "translation-input.jsonl"
+            input_path.write_text(
+                "".join(json.dumps(item) + "\n" for item in requests),
+                encoding="utf-8",
+            )
+            saved = {"id": "segment-0000", "text": "checkpointed"}
+            (work / "translation-output.jsonl").write_text(
+                json.dumps(saved) + "\n", encoding="utf-8"
+            )
+            (work / "translation-output.fingerprint.json").write_text(
+                json.dumps(
+                    {
+                        "inputSHA256": review_vocabulary.sources.sha256(input_path),
+                        "swiftSourceSHA256": review_vocabulary.sources.sha256(
+                            swift_source
+                        ),
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            calls = []
+            calls_lock = threading.Lock()
+            second_started = threading.Event()
+            release_helpers = threading.Event()
+            release_timer = threading.Timer(0.6, release_helpers.set)
+            release_timer.daemon = True
+
+            def helper(_executable, mode, payload):
+                self.assertEqual(mode, "translate")
+                chunk = [json.loads(line) for line in payload.splitlines()]
+                with calls_lock:
+                    calls.append(chunk[0]["id"])
+                    ordinal = len(calls)
+                if ordinal == 1:
+                    self.assertTrue(second_started.wait(timeout=0.2))
+                    raise review_vocabulary.sources.SourceError("failed helper")
+                second_started.set()
+                self.assertTrue(release_helpers.wait(timeout=1.0))
+                return "".join(
+                    json.dumps({"id": item["id"], "text": "translated"}) + "\n"
+                    for item in chunk
+                )
+
+            release_timer.start()
+            started = time.monotonic()
+            try:
+                with mock.patch.object(
+                    review_vocabulary, "compile_apple_helper"
+                ), mock.patch.object(
+                    review_vocabulary, "run_helper", side_effect=helper
+                ):
+                    with self.assertRaisesRegex(
+                        review_vocabulary.sources.SourceError, "failed helper"
+                    ):
+                        review_vocabulary.run_local_translation(
+                            work, swift_source, 2
+                        )
+            finally:
+                elapsed = time.monotonic() - started
+                release_helpers.set()
+                release_timer.cancel()
+
+            time.sleep(0.05)
+            self.assertLess(elapsed, 0.3)
+            self.assertLess(len(calls), 5)
+            self.assertEqual(
+                review_vocabulary.sources.read_jsonl(
+                    work / "translation-output.jsonl"
+                ),
+                [saved],
             )
 
     def test_run_local_translation_recomputes_when_queue_content_changes(self):
