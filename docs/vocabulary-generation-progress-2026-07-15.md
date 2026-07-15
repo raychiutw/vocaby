@@ -695,3 +695,25 @@ The concurrent workers checkpointed 575 individually valid batches and 11,500 it
 The last accepted exact consecutive 20-batch boundary remains boundary 560. Its first 560 batches still have canonical SHA-256 `6917a16b75fae094c67477b4d38a7a246c0f48da41c5f342d6870af3ecd8a7b2`, matching the pushed boundary-560 ledger entry.
 
 No enrichment process remains live. The sparse raw output remains ignored and preserved in the active work file; this ledger records derived failure evidence only. All four earlier rejected-output archives remain byte-identical, finish-enrichment and translation artifacts remain absent, and boundary 600 was not started.
+
+## Regeneration — Boundary 580
+
+Audit timestamp: `2026-07-16T06:12:16+08:00`
+
+Current regeneration status: **PASS THROUGH BATCH `0579` / FULL BANK INCOMPLETE**
+
+After the rejected boundary-580 attempt above was tracked and pushed, its sparse output was archived with raw and canonical SHA-256 `187ec9e11a4866c32ae06c0a9604663a084868549b0f6c347ee742031e817a01`. The active output was restored by selecting only exact batch IDs `0000` through `0559`; the restored boundary-560 prefix retained canonical SHA-256 `6917a16b75fae094c67477b4d38a7a246c0f48da41c5f342d6870af3ecd8a7b2`. One bounded checkpoint-recovery invocation then processed exactly 20 pending outer batches and stopped cleanly at 580 completed batches.
+
+| Boundary | Batch prefix | Output items | Expected items | Consecutive unique batch IDs | Input/output item IDs | Schema/content validation | Mismatched batches | Validator errors | Canonical prefix SHA-256 | Result |
+| ---: | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- | --- |
+| 580 | `0000`–`0579` | 11,600 | 11,600 | PASS | PASS | PASS | 0 | 0 | `0c863fe409d6d7546d41d3e50f4c19a5c858806ffa9a49a66b7fb27b16e647ce` | PASS |
+
+Boundary-580 recovery evidence:
+
+- Enrichment command result: `{"batches": 667, "completed": 580, "processed": 20}`.
+- Active output contains exactly 580 JSONL records and the batch IDs are exactly `0000` through `0579` in order.
+- Every output batch has the same item count and item-ID order as its corresponding immutable input batch.
+- All 11,600 output items pass `validate_enrichment` against their corresponding input targets.
+- Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
+- No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
+- All five rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
