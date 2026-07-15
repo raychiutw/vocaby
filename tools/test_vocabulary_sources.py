@@ -1984,7 +1984,7 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("not enough basic candidates", result.stderr)
 
-    def test_prepare_enrichment_requires_cedict_when_the_reviewed_source_exists(self):
+    def test_prepare_enrichment_falls_back_to_aligned_freedict(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
@@ -1998,6 +1998,43 @@ class VocabularySourcesTests(unittest.TestCase):
             }
             (input_dir / "cedict.jsonl").write_text(
                 json.dumps(cedict, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(root / "draft.jsonl"),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            packet = json.loads((root / "draft.jsonl").read_text())
+            self.assertEqual(packet["translationDraft"], "優秀")
+            self.assertIn(
+                "freedict",
+                {reference["sourceID"] for reference in packet["sourceRefs"]},
+            )
+
+    def test_prepare_enrichment_rejects_freedict_part_of_speech_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            (input_dir / "cow.jsonl").unlink()
+            record = json.loads((input_dir / "freedict.jsonl").read_text())
+            record["partOfSpeech"] = "n"
+            (input_dir / "freedict.jsonl").write_text(
+                json.dumps(record, ensure_ascii=False) + "\n",
+                encoding="utf-8",
             )
 
             result = self.run_cli(

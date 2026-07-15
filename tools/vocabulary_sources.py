@@ -1403,10 +1403,6 @@ def prepare_enrichment(
             lexical.append(record)
 
     converted_word_values = traditionalize([value for _, value in word_translation_records])
-    requires_cedict = any(
-        "cedict" in record.get("sourceID", "").casefold()
-        for record, _ in word_translation_records
-    )
     translations: dict[str, list[dict]] = {}
     cedict_definitions_by_translation: dict[str, set[str]] = {}
     cedict_references_by_translation: dict[str, dict[tuple[str, str], dict]] = {}
@@ -1433,6 +1429,7 @@ def prepare_enrichment(
                 "reference": source_reference(record),
                 "definitions": record.get("definitions", []),
                 "sourceID": record["sourceID"],
+                "partOfSpeech": part_of_speech_code(record.get("partOfSpeech")),
             }
         )
 
@@ -1628,7 +1625,12 @@ def prepare_enrichment(
         translation_options = [
             item
             for item in translation_options
-            if item["definitionMatch"] or item["synonymMatch"]
+            if (item["definitionMatch"] or item["synonymMatch"])
+            and (
+                not item["partOfSpeech"]
+                or not pos
+                or item["partOfSpeech"] == pos
+            )
         ]
         cedict_options = [
             item
@@ -1657,7 +1659,7 @@ def prepare_enrichment(
                     item["reference"]["sourceEntryRef"],
                 ),
             )
-        elif requires_cedict:
+        elif cedict_options:
             translation_options = cedict_options
         if not translation_options:
             continue
