@@ -116,6 +116,53 @@ class ReviewVocabularyTests(unittest.TestCase):
             output = work / "enrichment-output.jsonl"
             self.assertFalse(output.exists() and review_vocabulary.sources.read_jsonl(output))
 
+    def test_run_local_enrichment_retries_a_transient_invalid_singleton_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch, _draft = self._write_enrichment_fixture(work)
+            calls = []
+
+            def helper(_executable, _mode, payload):
+                request = json.loads(payload)
+                calls.append(request)
+                item_id = (
+                    "wrong-id"
+                    if len(calls) == 1
+                    else request["items"][0]["id"]
+                )
+                return json.dumps(
+                    {
+                        "batchID": request["batchID"],
+                        "items": [
+                            {
+                                "id": item_id,
+                                "plainExpression": "very good",
+                                "example": "She made an excellent choice.",
+                            }
+                        ],
+                    }
+                ) + "\n"
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
+                )
+
+            self.assertEqual(result, {"batches": 1, "completed": 1, "processed": 1})
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(
+                review_vocabulary.sources.read_jsonl(
+                    work / "enrichment-output.jsonl"
+                )[0]["items"][0]["id"],
+                batch["items"][0]["id"],
+            )
+
     def test_run_local_enrichment_repairs_invalid_plain_and_example(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

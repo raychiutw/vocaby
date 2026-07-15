@@ -651,7 +651,9 @@ def run_local_enrichment(
 
         def enrich(batch: dict) -> dict:
 
-            def enrich_items(input_items: list[dict]) -> list[dict]:
+            def enrich_items(
+                input_items: list[dict], invalid_attempts: int = 0
+            ) -> list[dict]:
                 chunk = {**batch, "items": input_items}
                 try:
                     output = [
@@ -675,7 +677,11 @@ def run_local_enrichment(
                     ):
                         return actual
                     if len(input_items) < 2:
-                        raise sources.SourceError("invalid enrichment chunk output")
+                        if invalid_attempts < 2:
+                            return enrich_items(input_items, invalid_attempts + 1)
+                        raise sources.SourceError(
+                            "invalid enrichment chunk output after 3 attempts"
+                        )
                 midpoint = len(input_items) // 2
                 return enrich_items(input_items[:midpoint]) + enrich_items(
                     input_items[midpoint:]
