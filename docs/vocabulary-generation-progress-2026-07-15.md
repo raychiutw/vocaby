@@ -80,3 +80,26 @@ Boundary-40 evidence:
 - Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
 - No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
 - Both rejected output archives and all historical FAIL/PASS ledger records remain unchanged.
+
+## Regeneration — Boundary 60
+
+Audit timestamp: `2026-07-16T00:52:51+08:00`
+
+Current regeneration status: **PASS THROUGH BATCH `0059` / FULL BANK INCOMPLETE**
+
+The validated boundary-40 prefix was preserved. The first continuation checkpointed batches `0040` through `0048` before Apple Foundation Models stopped on a safety gate for batch `0049`. After the fail-closed deterministic safety fallback was committed, one bounded enrichment-only invocation processed exactly the remaining 11 pending batches and stopped cleanly at 60 completed batches.
+
+| Boundary | Batch prefix | Output items | Expected items | Consecutive unique batch IDs | Input/output item IDs | Schema/content validation | Mismatched batches | Validator errors | Canonical prefix SHA-256 | Result |
+| ---: | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- | --- |
+| 60 | `0000`–`0059` | 1,200 | 1,200 | PASS | PASS | PASS | 0 | 0 | `eacac0bf0b91704a36c7a346d505ff8d7f3afd855eb42580eb9e62fd4f1c800a` | PASS |
+
+Boundary-60 evidence:
+
+- Resume command result: `{"batches": 667, "completed": 60, "processed": 11}`.
+- Active output contains exactly 60 JSONL records and the batch IDs are exactly `0000` through `0059` in order.
+- Every output batch has the same item count and item-ID order as its corresponding immutable input batch.
+- All 1,200 output items pass `validate_enrichment` against their corresponding input targets.
+- Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
+- The resumed CLI did not emit branch-level fallback logging. None of batch `0049`'s 20 output items exactly matched its deterministic fallback output, so this ledger does not claim that the fallback branch ran during the successful resume.
+- No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
+- Both rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
