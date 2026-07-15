@@ -715,9 +715,7 @@ def run_local_enrichment(
                     if len(input_items) < 2:
                         if invalid_attempts < 2:
                             return enrich_items(input_items, invalid_attempts + 1)
-                        raise sources.SourceError(
-                            "invalid enrichment chunk output after 3 attempts"
-                        )
+                        return deterministic_input_enrichment(input_items)
                 midpoint = len(input_items) // 2
                 return enrich_items(input_items[:midpoint]) + enrich_items(
                     input_items[midpoint:]

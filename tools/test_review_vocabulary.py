@@ -79,21 +79,22 @@ class ReviewVocabularyTests(unittest.TestCase):
             ):
                 review_vocabulary.run_helper(Path("/tmp/helper"), "enrich", "{}\n")
 
-    def test_run_local_enrichment_rejects_invalid_output_ids(self):
+    def test_run_local_enrichment_uses_input_fallback_after_three_invalid_singleton_outputs(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             work = root / "work"
             work.mkdir()
-            self._write_enrichment_fixture(work)
+            batch, _draft = self._write_enrichment_fixture(work)
+            calls = []
 
-            with mock.patch.object(
-                review_vocabulary, "compile_apple_helper"
-            ), mock.patch.object(
-                review_vocabulary,
-                "run_helper",
-                return_value=json.dumps(
+            def helper(_executable, _mode, payload):
+                request = json.loads(payload)
+                calls.append(request)
+                return json.dumps(
                     {
-                        "batchID": "0000",
+                        "batchID": request["batchID"],
                         "items": [
                             {
                                 "id": "wrong-id",
@@ -102,19 +103,125 @@ class ReviewVocabularyTests(unittest.TestCase):
                             }
                         ],
                     }
+                ) + "\n"
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
                 )
-                + "\n",
+
+            self.assertEqual(result, {"batches": 1, "completed": 1, "processed": 1})
+            self.assertEqual(len(calls), 3)
+            output = review_vocabulary.sources.read_jsonl(
+                work / "enrichment-output.jsonl"
+            )
+            self.assertEqual(
+                [item["id"] for item in output[0]["items"]],
+                [batch["items"][0]["id"]],
+            )
+            review_vocabulary.validate_enrichment(
+                output[0]["items"][0], batch["items"][0]["target"]
+            )
+
+    def test_run_local_enrichment_fails_closed_when_invalid_singleton_fallback_is_invalid(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch = {
+                "batchID": "0000",
+                "items": [
+                    {
+                        "id": "bank-basic-0001::sense-1",
+                        "target": "excellent",
+                        "partOfSpeech": "",
+                        "meaning": "extremely good",
+                        "plainCandidates": ["very good"],
+                        "exampleCandidate": "",
+                    }
+                ],
+            }
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            calls = []
+
+            def helper(_executable, _mode, payload):
+                request = json.loads(payload)
+                calls.append(request)
+                return json.dumps(
+                    {
+                        "batchID": request["batchID"],
+                        "items": [
+                            {
+                                "id": "wrong-id",
+                                "plainExpression": "very good",
+                                "example": "She made an excellent choice.",
+                            }
+                        ],
+                    }
+                ) + "\n"
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
             ):
                 with self.assertRaisesRegex(
                     review_vocabulary.sources.SourceError,
-                    "Apple enrich failed for batch 0000",
+                    "invalid deterministic safety fallback",
                 ):
                     review_vocabulary.run_local_enrichment(
                         work, root / "helper.swift", 1
                     )
 
+            self.assertEqual(len(calls), 3)
             output = work / "enrichment-output.jsonl"
-            self.assertFalse(output.exists() and review_vocabulary.sources.read_jsonl(output))
+            self.assertFalse(
+                output.exists() and review_vocabulary.sources.read_jsonl(output)
+            )
+
+    def test_run_local_enrichment_propagates_unrelated_generation_error_without_retry(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            self._write_enrichment_fixture(work)
+            calls = []
+
+            def helper(_executable, _mode, payload):
+                calls.append(json.loads(payload))
+                raise review_vocabulary.sources.SourceError(
+                    "Apple enrich failed: "
+                    "FoundationModels.LanguageModelSession.GenerationError error -1"
+                )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                with self.assertRaisesRegex(
+                    review_vocabulary.sources.SourceError,
+                    "GenerationError error -1",
+                ):
+                    review_vocabulary.run_local_enrichment(
+                        work, root / "helper.swift", 1
+                    )
+
+            self.assertEqual(len(calls), 1)
+            output = work / "enrichment-output.jsonl"
+            self.assertFalse(
+                output.exists() and review_vocabulary.sources.read_jsonl(output)
+            )
 
     def test_run_local_enrichment_uses_input_fallback_after_safety_gate(self):
         with tempfile.TemporaryDirectory() as directory:
