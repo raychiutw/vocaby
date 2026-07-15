@@ -2,6 +2,15 @@ name: TestFlight
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner used for this release
+        required: true
+        default: macos-26
+        type: choice
+        options:
+          - macos-26
+          - vocaby-testflight
 
 permissions:
   contents: read
@@ -11,11 +20,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+  DEVELOPER_DIR: ${{ inputs.runner == 'vocaby-testflight' && '/Applications/Xcode.app/Contents/Developer' || '/Applications/Xcode_26.6.app/Contents/Developer' }}
 
 jobs:
   test:
-    runs-on: macos-26
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 30
     steps:
       - name: Check out repository
@@ -41,7 +50,7 @@ jobs:
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: test
-    runs-on: macos-26
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 45
     environment: testflight
     env:

@@ -35,6 +35,13 @@ class GitHubWorkflowTests(unittest.TestCase):
 
         workflow = path.read_text(encoding="utf-8")
         self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("default: macos-26", workflow)
+        self.assertIn("- vocaby-testflight", workflow)
+        self.assertEqual(workflow.count("runs-on: ${{ inputs.runner }}"), 2)
+        self.assertIn(
+            "inputs.runner == 'vocaby-testflight' && '/Applications/Xcode.app/Contents/Developer'",
+            workflow,
+        )
         self.assertNotRegex(workflow, r"(?m)^  (push|pull_request):")
         self.assertIn("github.ref == 'refs/heads/main'", workflow)
         self.assertIn("permissions:\n  contents: read", workflow)
