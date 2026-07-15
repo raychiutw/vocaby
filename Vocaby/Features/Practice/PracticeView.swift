@@ -316,6 +316,8 @@ struct PracticeCenterView: View {
 }
 
 struct QuizRunView<Completion: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let runID: AnyHashable
     let questions: [QuizQuestion]
     let configuration: PracticeConfiguration
@@ -358,6 +360,12 @@ struct QuizRunView<Completion: View>: View {
                 resultContent
             }
 
+            if dynamicTypeSize.isAccessibilitySize, runState.currentFeedback != nil {
+                Section {
+                    nextButton
+                }
+            }
+
             if let errorMessage {
                 Section {
                     Text(errorMessage)
@@ -367,15 +375,8 @@ struct QuizRunView<Completion: View>: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
-            if runState.currentFeedback != nil {
-                Button {
-                    advance()
-                } label: {
-                    Text("practice.next")
-                        .frame(maxWidth: .infinity)
-                }
-                .prominentActionStyle(tint: tint)
-                .controlSize(.large)
+            if !dynamicTypeSize.isAccessibilitySize, runState.currentFeedback != nil {
+                nextButton
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .bottomActionChrome()
@@ -384,6 +385,17 @@ struct QuizRunView<Completion: View>: View {
         .onChange(of: runID) {
             resetRun()
         }
+    }
+
+    private var nextButton: some View {
+        Button {
+            advance()
+        } label: {
+            Text("practice.next")
+                .frame(maxWidth: .infinity)
+        }
+        .prominentActionStyle(tint: tint)
+        .controlSize(.large)
     }
 
     @ViewBuilder
@@ -430,9 +442,9 @@ struct QuizRunView<Completion: View>: View {
                     } label: {
                         Image(systemName: "speaker.wave.3.fill")
                             .font(.title2)
-                            .frame(minWidth: 44, minHeight: 44)
                     }
                     .buttonStyle(.plain)
+                    .minimumInteractiveSize()
                     .accessibilityLabel(Text("practice.audio.replay"))
                 } else {
                     HStack(alignment: .top, spacing: 12) {
@@ -441,31 +453,20 @@ struct QuizRunView<Completion: View>: View {
 
                         Spacer(minLength: 8)
 
-                        if question.mode != .spelling {
-                            Button {
-                                speak(question)
-                            } label: {
-                                Image(systemName: "speaker.wave.2")
-                                    .frame(minWidth: 44, minHeight: 44)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(Text("practice.audio.play"))
+                        Button {
+                            speak(question)
+                        } label: {
+                            Image(systemName: "speaker.wave.2")
                         }
+                        .buttonStyle(.plain)
+                        .minimumInteractiveSize()
+                        .accessibilityLabel(Text(audioLabelKey(for: question.mode)))
                     }
                 }
             }
             .padding(.vertical, 4)
 
             if question.mode == .spelling {
-                Button {
-                    speak(question)
-                } label: {
-                    Image(systemName: "speaker.wave.2")
-                        .frame(minWidth: 44, minHeight: 44)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("practice.spelling.audioHint"))
-
                 TextField("practice.spelling.placeholder", text: $spellingText)
                     .keyboardType(.asciiCapable)
                     .textInputAutocapitalization(.never)
@@ -483,7 +484,7 @@ struct QuizRunView<Completion: View>: View {
                         .disabled(spellingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             } else {
-                ForEach(question.options, id: \.self) { option in
+                ForEach(visibleOptions(for: question), id: \.self) { option in
                     Button {
                         _ = runState.submit(option)
                     } label: {
@@ -607,6 +608,21 @@ struct QuizRunView<Completion: View>: View {
         return .secondary
     }
 
+    private func visibleOptions(for question: QuizQuestion) -> [String] {
+        guard let feedback = runState.currentFeedback else {
+            return question.options
+        }
+
+        var options: [String] = []
+        if !feedback.submittedAnswer.isEmpty {
+            options.append(feedback.submittedAnswer)
+        }
+        if !options.contains(question.correctAnswer) {
+            options.append(question.correctAnswer)
+        }
+        return options
+    }
+
     private func formattedRemainingTime(_ seconds: Int) -> String {
         String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
@@ -623,6 +639,10 @@ struct QuizRunView<Completion: View>: View {
         case .spelling: "practice.mode.spelling.prompt"
         case .mixed: "practice.mode.expression.prompt"
         }
+    }
+
+    private func audioLabelKey(for mode: PracticeMode) -> LocalizedStringKey {
+        mode == .spelling ? "practice.spelling.audioHint" : "practice.audio.play"
     }
 
     private func submitSpelling() {

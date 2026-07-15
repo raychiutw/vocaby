@@ -24,6 +24,11 @@ private struct LearningSettingsSheet: ViewModifier {
 }
 
 extension View {
+    func minimumInteractiveSize() -> some View {
+        frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+    }
+
     func learningSettingsSheet() -> some View {
         modifier(LearningSettingsSheet())
     }

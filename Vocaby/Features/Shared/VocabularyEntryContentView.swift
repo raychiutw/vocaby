@@ -114,6 +114,7 @@ struct VocabularyEntryContentView: View {
                         .frame(minHeight: 44)
                     }
                     .buttonStyle(.plain)
+                    .minimumInteractiveSize()
                     .accessibilityLabel(Text(verbatim: "\(item.upgradedExpression), \(region), /\(pronunciation.ipa)/"))
                 }
             }
