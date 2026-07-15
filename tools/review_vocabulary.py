@@ -556,19 +556,45 @@ def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict
 
 def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> int:
     output = work_dir / "translation-output.jsonl"
-    requests = sources.read_jsonl(work_dir / "translation-input.jsonl")
+    input_path = work_dir / "translation-input.jsonl"
+    fingerprint_path = work_dir / "translation-output.fingerprint.json"
+    if not swift_source.is_file():
+        raise sources.SourceError(f"missing Swift helper source: {swift_source}")
+    fingerprint = {
+        "inputSHA256": sources.sha256(input_path),
+        "swiftSourceSHA256": sources.sha256(swift_source),
+    }
+    saved_fingerprint = None
+    if fingerprint_path.is_file():
+        try:
+            saved_fingerprint = json.loads(fingerprint_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            pass
+    requests = sources.read_jsonl(input_path)
     request_ids = {item["id"] for item in requests}
     completed_by_id = {
         item["id"]: item
-        for item in (sources.read_jsonl(output) if output.is_file() else [])
+        for item in (
+            sources.read_jsonl(output)
+            if output.is_file() and saved_fingerprint == fingerprint
+            else []
+        )
         if item.get("id") in request_ids
     }
     completed = list(completed_by_id.values())
+
+    def checkpoint() -> None:
+        completed.sort(key=lambda item: item["id"])
+        sources.atomic_write(output, jsonl(completed))
+        sources.atomic_write(
+            fingerprint_path,
+            json.dumps(fingerprint, sort_keys=True, separators=(",", ":")) + "\n",
+        )
+
     completed_ids = {item["id"] for item in completed}
     remaining = [item for item in requests if item["id"] not in completed_ids]
     if not remaining:
-        completed.sort(key=lambda item: item["id"])
-        sources.atomic_write(output, jsonl(completed))
+        checkpoint()
         return len(completed)
     with tempfile.TemporaryDirectory() as directory:
         executable = Path(directory) / "apple-language-services"
@@ -597,8 +623,7 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
                     completed.append(item)
                     streamed += 1
                     if streamed % 200 == 0:
-                        completed.sort(key=lambda value: value["id"])
-                        sources.atomic_write(output, jsonl(completed))
+                        checkpoint()
                         print(
                             f"translated {len(completed)}/{len(requests)} segments",
                             flush=True,
@@ -609,8 +634,7 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
                     raise sources.SourceError(f"Apple translate failed: {stderr.strip()}")
                 if streamed != len(remaining):
                     raise sources.SourceError("Apple translation returned incomplete IDs")
-                completed.sort(key=lambda value: value["id"])
-                sources.atomic_write(output, jsonl(completed))
+                checkpoint()
                 print(f"translated {len(completed)}/{len(requests)} segments", flush=True)
                 return len(completed)
         chunks = [remaining[start : start + 200] for start in range(0, len(remaining), 200)]
@@ -629,8 +653,7 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
                 if {item["id"] for item in translated} != {item["id"] for item in chunk}:
                     raise sources.SourceError("Apple translation returned incomplete IDs")
                 completed.extend(translated)
-                completed.sort(key=lambda item: item["id"])
-                sources.atomic_write(output, jsonl(completed))
+                checkpoint()
                 print(
                     f"translated {len(completed)}/{len(requests)} segments",
                     flush=True,

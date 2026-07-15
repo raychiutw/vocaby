@@ -8,6 +8,32 @@ from tools import review_vocabulary
 
 
 class ReviewVocabularyTests(unittest.TestCase):
+    def _write_translation_checkpoint(
+        self, work: Path, swift_source: Path, text: str = "text"
+    ) -> tuple[Path, Path]:
+        swift_source.write_text("// helper v1\n", encoding="utf-8")
+        input_path = work / "translation-input.jsonl"
+        input_path.write_text(
+            json.dumps({"id": "segment-001", "text": text}) + "\n",
+            encoding="utf-8",
+        )
+        (work / "translation-output.jsonl").write_text(
+            json.dumps({"id": "segment-001", "text": "stale"}) + "\n",
+            encoding="utf-8",
+        )
+        fingerprint_path = work / "translation-output.fingerprint.json"
+        fingerprint_path.write_text(
+            json.dumps(
+                {
+                    "inputSHA256": review_vocabulary.sources.sha256(input_path),
+                    "swiftSourceSHA256": review_vocabulary.sources.sha256(swift_source),
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return input_path, fingerprint_path
+
     def test_run_helper_reports_a_timeout(self):
         with mock.patch.object(
             review_vocabulary.subprocess,
@@ -83,16 +109,31 @@ class ReviewVocabularyTests(unittest.TestCase):
             root = Path(directory)
             work = root / "work"
             work.mkdir()
+            swift_source = root / "helper.swift"
+            swift_source.write_text("// helper v1\n", encoding="utf-8")
             requests = [
                 {"id": f"segment-{index:03d}", "text": "text"}
                 for index in range(401)
             ]
-            (work / "translation-input.jsonl").write_text(
+            input_path = work / "translation-input.jsonl"
+            input_path.write_text(
                 "".join(json.dumps(item) + "\n" for item in requests),
                 encoding="utf-8",
             )
             (work / "translation-output.jsonl").write_text(
                 json.dumps({"id": "segment-000", "text": "done"}) + "\n",
+                encoding="utf-8",
+            )
+            (work / "translation-output.fingerprint.json").write_text(
+                json.dumps(
+                    {
+                        "inputSHA256": review_vocabulary.sources.sha256(input_path),
+                        "swiftSourceSHA256": review_vocabulary.sources.sha256(
+                            swift_source
+                        ),
+                    }
+                )
+                + "\n",
                 encoding="utf-8",
             )
             calls = []
@@ -112,7 +153,7 @@ class ReviewVocabularyTests(unittest.TestCase):
                 review_vocabulary, "run_helper", side_effect=helper
             ):
                 count = review_vocabulary.run_local_translation(
-                    work, root / "helper.swift", 2
+                    work, swift_source, 2
                 )
 
             self.assertEqual(count, 401)
@@ -126,11 +167,150 @@ class ReviewVocabularyTests(unittest.TestCase):
                 {item["id"] for item in requests},
             )
 
+    def test_run_local_translation_recomputes_when_queue_content_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            swift_source = root / "helper.swift"
+            input_path, fingerprint_path = self._write_translation_checkpoint(
+                work, swift_source, "old"
+            )
+            input_path.write_text(
+                json.dumps({"id": "segment-001", "text": "changed"}) + "\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary,
+                "run_helper",
+                return_value=json.dumps(
+                    {"id": "segment-001", "text": "fresh"}
+                )
+                + "\n",
+            ) as helper:
+                review_vocabulary.run_local_translation(work, swift_source, 2)
+
+            helper.assert_called_once()
+            self.assertEqual(
+                review_vocabulary.sources.read_jsonl(
+                    work / "translation-output.jsonl"
+                ),
+                [{"id": "segment-001", "text": "fresh"}],
+            )
+            self.assertEqual(
+                json.loads(fingerprint_path.read_text(encoding="utf-8")),
+                {
+                    "inputSHA256": review_vocabulary.sources.sha256(input_path),
+                    "swiftSourceSHA256": review_vocabulary.sources.sha256(
+                        swift_source
+                    ),
+                },
+            )
+
+    def test_run_local_translation_recomputes_when_swift_helper_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            swift_source = root / "helper.swift"
+            input_path, fingerprint_path = self._write_translation_checkpoint(
+                work, swift_source
+            )
+            swift_source.write_text("// helper v2\n", encoding="utf-8")
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary,
+                "run_helper",
+                return_value=json.dumps(
+                    {"id": "segment-001", "text": "fresh"}
+                )
+                + "\n",
+            ) as helper:
+                review_vocabulary.run_local_translation(work, swift_source, 2)
+
+            helper.assert_called_once()
+            self.assertEqual(
+                review_vocabulary.sources.read_jsonl(
+                    work / "translation-output.jsonl"
+                ),
+                [{"id": "segment-001", "text": "fresh"}],
+            )
+            self.assertEqual(
+                json.loads(fingerprint_path.read_text(encoding="utf-8")),
+                {
+                    "inputSHA256": review_vocabulary.sources.sha256(input_path),
+                    "swiftSourceSHA256": review_vocabulary.sources.sha256(
+                        swift_source
+                    ),
+                },
+            )
+
+    def test_run_local_translation_recomputes_without_a_valid_fingerprint(self):
+        for saved_fingerprint in (None, "not json\n"):
+            with self.subTest(saved_fingerprint=saved_fingerprint):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    work = root / "work"
+                    work.mkdir()
+                    swift_source = root / "helper.swift"
+                    _, fingerprint_path = self._write_translation_checkpoint(
+                        work, swift_source
+                    )
+                    if saved_fingerprint is None:
+                        fingerprint_path.unlink()
+                    else:
+                        fingerprint_path.write_text(
+                            saved_fingerprint, encoding="utf-8"
+                        )
+
+                    with mock.patch.object(
+                        review_vocabulary, "compile_apple_helper"
+                    ), mock.patch.object(
+                        review_vocabulary,
+                        "run_helper",
+                        return_value=json.dumps(
+                            {"id": "segment-001", "text": "fresh"}
+                        )
+                        + "\n",
+                    ) as helper:
+                        review_vocabulary.run_local_translation(
+                            work, swift_source, 2
+                        )
+
+                    helper.assert_called_once()
+                    self.assertEqual(
+                        review_vocabulary.sources.read_jsonl(
+                            work / "translation-output.jsonl"
+                        ),
+                        [{"id": "segment-001", "text": "fresh"}],
+                    )
+
+    def test_run_local_translation_rejects_a_missing_swift_helper(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            swift_source = root / "helper.swift"
+            self._write_translation_checkpoint(work, swift_source)
+            swift_source.unlink()
+
+            with self.assertRaisesRegex(
+                review_vocabulary.sources.SourceError, "missing Swift helper"
+            ):
+                review_vocabulary.run_local_translation(work, swift_source, 2)
+
     def test_run_local_translation_rejects_incomplete_parallel_ids(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             work = root / "work"
             work.mkdir()
+            swift_source = root / "helper.swift"
+            swift_source.write_text("// helper v1\n", encoding="utf-8")
             (work / "translation-input.jsonl").write_text(
                 json.dumps({"id": "segment-001", "text": "text"}) + "\n",
                 encoding="utf-8",
@@ -145,7 +325,7 @@ class ReviewVocabularyTests(unittest.TestCase):
                     review_vocabulary.sources.SourceError, "incomplete IDs"
                 ):
                     review_vocabulary.run_local_translation(
-                        work, root / "helper.swift", 2
+                        work, swift_source, 2
                     )
 
             self.assertFalse((work / "translation-output.jsonl").exists())
