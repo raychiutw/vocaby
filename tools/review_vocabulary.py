@@ -518,20 +518,122 @@ def run_helper(executable: Path, mode: str, payload: str) -> str:
     return result.stdout
 
 
-def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict[str, int]:
-    batches = (work_dir / "enrichment-input.jsonl").read_text(encoding="utf-8").splitlines()
-    batch_ids = {json.loads(line)["batchID"] for line in batches}
-    if len(batch_ids) != len(batches):
-        raise sources.SourceError("duplicate enrichment batch ID")
+def deterministic_enrichment_repairs(work_dir: Path) -> dict[str, dict]:
+    draft_path = work_dir / "draft.jsonl"
+    if not draft_path.is_file():
+        return {}
+    repairs = {}
+    for draft in sources.read_jsonl(draft_path):
+        packet = draft["packet"]
+        primary = draft["senses"][0]
+        item_id = f"{packet['id']}::{primary['id']}"
+        repairs[item_id] = {
+            "id": item_id,
+            "plainExpression": fallback_plain(packet),
+            "example": source_example(packet["target"], primary),
+        }
+    return repairs
+
+
+def validate_enrichment_batch(
+    batch: dict,
+    expected: dict,
+    repairs: dict[str, dict],
+    *,
+    repair_invalid: bool,
+) -> dict:
+    if not isinstance(batch, dict) or batch.get("batchID") != expected["batchID"]:
+        raise sources.SourceError("enrichment batch ID mismatch")
+    actual_items = batch.get("items")
+    expected_items = expected["items"]
+    if (
+        not isinstance(actual_items, list)
+        or not all(isinstance(item, dict) for item in actual_items)
+        or [item.get("id") for item in actual_items]
+        != [item["id"] for item in expected_items]
+    ):
+        raise sources.SourceError("enrichment batch item ID mismatch")
+
+    validated = []
+    for item, input_item in zip(actual_items, expected_items, strict=True):
+        target = input_item.get("target")
+        if not isinstance(target, str) or not target.strip():
+            raise sources.SourceError(f"enrichment input {input_item.get('id')} has no target")
+        candidate = dict(item)
+        if repair_invalid:
+            repair = repairs.get(item["id"])
+            if repair is None:
+                try:
+                    validate_enrichment(candidate, target)
+                except sources.SourceError as error:
+                    raise sources.SourceError(
+                        f"no deterministic enrichment repair for {item['id']}"
+                    ) from error
+            else:
+                validate_enrichment(repair, target)
+                try:
+                    validate_enrichment(
+                        {
+                            "id": item["id"],
+                            "plainExpression": candidate.get("plainExpression"),
+                            "example": repair["example"],
+                        },
+                        target,
+                    )
+                except sources.SourceError:
+                    candidate["plainExpression"] = repair["plainExpression"]
+                try:
+                    validate_enrichment(
+                        {
+                            "id": item["id"],
+                            "plainExpression": repair["plainExpression"],
+                            "example": candidate.get("example"),
+                        },
+                        target,
+                    )
+                except sources.SourceError:
+                    candidate["example"] = repair["example"]
+        validate_enrichment(candidate, target)
+        validated.append(candidate)
+    return {"batchID": expected["batchID"], "items": validated}
+
+
+def run_local_enrichment(
+    work_dir: Path,
+    swift_source: Path,
+    workers: int,
+    *,
+    max_batches: int | None = None,
+) -> dict[str, int]:
+    batches = sources.read_jsonl(work_dir / "enrichment-input.jsonl")
+    batch_ids = {batch.get("batchID") for batch in batches}
+    if None in batch_ids or len(batch_ids) != len(batches):
+        raise sources.SourceError("duplicate or missing enrichment batch ID")
+    expected_by_id = {batch["batchID"]: batch for batch in batches}
+    item_ids = [item.get("id") for batch in batches for item in batch.get("items", [])]
+    if None in item_ids or len(set(item_ids)) != len(item_ids):
+        raise sources.SourceError("duplicate or missing enrichment item ID")
+    repairs = deterministic_enrichment_repairs(work_dir)
     output_path = work_dir / "enrichment-output.jsonl"
     completed = {}
     if output_path.exists():
-        for output in sources.read_jsonl(output_path):
-            batch_id = output.get("batchID")
-            if batch_id not in batch_ids or batch_id in completed:
-                raise sources.SourceError("invalid saved enrichment batch")
-            completed[batch_id] = output
-    pending = [line for line in batches if json.loads(line)["batchID"] not in completed]
+        try:
+            saved = sources.read_jsonl(output_path)
+            for output in saved:
+                batch_id = output.get("batchID")
+                if batch_id not in batch_ids or batch_id in completed:
+                    raise sources.SourceError("unknown or duplicate batch ID")
+                completed[batch_id] = validate_enrichment_batch(
+                    output,
+                    expected_by_id[batch_id],
+                    repairs,
+                    repair_invalid=False,
+                )
+        except (OSError, UnicodeError, json.JSONDecodeError, sources.SourceError) as error:
+            raise sources.SourceError(f"invalid saved enrichment batch: {error}") from error
+    pending = [batch for batch in batches if batch["batchID"] not in completed]
+    if max_batches is not None:
+        pending = pending[:max_batches]
 
     def checkpoint() -> None:
         sources.atomic_write(
@@ -539,12 +641,15 @@ def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict
             jsonl(sorted(completed.values(), key=lambda item: item["batchID"])),
         )
 
+    if not pending:
+        checkpoint()
+        return {"batches": len(batches), "completed": len(completed), "processed": 0}
+
     with tempfile.TemporaryDirectory() as directory:
         executable = Path(directory) / "apple-language-services"
         compile_apple_helper(swift_source, executable)
 
-        def enrich(line: str) -> str:
-            batch = json.loads(line)
+        def enrich(batch: dict) -> dict:
 
             def enrich_items(input_items: list[dict]) -> list[dict]:
                 chunk = {**batch, "items": input_items}
@@ -581,21 +686,23 @@ def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict
                 for start in range(0, max(len(batch["items"]), 1), 10)
                 for item in enrich_items(batch["items"][start : start + 10])
             ]
-            return jsonl([{"batchID": batch["batchID"], "items": items}])
+            return {"batchID": batch["batchID"], "items": items}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(enrich, line): json.loads(line)["batchID"]
-                for line in pending
+                pool.submit(enrich, batch): batch["batchID"] for batch in pending
             }
             for enriched_count, future in enumerate(
                 concurrent.futures.as_completed(futures), 1
             ):
                 batch_id = futures[future]
                 try:
-                    output = [
-                        json.loads(line) for line in future.result().splitlines() if line.strip()
-                    ]
+                    output = validate_enrichment_batch(
+                        future.result(),
+                        expected_by_id[batch_id],
+                        repairs,
+                        repair_invalid=True,
+                    )
                 except Exception as error:
                     for pending_future in futures:
                         pending_future.cancel()
@@ -603,22 +710,26 @@ def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict
                     raise sources.SourceError(
                         f"Apple enrich failed for batch {batch_id}: {error}"
                     ) from error
-                for item in output:
-                    item_id = item.get("batchID")
-                    if item_id not in batch_ids or item_id in completed:
-                        checkpoint()
-                        raise sources.SourceError("invalid enrichment batch output")
-                    completed[item_id] = item
+                completed[batch_id] = output
                 if enriched_count % 10 == 0 or enriched_count == len(pending):
                     checkpoint()
                 print(
                     f"enriched {len(completed)}/{len(batches)} batches", flush=True
                 )
         checkpoint()
-        finish = finish_enrichment(work_dir)
-        translated = run_local_translation(work_dir, swift_source, workers)
     return {
         "batches": len(batches),
+        "completed": len(completed),
+        "processed": len(pending),
+    }
+
+
+def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict[str, int]:
+    enrichment = run_local_enrichment(work_dir, swift_source, workers)
+    finish = finish_enrichment(work_dir)
+    translated = run_local_translation(work_dir, swift_source, workers)
+    return {
+        "batches": enrichment["batches"],
         "items": finish["items"],
         "translations": translated,
     }
@@ -807,6 +918,15 @@ def main(argv: list[str] | None = None) -> int:
         default=Path(__file__).with_name("apple_language_services.swift"),
     )
     local.add_argument("--workers", type=int, default=2)
+    enrich_local = commands.add_parser("enrich-local")
+    enrich_local.add_argument("--work-dir", type=Path, required=True)
+    enrich_local.add_argument(
+        "--swift-source",
+        type=Path,
+        default=Path(__file__).with_name("apple_language_services.swift"),
+    )
+    enrich_local.add_argument("--workers", type=int, default=2)
+    enrich_local.add_argument("--max-batches", type=int)
     source_draft = commands.add_parser("draft-source-enrichment")
     source_draft.add_argument("--work-dir", type=Path, required=True)
     translate = commands.add_parser("translate-local")
@@ -836,6 +956,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.workers < 1:
             raise sources.SourceError("workers must be positive")
         result = run_local_services(args.work_dir, args.swift_source, args.workers)
+    elif args.command == "enrich-local":
+        if args.workers < 1:
+            raise sources.SourceError("workers must be positive")
+        if args.max_batches is not None and args.max_batches < 1:
+            raise sources.SourceError("max batches must be positive")
+        result = run_local_enrichment(
+            args.work_dir,
+            args.swift_source,
+            args.workers,
+            max_batches=args.max_batches,
+        )
     elif args.command == "draft-source-enrichment":
         result = {"items": draft_source_enrichment(args.work_dir)}
     elif args.command == "seed-source-translations":

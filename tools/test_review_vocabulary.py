@@ -9,6 +9,39 @@ from tools import review_vocabulary
 
 
 class ReviewVocabularyTests(unittest.TestCase):
+    def _write_enrichment_fixture(self, work: Path) -> tuple[dict, dict]:
+        item = {
+            "id": "bank-basic-0001::sense-1",
+            "target": "excellent",
+            "partOfSpeech": "adjective",
+            "meaning": "extremely good",
+            "plainCandidates": ["very good"],
+            "exampleCandidate": "",
+        }
+        batch = {"batchID": "0000", "items": [item]}
+        (work / "enrichment-input.jsonl").write_text(
+            json.dumps(batch) + "\n", encoding="utf-8"
+        )
+        draft = {
+            "packet": {
+                "id": "bank-basic-0001",
+                "target": "excellent",
+                "plain": "very good",
+                "candidatePlainExpressions": ["very good"],
+            },
+            "senses": [
+                {
+                    "id": "sense-1",
+                    "partOfSpeech": "adjective",
+                    "exampleCandidate": "She made an excellent choice",
+                }
+            ],
+        }
+        (work / "draft.jsonl").write_text(
+            json.dumps(draft) + "\n", encoding="utf-8"
+        )
+        return batch, draft
+
     def _write_translation_checkpoint(
         self, work: Path, swift_source: Path, text: str = "text"
     ) -> tuple[Path, Path]:
@@ -45,6 +78,173 @@ class ReviewVocabularyTests(unittest.TestCase):
                 review_vocabulary.sources.SourceError, "timed out"
             ):
                 review_vocabulary.run_helper(Path("/tmp/helper"), "enrich", "{}\n")
+
+    def test_run_local_enrichment_rejects_invalid_output_ids(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            self._write_enrichment_fixture(work)
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary,
+                "run_helper",
+                return_value=json.dumps(
+                    {
+                        "batchID": "0000",
+                        "items": [
+                            {
+                                "id": "wrong-id",
+                                "plainExpression": "very good",
+                                "example": "She made an excellent choice.",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+            ):
+                with self.assertRaisesRegex(
+                    review_vocabulary.sources.SourceError,
+                    "Apple enrich failed for batch 0000",
+                ):
+                    review_vocabulary.run_local_enrichment(
+                        work, root / "helper.swift", 1
+                    )
+
+            output = work / "enrichment-output.jsonl"
+            self.assertFalse(output.exists() and review_vocabulary.sources.read_jsonl(output))
+
+    def test_run_local_enrichment_repairs_invalid_plain_and_example(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch, _draft = self._write_enrichment_fixture(work)
+            invalid = {
+                "batchID": batch["batchID"],
+                "items": [
+                    {
+                        "id": batch["items"][0]["id"],
+                        "plainExpression": "excellent",
+                        "example": "Not a sentence",
+                    }
+                ],
+            }
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary,
+                "run_helper",
+                return_value=json.dumps(invalid) + "\n",
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
+                )
+
+            self.assertEqual(result, {"batches": 1, "completed": 1, "processed": 1})
+            output = review_vocabulary.sources.read_jsonl(
+                work / "enrichment-output.jsonl"
+            )
+            self.assertEqual(output[0]["items"][0]["plainExpression"], "very good")
+            self.assertEqual(
+                output[0]["items"][0]["example"],
+                "She made an excellent choice.",
+            )
+
+    def test_run_local_enrichment_rejects_invalid_saved_checkpoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch, _draft = self._write_enrichment_fixture(work)
+            (work / "enrichment-output.jsonl").write_text(
+                json.dumps(
+                    {
+                        "batchID": batch["batchID"],
+                        "items": [
+                            {
+                                "id": batch["items"][0]["id"],
+                                "plainExpression": "excellent",
+                                "example": "broken",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ) as compile_helper:
+                with self.assertRaisesRegex(
+                    review_vocabulary.sources.SourceError,
+                    "invalid saved enrichment batch",
+                ):
+                    review_vocabulary.run_local_enrichment(
+                        work, root / "helper.swift", 1
+                    )
+
+            compile_helper.assert_not_called()
+
+    def test_enrich_local_processes_exactly_twenty_batches_without_finishing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batches = [
+                {"batchID": f"{index:04d}", "items": []}
+                for index in range(25)
+            ]
+            (work / "enrichment-input.jsonl").write_text(
+                "".join(json.dumps(batch) + "\n" for batch in batches),
+                encoding="utf-8",
+            )
+
+            def helper(_executable, mode, payload):
+                self.assertEqual(mode, "enrich")
+                return payload
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ), mock.patch.object(
+                review_vocabulary,
+                "finish_enrichment",
+                side_effect=AssertionError("must not finish enrichment"),
+            ), mock.patch.object(
+                review_vocabulary,
+                "run_local_translation",
+                side_effect=AssertionError("must not translate"),
+            ):
+                exit_code = review_vocabulary.main(
+                    [
+                        "enrich-local",
+                        "--work-dir",
+                        str(work),
+                        "--swift-source",
+                        str(root / "helper.swift"),
+                        "--workers",
+                        "2",
+                        "--max-batches",
+                        "20",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(
+                [
+                    batch["batchID"]
+                    for batch in review_vocabulary.sources.read_jsonl(
+                        work / "enrichment-output.jsonl"
+                    )
+                ],
+                [f"{index:04d}" for index in range(20)],
+            )
 
     def test_run_local_services_resumes_completed_enrichment_batches(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -112,7 +312,21 @@ class ReviewVocabularyTests(unittest.TestCase):
             work.mkdir()
             batch = {
                 "batchID": "batch-1",
-                "items": [{"id": f"item-{index:02d}"} for index in range(20)],
+                "items": [
+                    {"id": f"item-{index:02d}", "target": "excellent"}
+                    for index in range(20)
+                ],
+            }
+            enriched_batch = {
+                "batchID": "batch-1",
+                "items": [
+                    {
+                        "id": item["id"],
+                        "plainExpression": "very good",
+                        "example": "This excellent choice works well.",
+                    }
+                    for item in batch["items"]
+                ],
             }
             (work / "enrichment-input.jsonl").write_text(
                 json.dumps(batch) + "\n", encoding="utf-8"
@@ -123,13 +337,25 @@ class ReviewVocabularyTests(unittest.TestCase):
                 self.assertEqual(mode, "enrich")
                 chunk = json.loads(payload)
                 calls.append(chunk)
-                return json.dumps(chunk) + "\n"
+                return json.dumps(
+                    {
+                        "batchID": chunk["batchID"],
+                        "items": [
+                            {
+                                "id": item["id"],
+                                "plainExpression": "very good",
+                                "example": "This excellent choice works well.",
+                            }
+                            for item in chunk["items"]
+                        ],
+                    }
+                ) + "\n"
 
             def finish(output_work):
                 output = review_vocabulary.sources.read_jsonl(
                     output_work / "enrichment-output.jsonl"
                 )
-                self.assertEqual(output, [batch])
+                self.assertEqual(output, [enriched_batch])
                 return {"items": 20, "translations": 0}
 
             with mock.patch.object(
@@ -155,7 +381,21 @@ class ReviewVocabularyTests(unittest.TestCase):
             work.mkdir()
             batch = {
                 "batchID": "batch-1",
-                "items": [{"id": f"item-{index:02d}"} for index in range(20)],
+                "items": [
+                    {"id": f"item-{index:02d}", "target": "excellent"}
+                    for index in range(20)
+                ],
+            }
+            enriched_batch = {
+                "batchID": "batch-1",
+                "items": [
+                    {
+                        "id": item["id"],
+                        "plainExpression": "very good",
+                        "example": "This excellent choice works well.",
+                    }
+                    for item in batch["items"]
+                ],
             }
             (work / "enrichment-input.jsonl").write_text(
                 json.dumps(batch) + "\n", encoding="utf-8"
@@ -171,14 +411,26 @@ class ReviewVocabularyTests(unittest.TestCase):
                     )
                 if len(chunk["items"]) == 5 and chunk["items"][0]["id"] == "item-00":
                     chunk["items"] = chunk["items"][:-1]
-                return json.dumps(chunk) + "\n"
+                return json.dumps(
+                    {
+                        "batchID": chunk["batchID"],
+                        "items": [
+                            {
+                                "id": item["id"],
+                                "plainExpression": "very good",
+                                "example": "This excellent choice works well.",
+                            }
+                            for item in chunk["items"]
+                        ],
+                    }
+                ) + "\n"
 
             def finish(output_work):
                 self.assertEqual(
                     review_vocabulary.sources.read_jsonl(
                         output_work / "enrichment-output.jsonl"
                     ),
-                    [batch],
+                    [enriched_batch],
                 )
                 return {"items": 20, "translations": 0}
 
