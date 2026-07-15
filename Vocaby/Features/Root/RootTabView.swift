@@ -49,7 +49,7 @@ struct RootTabView: View {
         Group {
             if #available(iOS 26.0, *) {
                 modernTabs
-                    .tabBarMinimizeBehavior(.onScrollDown)
+                    .tabBarMinimizeBehavior(.never)
             } else {
                 legacyTabs
             }
@@ -77,7 +77,7 @@ struct RootTabView: View {
                 reviewRoot
             }
 
-            Tab("library.tab.title", systemImage: "books.vertical", value: RootTab.library) {
+            Tab("library.tab.title", systemImage: "person.crop.circle", value: RootTab.library) {
                 libraryRoot
             }
         }
@@ -99,7 +99,7 @@ struct RootTabView: View {
 
             libraryRoot
             .tabItem {
-                Label("library.tab.title", systemImage: "books.vertical")
+                Label("library.tab.title", systemImage: "person.crop.circle")
             }
             .tag(RootTab.library)
         }
