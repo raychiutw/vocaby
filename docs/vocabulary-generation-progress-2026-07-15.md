@@ -58,3 +58,25 @@ Regeneration evidence:
 - Finish-enrichment and translation artifacts remain absent; this checkpoint is enrichment-only and is not yet promotable as a full vocabulary bank.
 - The original rejected 100-batch output remains archived with SHA-256 `ed710299c57f3f77d654b94e29cb4b020741937b8973e856ec206013cc7440df`.
 - The interrupted seven-batch regeneration attempt remains archived with SHA-256 `1ad09fbee97ca84b492e28cd022e52820629dd9be2f8f57f6bc136f323eb0898`.
+
+## Regeneration — Boundary 40
+
+Audit timestamp: `2026-07-16T00:26:14+08:00`
+
+Current regeneration status: **PASS THROUGH BATCH `0039` / FULL BANK INCOMPLETE**
+
+The validated boundary-20 prefix was preserved. One bounded enrichment-only invocation processed exactly the next 20 pending outer batches and stopped cleanly at 40 completed batches.
+
+| Boundary | Batch prefix | Output items | Expected items | Consecutive unique batch IDs | Input/output item IDs | Schema/content validation | Mismatched batches | Validator errors | Canonical prefix SHA-256 | Result |
+| ---: | --- | ---: | ---: | --- | --- | --- | ---: | ---: | --- | --- |
+| 40 | `0000`–`0039` | 800 | 800 | PASS | PASS | PASS | 0 | 0 | `23aae51d863f12c43cb6ab8be72dc5bc854fd8ab19e49b14756a7b4ef48ab047` | PASS |
+
+Boundary-40 evidence:
+
+- Enrichment command result: `{"batches": 667, "completed": 40, "processed": 20}`.
+- Active output contains exactly 40 JSONL records and the batch IDs are exactly `0000` through `0039` in order.
+- Every output batch has the same item count and item-ID order as its corresponding immutable input batch.
+- All 800 output items pass `validate_enrichment` against their corresponding input targets.
+- Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
+- No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
+- Both rejected output archives and all historical FAIL/PASS ledger records remain unchanged.
