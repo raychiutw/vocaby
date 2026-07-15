@@ -1,5 +1,6 @@
 from pathlib import Path
 import plistlib
+import subprocess
 import unittest
 
 
@@ -59,8 +60,66 @@ class GitHubWorkflowTests(unittest.TestCase):
         self.assertIn("-allowProvisioningUpdates", workflow)
         self.assertIn("-exportOptionsPlist .github/ExportOptions.plist", workflow)
         self.assertIn("trap 'rm -f \"$key_path\"' EXIT", workflow)
+        self.assertIn("tools/wait_for_testflight.rb", workflow)
+        self.assertIn('--build-number "$GITHUB_RUN_ID"', workflow)
         self.assertNotIn("set -x", workflow)
         self.assertIn("brew install opencc", workflow)
+
+    def test_testflight_status_checker_is_valid_ruby(self):
+        script = ROOT / "tools/wait_for_testflight.rb"
+        self.assertTrue(script.is_file(), "TestFlight status checker is missing")
+
+        result = subprocess.run(
+            ["ruby", "-c", str(script)],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Syntax OK", result.stdout)
+
+        jwt_check = subprocess.run(
+            [
+                "ruby",
+                "-Itools",
+                "-ropenssl",
+                "-rbase64",
+                "-rjson",
+                "-e",
+                (
+                    'require "wait_for_testflight"; '
+                    'key = OpenSSL::PKey::EC.generate("prime256v1"); '
+                    'token = TestFlightStatus.jwt(private_key_pem: key.to_pem, '
+                    'key_id: "TESTKEY", issuer_id: "TESTISSUER", now: Time.at(1000)); '
+                    'header, payload, signature = token.split("."); '
+                    'pad = ->(value) { value + "=" * ((4 - value.length % 4) % 4) }; '
+                    'raw = Base64.urlsafe_decode64(pad.call(signature)); '
+                    'raise "signature length" unless raw.bytesize == 64; '
+                    'r = OpenSSL::BN.new(raw[0, 32], 2); '
+                    's = OpenSSL::BN.new(raw[32, 32], 2); '
+                    'der = OpenSSL::ASN1::Sequence(['
+                    'OpenSSL::ASN1::Integer(r), OpenSSL::ASN1::Integer(s)]).to_der; '
+                    'digest = OpenSSL::Digest::SHA256.digest("#{header}.#{payload}"); '
+                    'raise "signature verification" unless key.dsa_verify_asn1(digest, der); '
+                    'claims = JSON.parse(Base64.urlsafe_decode64(pad.call(payload))); '
+                    'raise "claims" unless claims == {"iss"=>"TESTISSUER", '
+                    '"iat"=>995, "exp"=>2200, "aud"=>"appstoreconnect-v1"}'
+                ),
+            ],
+            capture_output=True,
+            check=False,
+            cwd=ROOT,
+            text=True,
+        )
+
+        self.assertEqual(jwt_check.returncode, 0, jwt_check.stderr)
+
+    def test_app_declares_no_non_exempt_encryption(self):
+        with (ROOT / "Vocaby/Info.plist").open("rb") as file:
+            info = plistlib.load(file)
+
+        self.assertIs(info.get("ITSAppUsesNonExemptEncryption"), False)
 
     def test_public_version_sources_are_consistent(self):
         version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()

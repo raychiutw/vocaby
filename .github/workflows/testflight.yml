@@ -42,7 +42,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Install OpenCC
-        run: brew install opencc
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install opencc
 
       - name: Run Python tests
         run: python3 -m unittest discover -s tools -p 'test_*.py'
@@ -51,7 +51,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: test
     runs-on: ${{ inputs.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     environment: testflight
     env:
       APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
@@ -99,3 +99,9 @@ jobs:
             -authenticationKeyPath "$key_path" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+          ASC_KEY_PATH="$key_path" ruby tools/wait_for_testflight.rb \
+            --version "$(cat VERSION)" \
+            --build-number "$GITHUB_RUN_ID" \
+            --timeout 1800 \
+            --interval 30
