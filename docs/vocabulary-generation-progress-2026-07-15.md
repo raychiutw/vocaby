@@ -681,3 +681,17 @@ Boundary-560 evidence:
 - Canonical hashing uses sorted-key, compact UTF-8 JSONL in ascending batch-ID order.
 - No enrichment process remains live, and finish-enrichment and translation artifacts remain absent.
 - All four rejected output archives and all earlier historical FAIL/PASS ledger records remain unchanged.
+
+## Rejected Attempt — Boundary 580
+
+Audit timestamp: `2026-07-16T05:58:54+08:00`
+
+Attempt status: **FAIL / REJECTED / NOT PROMOTABLE**
+
+The sole bounded boundary-580 invocation stopped when Apple Foundation Models failed batch `0576` with `LanguageModelSession.GenerationError error -1`; the command exited with status 1. Scoped unified logging shows unchanged prompt validation plus successful prompt and response guardrail scrubs. It contains no unsafe-content denial and no specific ModelManager failure code for this attempt, so the failure remains an unclassified Apple Foundation Models generation-service error and no retry or code change was attempted.
+
+The concurrent workers checkpointed 575 individually valid batches and 11,500 items before the failed future surfaced. The ignored active output contains IDs `0000` through `0573`, followed by `0575`; batches `0574` and `0576` through `0579` are missing. All saved batches retain exact input item counts, order, and IDs and produce zero `validate_enrichment` errors. The sparse canonical SHA-256 is `187ec9e11a4866c32ae06c0a9604663a084868549b0f6c347ee742031e817a01`.
+
+The last accepted exact consecutive 20-batch boundary remains boundary 560. Its first 560 batches still have canonical SHA-256 `6917a16b75fae094c67477b4d38a7a246c0f48da41c5f342d6870af3ecd8a7b2`, matching the pushed boundary-560 ledger entry.
+
+No enrichment process remains live. The sparse raw output remains ignored and preserved in the active work file; this ledger records derived failure evidence only. All four earlier rejected-output archives remain byte-identical, finish-enrichment and translation artifacts remain absent, and boundary 600 was not started.
