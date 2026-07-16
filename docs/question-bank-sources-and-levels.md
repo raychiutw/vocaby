@@ -1,7 +1,7 @@
 # Question Bank Sources and Level Calibration
 
 Status: implemented V1 policy
-Last reviewed: 2026-07-11
+Last reviewed: 2026-07-16
 
 This document defines how Vocaby imports, enriches, reviews, levels, and
 ships vocabulary content. It is an engineering and editorial policy, not legal
@@ -23,24 +23,24 @@ advice.
 
 ## Current Bundled Bank
 
-Audit target: `Vocaby/Resources/VocabularySeed.json` on 2026-07-11.
+Audit target: `Vocaby/Resources/VocabularySeed.json` on 2026-07-16.
 
 | App level | CEFR range | Items |
 |---|---|---:|
-| `basic` | A1-A2 | 980 |
-| `intermediate` | B1-B2 | 1,630 |
-| `advanced` | C1-C2 | 2,611 |
-| **Total** | A1-C2 | **5,221** |
+| `basic` | A1-A2 | 1,741 |
+| `intermediate` | B1-B2 | 3,306 |
+| `advanced` | C1-C2 | 8,289 |
+| **Total** | A1-C2 | **13,336** |
 
-All 5,221 IDs, upgraded expressions, and concept keys are unique. Sort order is
-contiguous within each level. The 90 project-owned legacy items were cleaned and
-preserved; 5,131 reviewed items were selected from approved local source data
-and passed the shared enrichment and promotion gates. The review run rejected
-219 source slots that lacked a verified or composable pronunciation.
+All 13,336 IDs, upgraded expressions, and concept keys are unique. Sort order is
+contiguous within each level. All 10,021 previously shipped item identities,
+levels, sort orders, and upgraded expressions were preserved; 3,315 additional
+reviewed items were added from approved local source data. The review run
+rejected 1,998 candidates that lacked a verified or composable pronunciation.
 
 ## Source Inventory and Shipping Decisions
 
-Fourteen exact upstream snapshots and their evidence are tracked under
+Fifteen exact upstream snapshots and their evidence are tracked under
 `Content/Sources/Raw`. A source being public or locally imported does not make it
 eligible to ship.
 
@@ -52,8 +52,9 @@ eligible to ship.
 | `omw-ili-map-e3b5ac1` | exact PWN 3.0 to OEWN ILI alignment | approved |
 | `oewn-2025` | English senses, definitions, examples, lexical relations | approved |
 | `tatoeba-eng-cmn-2026-07-04` | context-aligned example translations | approved |
-| `freedict-eng-zho-2025.11.23` | retained Chinese dictionary research; unused in this release | approved |
+| `freedict-eng-zho-2025.11.23` | Chinese dictionary evidence; 1,466 selected references in this release | approved |
 | `cmudict-7479086` | pronunciation cross-check; inline comments stripped before comparison | approved |
+| `grundwortschatz-voc-en-004977a` | English vocabulary and explicit A1-B2 evidence | approved |
 | `bsl-1.2` | research candidate list | blocked |
 | `gcide-0.54` | dictionary research | blocked |
 | `nawl-1.2` | research candidate list | blocked |
@@ -61,8 +62,8 @@ eligible to ship.
 | `tsl-1.2` | research candidate list | blocked |
 | `wiktextract-en-2026-07-09` | target-only English Wiktionary POS, gloss, translation, example, and IPA evidence | approved |
 
-The shipping provenance catalog also contains `vocaby-original` for the
-90 project-owned legacy items. Exact versions, canonical URLs, hashes, license
+The shipping provenance catalog also contains `vocaby-original` for continuity
+with the existing app bank. Exact versions, canonical URLs, hashes, license
 evidence, rights fields, required notices, and current `appUse` decisions live in
 `Content/Sources/source-manifest.json`.
 
@@ -170,16 +171,16 @@ python3 tools/review_vocabulary.py prepare \
   --cmudict Content/Sources/Imported/cmudict-7479086.jsonl \
   --work-dir /tmp/wording-rich-review --batch-size 20
 python3 tools/review_vocabulary.py run-local \
-  --work-dir /tmp/wording-rich-review --workers 1
+  --work-dir /tmp/wording-rich-review --workers 2
 python3 tools/review_vocabulary.py build-reviewed \
   --work-dir /tmp/wording-rich-review \
-  --output Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
-  --rejection-report docs/vocabulary-rejections-2026-07-11.md
+  --output Content/Reviews/vocabulary-rich-2026-07-15.jsonl \
+  --rejection-report docs/vocabulary-rejections-2026-07-15.md
 python3 tools/vocabulary_sources.py audit-reviewed \
-  --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl
+  --input Content/Reviews/vocabulary-rich-2026-07-15.jsonl
 python3 tools/vocabulary_sources.py build-reviewed \
-  --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
-  --existing-seed Content/Baselines/legacy-90.json \
+  --input Content/Reviews/vocabulary-rich-2026-07-15.jsonl \
+  --existing-seed Vocaby/Resources/VocabularySeed.json \
   --seed-output /tmp/VocabularySeed.rich.json \
   --provenance-output /tmp/VocabularyProvenance.rich.json \
   --notices-output /tmp/ThirdPartyNotices.rich.txt
@@ -232,7 +233,7 @@ usefulness.
   local TTS, notifications, and widget flows without a network or account.
 - Every displayed word, meaning, example, prompt, and answer comes from the
   bundled bank.
-- All 5,221 approved items have traceable approved source records and common
+- All 13,336 approved items have traceable approved source records and common
   review fields; every rejected source slot is documented.
 - A clean two-run import/build produces byte-identical canonical and shipping
   artifacts.

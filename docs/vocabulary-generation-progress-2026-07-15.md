@@ -915,3 +915,27 @@ Reviewed-bank evidence:
 - The blocked sources `bsl-1.2`, `gcide-0.54`, `nawl-1.2`, `ngsl-1.2`, and `tsl-1.2` have zero selected-bank source or validation references.
 - Rebuilding twice produced byte-identical reviewed JSONL and rejection reports. Reviewed JSONL SHA-256 is `9b1c6902eed10daaf3d54fe358d3026ba92e743a5bf47d326109a1cbd24a4d6f`; rejection-report SHA-256 is `37e350bb3b5fb7778ab2e2631ad6a8bb8caa44a22d3be8ada50f638515d9b1e5`.
 - Final verification reports `verified 15 source(s)` and 109 passing unit tests. `git diff --check` passes.
+
+## Canonical Promotion — Complete
+
+Audit timestamp: `2026-07-16T12:07:09+08:00`
+
+Current promotion status: **PASS / 13,336 ITEMS PROMOTED**
+
+The reviewed JSONL was built twice into candidate seed, provenance, and notices artifacts. Both builds were byte-identical, the promotion gate accepted the complete candidate, and one final build wrote those exact bytes to the canonical repository and App resource paths.
+
+| Resource | Records | SHA-256 | Deterministic candidate match | Result |
+| --- | ---: | --- | --- | --- |
+| `Vocaby/Resources/VocabularySeed.json` | 13,336 | `e48f088ab76bd4d02a112c5445b8f99fca44015bc222a08c64099588ee5ecafb` | PASS | PASS |
+| `Content/VocabularyProvenance.json` | 13,336 | `ecee467f6ae1cc22f99a3194160e65d169a0fbf49cd1f4991e5376d2107b129f` | PASS | PASS |
+| `Vocaby/Resources/ThirdPartyNotices.txt` | 10 external approved sources | `3f152459c424d7451fc08c3ea65f17e7d368d335bd78a93afda2307408e55d5c` | PASS | PASS |
+
+Promotion evidence:
+
+- All 10,021 previously shipped IDs remain present with identical levels, sort orders, and upgraded expressions. The promoted bank adds 3,315 items.
+- The final level counts are 1,741 basic, 3,306 intermediate, and 8,289 advanced.
+- Provenance contains exactly 13,336 unique item IDs and 11 source catalog entries: the 10 approved external sources plus `vocaby-original`.
+- Every manifest-required notice for the 10 approved external sources is present. All five blocked source IDs are absent from provenance and notices.
+- `audit-reviewed`, `verify`, 109 Python tests, the focused bundled-seed XCTest, and `git diff --check` pass.
+- A Release simulator build succeeds. Its App bundle contains the exact canonical `VocabularySeed.json` and `ThirdPartyNotices.txt`, and contains no source, import, review, report, provenance, enrichment, or translation artifact.
+- The Xcode project has no repository-only vocabulary path, and Swift runtime sources contain no networking, account, credential, or cloud pattern.
