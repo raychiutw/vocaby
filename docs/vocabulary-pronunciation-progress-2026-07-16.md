@@ -18,3 +18,13 @@
 - Error records: 0.
 - Output SHA-256: `50508047e624301362e218e1d49986699ee2eda5e0d6f10c0ee0c07287510fa3`.
 - No enrichment process remained after the bounded invocation.
+
+## Enrichment boundary 37
+
+- Command: `enrich-local --workers 2 --max-batches 17`, resumed from boundary 20.
+- Result: all 37 batches completed, IDs `0000` through `0036`, 731 items; final batch contains 11 items.
+- Input/output item IDs: PASS.
+- Enrichment validator: PASS for all 731 items.
+- Error records: 0.
+- Output SHA-256: `420537d3932aa3053db60844170b91a6a6a1772146a3e7cc53fa9b38c960b9f0`.
+- No enrichment process remained after completion.
