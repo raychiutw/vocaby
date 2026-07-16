@@ -1483,7 +1483,7 @@ class VocabularySourcesTests(unittest.TestCase):
                 },
             )
             provenance_data = json.loads(provenance.read_text())
-            self.assertEqual(provenance_data["bankVersion"], "2026.07.4")
+            self.assertEqual(provenance_data["bankVersion"], "2026.07.5")
             self.assertEqual(
                 provenance_data["items"][0]["reviewedAt"], "2026-07-15"
             )

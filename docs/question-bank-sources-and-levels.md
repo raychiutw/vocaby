@@ -27,16 +27,17 @@ Audit target: `Vocaby/Resources/VocabularySeed.json` on 2026-07-16.
 
 | App level | CEFR range | Items |
 |---|---|---:|
-| `basic` | A1-A2 | 1,741 |
-| `intermediate` | B1-B2 | 3,306 |
-| `advanced` | C1-C2 | 8,289 |
-| **Total** | A1-C2 | **13,336** |
+| `basic` | A1-A2 | 1,742 |
+| `intermediate` | B1-B2 | 3,312 |
+| `advanced` | C1-C2 | 9,010 |
+| **Total** | A1-C2 | **14,064** |
 
-All 13,336 IDs, upgraded expressions, and concept keys are unique. Sort order is
-contiguous within each level. All 10,021 previously shipped item identities,
-levels, sort orders, and upgraded expressions were preserved; 3,315 additional
-reviewed items were added from approved local source data. The review run
-rejected 1,998 candidates that lacked a verified or composable pronunciation.
+All 14,064 IDs, upgraded expressions, and concept keys are unique. Sort order is
+contiguous within each level. All 13,336 previously shipped item identities,
+levels, sort orders, and upgraded expressions were preserved; 728 additional
+reviewed items were added after expanding the approved pronunciation snapshot.
+The review run rejected 1,272 of 15,336 candidates that lacked a verified or
+composable pronunciation.
 
 ## Source Inventory and Shipping Decisions
 
@@ -52,7 +53,7 @@ eligible to ship.
 | `omw-ili-map-e3b5ac1` | exact PWN 3.0 to OEWN ILI alignment | approved |
 | `oewn-2025` | English senses, definitions, examples, lexical relations | approved |
 | `tatoeba-eng-cmn-2026-07-04` | context-aligned example translations | approved |
-| `freedict-eng-zho-2025.11.23` | Chinese dictionary evidence; 1,466 selected references in this release | approved |
+| `freedict-eng-zho-2025.11.23` | Chinese dictionary evidence; 1,532 selected references in this release | approved |
 | `cmudict-7479086` | pronunciation cross-check; inline comments stripped before comparison | approved |
 | `grundwortschatz-voc-en-004977a` | English vocabulary and explicit A1-B2 evidence | approved |
 | `bsl-1.2` | research candidate list | blocked |
@@ -233,7 +234,7 @@ usefulness.
   local TTS, notifications, and widget flows without a network or account.
 - Every displayed word, meaning, example, prompt, and answer comes from the
   bundled bank.
-- All 13,336 approved items have traceable approved source records and common
+- All 14,064 approved items have traceable approved source records and common
   review fields; every rejected source slot is documented.
 - A clean two-run import/build produces byte-identical canonical and shipping
   artifacts.
