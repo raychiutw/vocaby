@@ -894,3 +894,24 @@ Translation recovery evidence:
 - The five rejected enrichment-output archives remain byte-identical with SHA-256 values `ed710299c57f3f77d654b94e29cb4b020741937b8973e856ec206013cc7440df`, `1ad09fbee97ca84b492e28cd022e52820629dd9be2f8f57f6bc136f323eb0898`, `38d6d46ace0611dd4ba0179e990f7109d9bd520245ee203d25b2c924d579d49b`, `b0dcb004edeb0757df7042bad5ab96ccd70139ec71d9f05f6d19d4ded6454156`, and `187ec9e11a4866c32ae06c0a9604663a084868549b0f6c347ee742031e817a01`.
 - Final verification reports `verified 15 source(s)` and 92 passing unit tests. `git diff --check` passes, and the Xcode project contains none of the maintainer-work paths `Content/Sources`, `Content/Reviews`, `VocabularyProvenance`, or `enrichment-output`.
 - No translation or Apple helper process remains live. The translation output is complete machine-generated maintainer input only; no editorial review, `build-reviewed`, or promotion command was run.
+
+## Reviewed Bank — Complete
+
+Audit timestamp: `2026-07-16T11:59:43+08:00`
+
+Current review status: **PASS / REVIEWED BANK READY FOR PROMOTION**
+
+`build-reviewed` consumed the fully audited enrichment and translation outputs and produced the tracked reviewed bank plus a complete rejection report. Two independent rebuilds were byte-identical to the tracked artifacts.
+
+| Candidates | Selected | Rejected | Basic | Intermediate | Advanced | Unique selected IDs | Result |
+| ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 15,334 | 13,336 | 1,998 | 1,741 | 3,306 | 8,289 | PASS | PASS |
+
+Reviewed-bank evidence:
+
+- Selected plus rejected equals all 15,334 prepared candidates exactly. All 1,998 rejections have the explicit reason `no-verified-pronunciation` and appear in the rejection table.
+- All 13,336 selected records have unique IDs and passed the reviewed-bank schema and validation gates.
+- Every one of the 10 sources whose manifest `appUse` is `approved` has at least one actual selected-bank source reference. FreeDict contributes 1,466 references.
+- The blocked sources `bsl-1.2`, `gcide-0.54`, `nawl-1.2`, `ngsl-1.2`, and `tsl-1.2` have zero selected-bank source or validation references.
+- Rebuilding twice produced byte-identical reviewed JSONL and rejection reports. Reviewed JSONL SHA-256 is `9b1c6902eed10daaf3d54fe358d3026ba92e743a5bf47d326109a1cbd24a4d6f`; rejection-report SHA-256 is `37e350bb3b5fb7778ab2e2631ad6a8bb8caa44a22d3be8ada50f638515d9b1e5`.
+- Final verification reports `verified 15 source(s)` and 109 passing unit tests. `git diff --check` passes.
