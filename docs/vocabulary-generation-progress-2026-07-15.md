@@ -870,3 +870,27 @@ Rejected translation evidence:
 - The fingerprint matches translation-input SHA-256 `ada323af20ebe9e42135ed05fedb7016630536e32280fcf8aed8e0221d8a6dde` and Apple helper source SHA-256 `611a2d5b4b6d7afcd5585066c67f53cbbcec27c376a9b217f84a0c665044b887`.
 - The 200 checkpointed drafts remain ignored maintainer output; they are not editorially approved and cannot be passed to build-reviewed or promotion.
 - No translation process remains live. The checkpoint and fingerprint were preserved byte-for-byte, and no finish-enrichment, translation-input, enrichment, or rejected-output artifact was cleared or rewritten after failure.
+
+## Translation Recovery — Complete Output
+
+Audit timestamp: `2026-07-16T11:53:13+08:00`
+
+Current translation status: **PASS / TRANSLATION OUTPUT COMPLETE / NOT REVIEWED**
+
+The fail-fast recovery change was covered by tests before implementation and pushed in commit `73d8419`. Parallel translation now uses at most 100 requests per helper call; if one helper fails, queued futures are cancelled and executor shutdown does not synchronously wait. The existing 200-record checkpoint was then resumed by one `translate-local --workers 2` invocation. No retry or second recovery invocation was started. That invocation translated the remaining 34,876 requests and exited successfully with `{"translations": 35076}`.
+
+| Translation input | Translation output | Meaning records | Example records | Unique exact input/output IDs | Exact fields/nonempty trimmed text | Traditionalize/clean validator | Fingerprint | Raw/canonical output SHA-256 | Result |
+| ---: | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- |
+| 35,076 | 35,076 | 17,538 | 17,538 | PASS | PASS | PASS | PASS | `16ba6443c1459bb5534723d4be3cd28ce82e3ab2a21b96c8654df721f456ca7d` | PASS |
+
+Translation recovery evidence:
+
+- The output contains exactly 35,076 unique IDs and its ID set equals the immutable translation input exactly. Records are in lexicographic ID order, as required by the checkpoint writer.
+- Every record contains exactly `id` and `text`; every ID and text value is a nonempty trimmed string. There are no Unicode replacement characters or control characters.
+- The records form exactly 17,538 content pairs, each containing one `meaning` and one `example` translation. All 35,076 texts pass the same Traditional Chinese conversion and sentence-cleaning input contract used by `build-reviewed`.
+- Translation-input SHA-256 remains `ada323af20ebe9e42135ed05fedb7016630536e32280fcf8aed8e0221d8a6dde`; `enriched.jsonl` remains `942b05ab8de9eb205885a48c8b05a46da5a3d19b812fd1bce10e6ab83447afe8`.
+- The fingerprint still matches the immutable translation input and Apple helper source SHA-256 `611a2d5b4b6d7afcd5585066c67f53cbbcec27c376a9b217f84a0c665044b887`.
+- The completed raw output already uses canonical sorted-key compact UTF-8 JSONL, so its raw and canonical SHA-256 are both `16ba6443c1459bb5534723d4be3cd28ce82e3ab2a21b96c8654df721f456ca7d`.
+- The five rejected enrichment-output archives remain byte-identical with SHA-256 values `ed710299c57f3f77d654b94e29cb4b020741937b8973e856ec206013cc7440df`, `1ad09fbee97ca84b492e28cd022e52820629dd9be2f8f57f6bc136f323eb0898`, `38d6d46ace0611dd4ba0179e990f7109d9bd520245ee203d25b2c924d579d49b`, `b0dcb004edeb0757df7042bad5ab96ccd70139ec71d9f05f6d19d4ded6454156`, and `187ec9e11a4866c32ae06c0a9604663a084868549b0f6c347ee742031e817a01`.
+- Final verification reports `verified 15 source(s)` and 92 passing unit tests. `git diff --check` passes, and the Xcode project contains none of the maintainer-work paths `Content/Sources`, `Content/Reviews`, `VocabularyProvenance`, or `enrichment-output`.
+- No translation or Apple helper process remains live. The translation output is complete machine-generated maintainer input only; no editorial review, `build-reviewed`, or promotion command was run.
