@@ -404,8 +404,8 @@
       "adapter": "wiktextract_jsonl_gz",
       "rawFile": {
         "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09.jsonl.gz",
-        "sha256": "1b6e3fab54497483e7a81ea71909a659c68c59851ddcd4ff26af0ffe7239895b",
-        "bytes": 36206593
+        "sha256": "2dcc15087cccb540435453c1cde8ff9ca1e9a9da009c0c90e2905dd2dc9d4d50",
+        "bytes": 68464902
       },
       "license": "CC BY-SA 4.0",
       "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",

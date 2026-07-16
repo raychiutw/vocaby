@@ -1,7 +1,7 @@
 ---
 name: vocaby-vocabulary-import
 description: Use when importing or re-importing an external Vocaby vocabulary source, including Wiktextract, CMUdict, OEWN, CSV, TSV, XLSX, ZIP, TAR, TEI, or JSON; or when producing and auditing rich review JSONL before promoting the bundled bank. 適用於新增詞庫、重跑來源檔、補強多讀音多詞義、翻譯例句題目與審核上架；不適用於 App runtime 下載、登入同步、一般試算表整理或略過權利審核。
-version: 2026.7.11
+version: 2026.7.16
 homepage: https://github.com/raychiutw/vocaby
 license: Proprietary
 metadata: {"author":"Vocaby"}
@@ -167,11 +167,11 @@ python3 tools/review_vocabulary.py prepare \
   --cmudict Content/Sources/Imported/cmudict-7479086.jsonl \
   --work-dir /tmp/wording-rich-review --batch-size 20
 python3 tools/review_vocabulary.py run-local \
-  --work-dir /tmp/wording-rich-review --workers 1
+  --work-dir /tmp/wording-rich-review --workers 2
 python3 tools/review_vocabulary.py build-reviewed \
   --work-dir /tmp/wording-rich-review \
-  --output Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
-  --rejection-report docs/vocabulary-rejections-2026-07-11.md
+  --output Content/Reviews/vocabulary-rich-2026-07-15.jsonl \
+  --rejection-report docs/vocabulary-rejections-2026-07-15.md
 ```
 
 - `run-local` uses installed Apple language services only. If a maintainer instead completes the checkpointed enrichment/translation files with an Agent, use the same workspace and final `build-reviewed` command.
@@ -184,10 +184,10 @@ Step 8: Promote reviewed artifacts
 
 ```sh
 python3 tools/vocabulary_sources.py audit-reviewed \
-  --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl
+  --input Content/Reviews/vocabulary-rich-2026-07-15.jsonl
 python3 tools/vocabulary_sources.py build-reviewed \
-  --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
-  --existing-seed Content/Baselines/legacy-90.json \
+  --input Content/Reviews/vocabulary-rich-2026-07-15.jsonl \
+  --existing-seed Vocaby/Resources/VocabularySeed.json \
   --seed-output /tmp/VocabularySeed.rich.json \
   --provenance-output /tmp/VocabularyProvenance.rich.json \
   --notices-output /tmp/ThirdPartyNotices.rich.txt

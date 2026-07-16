@@ -21,21 +21,15 @@ python3 tools/review_vocabulary.py prepare \
   --queue /tmp/vocabulary-rich-review-queue.jsonl \
   --cmudict Content/Sources/Imported/cmudict-7479086.jsonl \
   --work-dir /tmp/wording-rich-review --batch-size 20
-python3 tools/review_vocabulary.py draft-source-enrichment \
-  --work-dir /tmp/wording-rich-review
-python3 tools/review_vocabulary.py finish-enrichment \
-  --work-dir /tmp/wording-rich-review
-python3 tools/review_vocabulary.py seed-source-translations \
-  --work-dir /tmp/wording-rich-review
-python3 tools/review_vocabulary.py translate-local \
-  --work-dir /tmp/wording-rich-review
+python3 tools/review_vocabulary.py run-local \
+  --work-dir /tmp/wording-rich-review --workers 2
 python3 tools/review_vocabulary.py build-reviewed \
   --work-dir /tmp/wording-rich-review \
-  --output Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
-  --rejection-report docs/vocabulary-rejections-2026-07-11.md
+  --output Content/Reviews/vocabulary-rich-2026-07-15.jsonl \
+  --rejection-report docs/vocabulary-rejections-2026-07-15.md
 python3 tools/vocabulary_sources.py build-reviewed \
-  --input Content/Reviews/vocabulary-rich-2026-07-11.jsonl \
-  --existing-seed Content/Baselines/legacy-90.json \
+  --input Content/Reviews/vocabulary-rich-2026-07-15.jsonl \
+  --existing-seed Vocaby/Resources/VocabularySeed.json \
   --seed-output /tmp/wording-seed.json \
   --provenance-output /tmp/wording-provenance.json \
   --notices-output /tmp/wording-notices.txt
@@ -58,14 +52,15 @@ WordNet through the exact Open Multilingual Wordnet ILI map. CEFR-J calibrates
 levels, CC-CEDICT supplies secondary gloss-review evidence, and selected Tatoeba
 English-Mandarin pairs supply context-aligned example translations. The bundled
 notice is generated from every source that actually contributes to the bank.
-FreeDict remains an approved retained source but does not contribute to this
-release; reference-only and blocked sources cannot contribute shipping fields.
+FreeDict contributes reviewed Chinese dictionary evidence to this release;
+reference-only and blocked sources cannot contribute shipping fields.
 
 The maintainer pipeline requires Python 3, `opencc` with `s2twp.json`, and Xcode's
 macOS Swift toolchain. `NaturalLanguage` performs local sense matching. The rich
 review stage can use the checked-in Apple language helper with an already
-installed English-to-Traditional-Chinese Translation language pair; it checkpoints
-every 200 segments and resumes by ID. Foundation Models support targeted maintainer
+installed English-to-Traditional-Chinese Translation language pair. It resumes by
+ID and checkpoints each completed 100-segment parallel chunk, or every 200
+segments in single-worker mode. Foundation Models support targeted maintainer
 corrections but are not required for a deterministic full-bank build. None of
 these tools, language services, review files, or source snapshots is linked into
 the iOS app. The shipping App remains fully offline.
