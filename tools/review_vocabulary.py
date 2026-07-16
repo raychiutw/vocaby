@@ -10,12 +10,16 @@ import json
 import re
 import subprocess
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 try:
     from tools import vocabulary_sources as sources
 except ModuleNotFoundError:
     import vocabulary_sources as sources
+
+
+TRANSLATION_CHUNK_SIZE = 100
 
 
 def jsonl(items: list[dict]) -> str:
@@ -65,6 +69,13 @@ def prepare_review(
                     "level": packet["level"],
                     "sortOrder": packet["sortOrder"],
                     "reason": "no-verified-pronunciation",
+                    "sourceIDs": sorted(
+                        {
+                            ref["sourceID"]
+                            for ref in packet.get("sourceRefs", [])
+                            if ref.get("sourceID")
+                        }
+                    ),
                 }
             )
             continue
@@ -439,17 +450,36 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
                     "validationSourceIDs": validation_ids,
                     "cefr": {"basic": "A2", "intermediate": "B2", "advanced": "C1"}[level],
                     "reviewStatus": "approved",
-                    "englishReviewer": "codex-content-review-2026-07-11",
-                    "zhHantReviewer": "codex-content-review-2026-07-11",
+                    "englishReviewer": "codex-content-review-2026-07-15",
+                    "zhHantReviewer": "codex-content-review-2026-07-15",
+                    "reviewedAt": "2026-07-15",
                 }
             )
 
     sources.atomic_write(output, jsonl(reviewed))
     rejections = sources.read_jsonl(work_dir / "rejections.jsonl")
+    reason_counts = Counter(item["reason"] for item in rejections)
+    source_counts = Counter(
+        source_id
+        for item in rejections
+        for source_id in item.get("sourceIDs", [])
+    )
     report = [
         "# Vocabulary review rejections",
         "",
-        f"Rejected {len(rejections)} source slots because no verified IPA or composable CMUdict pronunciation was available.",
+        f"Selected: {len(reviewed)}",
+        f"Rejected: {len(rejections)}",
+        f"Total candidates: {len(reviewed) + len(rejections)}",
+        "",
+        "## Rejections by reason",
+        "",
+        *(f"- {reason}: {count}" for reason, count in sorted(reason_counts.items())),
+        "",
+        "## Rejections by source",
+        "",
+        *(f"- {source_id}: {count}" for source_id, count in sorted(source_counts.items())),
+        "",
+        "## Rejected candidates",
         "",
         "| ID | Level | Expression | Reason |",
         "| --- | --- | --- | --- |",
@@ -491,20 +521,156 @@ def run_helper(executable: Path, mode: str, payload: str) -> str:
     return result.stdout
 
 
-def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict[str, int]:
-    batches = (work_dir / "enrichment-input.jsonl").read_text(encoding="utf-8").splitlines()
-    batch_ids = {json.loads(line)["batchID"] for line in batches}
-    if len(batch_ids) != len(batches):
-        raise sources.SourceError("duplicate enrichment batch ID")
+def deterministic_enrichment_repairs(work_dir: Path) -> dict[str, dict]:
+    draft_path = work_dir / "draft.jsonl"
+    if not draft_path.is_file():
+        return {}
+    repairs = {}
+    for draft in sources.read_jsonl(draft_path):
+        packet = draft["packet"]
+        primary = draft["senses"][0]
+        item_id = f"{packet['id']}::{primary['id']}"
+        repairs[item_id] = {
+            "id": item_id,
+            "plainExpression": fallback_plain(packet),
+            "example": source_example(packet["target"], primary),
+        }
+    return repairs
+
+
+def deterministic_input_enrichment(input_items: list[dict]) -> list[dict]:
+    outputs = []
+    for input_item in input_items:
+        try:
+            target = input_item["target"]
+            item = {
+                "id": input_item["id"],
+                "plainExpression": fallback_plain(
+                    {
+                        "target": target,
+                        "plain": "",
+                        "candidatePlainExpressions": input_item.get(
+                            "plainCandidates", []
+                        ),
+                        "definition": input_item.get("meaning", ""),
+                    }
+                ),
+                "example": source_example(target, input_item),
+            }
+            validate_enrichment(item, target)
+        except (
+            AttributeError,
+            IndexError,
+            KeyError,
+            TypeError,
+            sources.SourceError,
+        ) as error:
+            raise sources.SourceError(
+                f"invalid deterministic safety fallback for {input_item.get('id')}"
+            ) from error
+        outputs.append(item)
+    return outputs
+
+
+def validate_enrichment_batch(
+    batch: dict,
+    expected: dict,
+    repairs: dict[str, dict],
+    *,
+    repair_invalid: bool,
+) -> dict:
+    if not isinstance(batch, dict) or batch.get("batchID") != expected["batchID"]:
+        raise sources.SourceError("enrichment batch ID mismatch")
+    actual_items = batch.get("items")
+    expected_items = expected["items"]
+    if (
+        not isinstance(actual_items, list)
+        or not all(isinstance(item, dict) for item in actual_items)
+        or [item.get("id") for item in actual_items]
+        != [item["id"] for item in expected_items]
+    ):
+        raise sources.SourceError("enrichment batch item ID mismatch")
+
+    validated = []
+    for item, input_item in zip(actual_items, expected_items, strict=True):
+        target = input_item.get("target")
+        if not isinstance(target, str) or not target.strip():
+            raise sources.SourceError(f"enrichment input {input_item.get('id')} has no target")
+        candidate = dict(item)
+        if repair_invalid:
+            repair = repairs.get(item["id"])
+            if repair is None:
+                try:
+                    validate_enrichment(candidate, target)
+                except sources.SourceError as error:
+                    raise sources.SourceError(
+                        f"no deterministic enrichment repair for {item['id']}"
+                    ) from error
+            else:
+                validate_enrichment(repair, target)
+                try:
+                    validate_enrichment(
+                        {
+                            "id": item["id"],
+                            "plainExpression": candidate.get("plainExpression"),
+                            "example": repair["example"],
+                        },
+                        target,
+                    )
+                except sources.SourceError:
+                    candidate["plainExpression"] = repair["plainExpression"]
+                try:
+                    validate_enrichment(
+                        {
+                            "id": item["id"],
+                            "plainExpression": repair["plainExpression"],
+                            "example": candidate.get("example"),
+                        },
+                        target,
+                    )
+                except sources.SourceError:
+                    candidate["example"] = repair["example"]
+        validate_enrichment(candidate, target)
+        validated.append(candidate)
+    return {"batchID": expected["batchID"], "items": validated}
+
+
+def run_local_enrichment(
+    work_dir: Path,
+    swift_source: Path,
+    workers: int,
+    *,
+    max_batches: int | None = None,
+) -> dict[str, int]:
+    batches = sources.read_jsonl(work_dir / "enrichment-input.jsonl")
+    batch_ids = {batch.get("batchID") for batch in batches}
+    if None in batch_ids or len(batch_ids) != len(batches):
+        raise sources.SourceError("duplicate or missing enrichment batch ID")
+    expected_by_id = {batch["batchID"]: batch for batch in batches}
+    item_ids = [item.get("id") for batch in batches for item in batch.get("items", [])]
+    if None in item_ids or len(set(item_ids)) != len(item_ids):
+        raise sources.SourceError("duplicate or missing enrichment item ID")
+    repairs = deterministic_enrichment_repairs(work_dir)
     output_path = work_dir / "enrichment-output.jsonl"
     completed = {}
     if output_path.exists():
-        for output in sources.read_jsonl(output_path):
-            batch_id = output.get("batchID")
-            if batch_id not in batch_ids or batch_id in completed:
-                raise sources.SourceError("invalid saved enrichment batch")
-            completed[batch_id] = output
-    pending = [line for line in batches if json.loads(line)["batchID"] not in completed]
+        try:
+            saved = sources.read_jsonl(output_path)
+            for output in saved:
+                batch_id = output.get("batchID")
+                if batch_id not in batch_ids or batch_id in completed:
+                    raise sources.SourceError("unknown or duplicate batch ID")
+                completed[batch_id] = validate_enrichment_batch(
+                    output,
+                    expected_by_id[batch_id],
+                    repairs,
+                    repair_invalid=False,
+                )
+        except (OSError, UnicodeError, json.JSONDecodeError, sources.SourceError) as error:
+            raise sources.SourceError(f"invalid saved enrichment batch: {error}") from error
+    pending = [batch for batch in batches if batch["batchID"] not in completed]
+    if max_batches is not None:
+        pending = pending[:max_batches]
 
     def checkpoint() -> None:
         sources.atomic_write(
@@ -512,65 +678,147 @@ def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict
             jsonl(sorted(completed.values(), key=lambda item: item["batchID"])),
         )
 
+    if not pending:
+        checkpoint()
+        return {"batches": len(batches), "completed": len(completed), "processed": 0}
+
     with tempfile.TemporaryDirectory() as directory:
         executable = Path(directory) / "apple-language-services"
         compile_apple_helper(swift_source, executable)
+
+        def enrich(batch: dict) -> dict:
+
+            def enrich_items(
+                input_items: list[dict], invalid_attempts: int = 0
+            ) -> list[dict]:
+                chunk = {**batch, "items": input_items}
+                try:
+                    output = [
+                        json.loads(value)
+                        for value in run_helper(
+                            executable, "enrich", jsonl([chunk])
+                        ).splitlines()
+                        if value.strip()
+                    ]
+                except sources.SourceError as error:
+                    if "Detected content likely to be unsafe" in str(error):
+                        return deterministic_input_enrichment(input_items)
+                    if len(input_items) < 2 or "context window size" not in str(error):
+                        raise
+                else:
+                    actual = output[0].get("items", []) if len(output) == 1 else []
+                    if (
+                        len(output) == 1
+                        and output[0].get("batchID") == batch["batchID"]
+                        and all(isinstance(item, dict) for item in actual)
+                        and [item.get("id") for item in actual]
+                        == [item["id"] for item in input_items]
+                    ):
+                        return actual
+                    if len(input_items) < 2:
+                        if invalid_attempts < 2:
+                            return enrich_items(input_items, invalid_attempts + 1)
+                        return deterministic_input_enrichment(input_items)
+                midpoint = len(input_items) // 2
+                return enrich_items(input_items[:midpoint]) + enrich_items(
+                    input_items[midpoint:]
+                )
+
+            items = [
+                item
+                for start in range(0, max(len(batch["items"]), 1), 10)
+                for item in enrich_items(batch["items"][start : start + 10])
+            ]
+            return {"batchID": batch["batchID"], "items": items}
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(run_helper, executable, "enrich", line + "\n"): json.loads(line)["batchID"]
-                for line in pending
+                pool.submit(enrich, batch): batch["batchID"] for batch in pending
             }
             for enriched_count, future in enumerate(
                 concurrent.futures.as_completed(futures), 1
             ):
                 batch_id = futures[future]
                 try:
-                    output = [
-                        json.loads(line) for line in future.result().splitlines() if line.strip()
-                    ]
+                    output = validate_enrichment_batch(
+                        future.result(),
+                        expected_by_id[batch_id],
+                        repairs,
+                        repair_invalid=True,
+                    )
                 except Exception as error:
+                    for pending_future in futures:
+                        pending_future.cancel()
                     checkpoint()
                     raise sources.SourceError(
                         f"Apple enrich failed for batch {batch_id}: {error}"
                     ) from error
-                for item in output:
-                    item_id = item.get("batchID")
-                    if item_id not in batch_ids or item_id in completed:
-                        checkpoint()
-                        raise sources.SourceError("invalid enrichment batch output")
-                    completed[item_id] = item
+                completed[batch_id] = output
                 if enriched_count % 10 == 0 or enriched_count == len(pending):
                     checkpoint()
                 print(
                     f"enriched {len(completed)}/{len(batches)} batches", flush=True
                 )
         checkpoint()
-        finish = finish_enrichment(work_dir)
-        translation_payload = (work_dir / "translation-input.jsonl").read_text(encoding="utf-8")
-        translated = run_helper(executable, "translate", translation_payload)
-        sources.atomic_write(work_dir / "translation-output.jsonl", translated)
     return {
         "batches": len(batches),
+        "completed": len(completed),
+        "processed": len(pending),
+    }
+
+
+def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict[str, int]:
+    enrichment = run_local_enrichment(work_dir, swift_source, workers)
+    finish = finish_enrichment(work_dir)
+    translated = run_local_translation(work_dir, swift_source, workers)
+    return {
+        "batches": enrichment["batches"],
         "items": finish["items"],
-        "translations": finish["translations"],
+        "translations": translated,
     }
 
 
 def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> int:
     output = work_dir / "translation-output.jsonl"
-    requests = sources.read_jsonl(work_dir / "translation-input.jsonl")
+    input_path = work_dir / "translation-input.jsonl"
+    fingerprint_path = work_dir / "translation-output.fingerprint.json"
+    if not swift_source.is_file():
+        raise sources.SourceError(f"missing Swift helper source: {swift_source}")
+    fingerprint = {
+        "inputSHA256": sources.sha256(input_path),
+        "swiftSourceSHA256": sources.sha256(swift_source),
+    }
+    saved_fingerprint = None
+    if fingerprint_path.is_file():
+        try:
+            saved_fingerprint = json.loads(fingerprint_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            pass
+    requests = sources.read_jsonl(input_path)
     request_ids = {item["id"] for item in requests}
     completed_by_id = {
         item["id"]: item
-        for item in (sources.read_jsonl(output) if output.is_file() else [])
+        for item in (
+            sources.read_jsonl(output)
+            if output.is_file() and saved_fingerprint == fingerprint
+            else []
+        )
         if item.get("id") in request_ids
     }
     completed = list(completed_by_id.values())
+
+    def checkpoint() -> None:
+        completed.sort(key=lambda item: item["id"])
+        sources.atomic_write(output, jsonl(completed))
+        sources.atomic_write(
+            fingerprint_path,
+            json.dumps(fingerprint, sort_keys=True, separators=(",", ":")) + "\n",
+        )
+
     completed_ids = {item["id"] for item in completed}
     remaining = [item for item in requests if item["id"] not in completed_ids]
     if not remaining:
-        completed.sort(key=lambda item: item["id"])
-        sources.atomic_write(output, jsonl(completed))
+        checkpoint()
         return len(completed)
     with tempfile.TemporaryDirectory() as directory:
         executable = Path(directory) / "apple-language-services"
@@ -599,8 +847,7 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
                     completed.append(item)
                     streamed += 1
                     if streamed % 200 == 0:
-                        completed.sort(key=lambda value: value["id"])
-                        sources.atomic_write(output, jsonl(completed))
+                        checkpoint()
                         print(
                             f"translated {len(completed)}/{len(requests)} segments",
                             flush=True,
@@ -611,12 +858,16 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
                     raise sources.SourceError(f"Apple translate failed: {stderr.strip()}")
                 if streamed != len(remaining):
                     raise sources.SourceError("Apple translation returned incomplete IDs")
-                completed.sort(key=lambda value: value["id"])
-                sources.atomic_write(output, jsonl(completed))
+                checkpoint()
                 print(f"translated {len(completed)}/{len(requests)} segments", flush=True)
                 return len(completed)
-        chunks = [remaining[start : start + 200] for start in range(0, len(remaining), 200)]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        chunks = [
+            remaining[start : start + TRANSLATION_CHUNK_SIZE]
+            for start in range(0, len(remaining), TRANSLATION_CHUNK_SIZE)
+        ]
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+        futures = {}
+        try:
             futures = {
                 pool.submit(run_helper, executable, "translate", jsonl(chunk)): chunk
                 for chunk in chunks
@@ -631,12 +882,20 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
                 if {item["id"] for item in translated} != {item["id"] for item in chunk}:
                     raise sources.SourceError("Apple translation returned incomplete IDs")
                 completed.extend(translated)
-                completed.sort(key=lambda item: item["id"])
-                sources.atomic_write(output, jsonl(completed))
+                checkpoint()
                 print(
                     f"translated {len(completed)}/{len(requests)} segments",
                     flush=True,
                 )
+        except Exception:
+            for pending_future in futures:
+                pending_future.cancel()
+            if completed:
+                checkpoint()
+            pool.shutdown(wait=False, cancel_futures=True)
+            raise
+        else:
+            pool.shutdown()
     return len(completed)
 
 
@@ -716,6 +975,15 @@ def main(argv: list[str] | None = None) -> int:
         default=Path(__file__).with_name("apple_language_services.swift"),
     )
     local.add_argument("--workers", type=int, default=2)
+    enrich_local = commands.add_parser("enrich-local")
+    enrich_local.add_argument("--work-dir", type=Path, required=True)
+    enrich_local.add_argument(
+        "--swift-source",
+        type=Path,
+        default=Path(__file__).with_name("apple_language_services.swift"),
+    )
+    enrich_local.add_argument("--workers", type=int, default=2)
+    enrich_local.add_argument("--max-batches", type=int)
     source_draft = commands.add_parser("draft-source-enrichment")
     source_draft.add_argument("--work-dir", type=Path, required=True)
     translate = commands.add_parser("translate-local")
@@ -745,6 +1013,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.workers < 1:
             raise sources.SourceError("workers must be positive")
         result = run_local_services(args.work_dir, args.swift_source, args.workers)
+    elif args.command == "enrich-local":
+        if args.workers < 1:
+            raise sources.SourceError("workers must be positive")
+        if args.max_batches is not None and args.max_batches < 1:
+            raise sources.SourceError("max batches must be positive")
+        result = run_local_enrichment(
+            args.work_dir,
+            args.swift_source,
+            args.workers,
+            max_batches=args.max_batches,
+        )
     elif args.command == "draft-source-enrichment":
         result = {"items": draft_source_enrichment(args.work_dir)}
     elif args.command == "seed-source-translations":

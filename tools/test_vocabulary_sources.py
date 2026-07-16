@@ -751,13 +751,15 @@ class VocabularySourcesTests(unittest.TestCase):
                     "canonicalURL": f"https://example.invalid/{source_id}",
                     "license": "Demo license",
                     "licenseURL": "https://example.invalid/license",
-                    "appUse": "reference_only",
+                    "appUse": "approved",
                 }
                 for source_id in (
                     "oewn-2025",
                     "freedict",
                     "cefr",
+                    "cc-cedict-2026-07-11",
                     "cow",
+                    "omw-ili-map",
                     "tatoeba-eng-cmn-2026-07-04",
                 )
             ],
@@ -1480,11 +1482,58 @@ class VocabularySourcesTests(unittest.TestCase):
                     "quiz",
                 },
             )
-            provenance_item = json.loads(provenance.read_text())["items"][0]
+            provenance_data = json.loads(provenance.read_text())
+            self.assertEqual(provenance_data["bankVersion"], "2026.07.4")
+            self.assertEqual(
+                provenance_data["items"][0]["reviewedAt"], "2026-07-15"
+            )
+            provenance_item = provenance_data["items"][0]
             self.assertEqual(provenance_item["sourceIDs"], ["demo"])
             self.assertEqual(provenance_item["validationSourceIDs"], ["demo"])
             self.assertEqual(provenance_item["status"], "approved")
             self.assertIn("Demo attribution", notices.read_text())
+
+    def test_build_reviewed_rejects_blocked_validation_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest_path = self.make_source(root)
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"][0]["appUse"] = "approved"
+            manifest["sources"].append(
+                {
+                    **manifest["sources"][0],
+                    "id": "blocked",
+                    "appUse": "reference_only",
+                }
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            item = self.rich_review_record()
+            item["sourceRefs"] = [
+                {"sourceID": "demo", "sourceEntryRef": "lead-v-1"}
+            ]
+            item["validationSourceIDs"] = ["demo", "blocked"]
+            reviewed = root / "reviewed.jsonl"
+            reviewed.write_text(json.dumps(item) + "\n", encoding="utf-8")
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "build-reviewed",
+                "--input",
+                str(reviewed),
+                "--existing-seed",
+                str(existing),
+                "--seed-output",
+                str(root / "seed.json"),
+                "--provenance-output",
+                str(root / "provenance.json"),
+                "--notices-output",
+                str(root / "notices.txt"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("not approved for app use", result.stderr)
 
     def test_prepare_enrichment_preserves_current_seed_identity_and_rich_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1568,6 +1617,271 @@ class VocabularySourcesTests(unittest.TestCase):
             )
             self.assertEqual(packet["validationSourceIDs"], ["oewn-2025"])
             self.assertIn("level-evidence-mismatch", packet["issues"])
+
+    def test_prepare_enrichment_preserves_current_seed_expression_exactly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            current_seed = root / "current-seed.json"
+            current_seed.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "very good",
+                            "upgradedExpression": "Excellent",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "review-queue.jsonl"
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--current-seed",
+                str(current_seed),
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(output.read_text())["target"], "Excellent")
+
+    def test_prepare_enrichment_conflicting_cefr_is_deterministic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            cefr_path = input_dir / "cefr.jsonl"
+            cefr = json.loads(cefr_path.read_text().splitlines()[0])
+            cefr_path.write_text(
+                cefr_path.read_text()
+                + json.dumps(
+                    {
+                        **cefr,
+                        "sourceEntryRef": "Excellent#adjective#B1",
+                        "headword": "Excellent",
+                        "cefr": "B1",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            current_seed = root / "current-seed.json"
+            current_seed.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "very good",
+                            "upgradedExpression": "excellent",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            first = root / "first.jsonl"
+            second = root / "second.jsonl"
+            arguments = (
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--current-seed",
+                str(current_seed),
+                "--output",
+            )
+
+            result = self.run_cli(root, *arguments, str(first), hash_seed="1")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for path in input_dir.glob("*.jsonl"):
+                lines = path.read_text(encoding="utf-8").splitlines()
+                path.write_text(
+                    "".join(line + "\n" for line in reversed(lines)),
+                    encoding="utf-8",
+                )
+            result = self.run_cli(root, *arguments, str(second), hash_seed="2")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+
+            packet = json.loads(first.read_text())
+            self.assertEqual(packet["cefr"], "A2")
+            self.assertIn(
+                "excellent#adjective#A2",
+                {ref["sourceEntryRef"] for ref in packet["sourceRefs"]},
+            )
+
+    def test_prepare_enrichment_all_available_preserves_and_appends(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            lexical_path = input_dir / "oewn-2025.jsonl"
+            lexical = json.loads(lexical_path.read_text().splitlines()[0])
+            appended = {
+                **lexical,
+                "sourceEntryRef": "superb#a",
+                "headword": "superb",
+                "definitions": ["of very high quality"],
+                "examples": ["The team delivered a superb result."],
+                "relatedTerms": ["superb", "very good"],
+                "senseRefs": ["0002-a"],
+            }
+            lexical_path.write_text(
+                lexical_path.read_text()
+                + json.dumps(appended, ensure_ascii=False)
+                + "\n",
+                encoding="utf-8",
+            )
+            freedict_path = input_dir / "freedict.jsonl"
+            freedict = json.loads(freedict_path.read_text().splitlines()[0])
+            freedict_path.write_text(
+                freedict_path.read_text()
+                + json.dumps(
+                    {
+                        **freedict,
+                        "sourceEntryRef": "entry-superb",
+                        "headword": "superb",
+                        "definitions": ["of very high quality"],
+                        "translations": {"zh": ["極好的"]},
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            cefr_path = input_dir / "cefr.jsonl"
+            cefr = json.loads(cefr_path.read_text().splitlines()[0])
+            cefr_path.write_text(
+                cefr_path.read_text()
+                + json.dumps(
+                    {
+                        **cefr,
+                        "sourceEntryRef": "superb#adjective#A2",
+                        "headword": "superb",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"].append(
+                {
+                    "id": "blocked",
+                    "name": "blocked",
+                    "version": "1",
+                    "canonicalURL": "https://example.invalid/blocked",
+                    "license": "Demo license",
+                    "licenseURL": "https://example.invalid/license",
+                    "appUse": "reference_only",
+                }
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            (input_dir / "blocked.jsonl").write_text(
+                json.dumps(
+                    {
+                        **appended,
+                        "sourceID": "blocked",
+                        "sourceEntryRef": "blocked-superb",
+                        "pronunciations": [
+                            {
+                                "notation": "ipa",
+                                "value": "suːˈpɜːb",
+                                "speechLocale": "en-US",
+                                "region": "US",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            current_seed = root / "current-seed.json"
+            current_seed.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-1588",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "very good",
+                            "upgradedExpression": "excellent",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            first = root / "first.jsonl"
+            second = root / "second.jsonl"
+            arguments = (
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--current-seed",
+                str(current_seed),
+                "--all-available",
+                "--output",
+            )
+
+            result = self.run_cli(root, *arguments, str(first), hash_seed="1")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for path in input_dir.glob("*.jsonl"):
+                lines = path.read_text(encoding="utf-8").splitlines()
+                path.write_text(
+                    "".join(line + "\n" for line in reversed(lines)),
+                    encoding="utf-8",
+                )
+            result = self.run_cli(root, *arguments, str(second), hash_seed="2")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+
+            by_target = {
+                item["target"]: item
+                for item in map(json.loads, first.read_text().splitlines())
+            }
+            self.assertEqual(set(by_target), {"excellent", "superb"})
+            self.assertEqual(by_target["excellent"]["id"], "bank-basic-1588")
+            self.assertEqual(by_target["excellent"]["sortOrder"], 1)
+            self.assertEqual(by_target["superb"]["id"], "bank-basic-1589")
+            self.assertEqual(by_target["superb"]["sortOrder"], 2)
+            self.assertNotIn(
+                "blocked", by_target["superb"]["validationSourceIDs"]
+            )
+            self.assertNotIn(
+                "blocked",
+                {ref["sourceID"] for ref in by_target["superb"]["sourceRefs"]},
+            )
+
+    def test_all_available_requires_current_seed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--all-available",
+                "--output",
+                str(root / "queue.jsonl"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--current-seed", result.stderr)
 
     def test_prepare_enrichment_uses_a_lower_cefr_plain_term(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1684,6 +1998,39 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["translationDraft"], "卓越")
 
+    def test_prepare_enrichment_orders_parallel_translations_from_one_source_entry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            freedict = json.loads((input_dir / "freedict.jsonl").read_text())
+            freedict["translations"] = {"zh": ["優秀品質", "優秀"]}
+            (input_dir / "freedict.jsonl").write_text(
+                json.dumps(freedict, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            output = root / "draft.jsonl"
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                json.loads(output.read_text())["translationDraft"], "優秀品質"
+            )
+
     def test_prepare_enrichment_rejects_an_unmatched_translation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1717,7 +2064,7 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("not enough basic candidates", result.stderr)
 
-    def test_prepare_enrichment_requires_cedict_when_the_reviewed_source_exists(self):
+    def test_prepare_enrichment_falls_back_to_aligned_freedict(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
@@ -1731,6 +2078,84 @@ class VocabularySourcesTests(unittest.TestCase):
             }
             (input_dir / "cedict.jsonl").write_text(
                 json.dumps(cedict, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(root / "draft.jsonl"),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            packet = json.loads((root / "draft.jsonl").read_text())
+            self.assertEqual(packet["translationDraft"], "優秀")
+            self.assertIn(
+                "freedict",
+                {reference["sourceID"] for reference in packet["sourceRefs"]},
+            )
+
+    def test_prepare_enrichment_prefers_aligned_cedict_over_aligned_freedict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            (input_dir / "cow.jsonl").unlink()
+            cedict = {
+                **json.loads((input_dir / "freedict.jsonl").read_text()),
+                "sourceID": "cc-cedict-2026-07-11",
+                "sourceEntryRef": "line-1:excellent",
+                "translations": {"zh-Hant": ["出色"]},
+            }
+            (input_dir / "cedict.jsonl").write_text(
+                json.dumps(cedict, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(root / "draft.jsonl"),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            packet = json.loads((root / "draft.jsonl").read_text())
+            self.assertEqual(packet["translationDraft"], "出色")
+            source_ids = {
+                reference["sourceID"] for reference in packet["sourceRefs"]
+            }
+            self.assertIn("cc-cedict-2026-07-11", source_ids)
+            self.assertNotIn("freedict", source_ids)
+
+    def test_prepare_enrichment_rejects_freedict_part_of_speech_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            (input_dir / "cow.jsonl").unlink()
+            record = json.loads((input_dir / "freedict.jsonl").read_text())
+            record["partOfSpeech"] = "n"
+            (input_dir / "freedict.jsonl").write_text(
+                json.dumps(record, ensure_ascii=False) + "\n",
+                encoding="utf-8",
             )
 
             result = self.run_cli(
@@ -2123,6 +2548,40 @@ class VocabularySourcesTests(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("validation source", result.stderr.lower())
+
+    def test_promote_rejects_blocked_validation_source_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reviewed, provenance, notices = self.make_promotable_bank(root)
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["sources"].append(
+                {
+                    **manifest["sources"][0],
+                    "id": "blocked",
+                    "appUse": "reference_only",
+                }
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            data = json.loads(provenance.read_text())
+            data["items"][0]["validationSourceIDs"] = ["demo", "blocked"]
+            provenance.write_text(json.dumps(data), encoding="utf-8")
+
+            result = self.run_cli(
+                root,
+                "promote",
+                "--reviewed",
+                str(reviewed),
+                "--provenance",
+                str(provenance),
+                "--notices",
+                str(notices),
+                "--output",
+                str(root / "seed.json"),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("not approved for app use", result.stderr)
 
     def test_promote_requires_every_source_notice(self):
         with tempfile.TemporaryDirectory() as directory:

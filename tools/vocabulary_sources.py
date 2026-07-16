@@ -1259,6 +1259,8 @@ def prepare_enrichment(
     quotas: dict[str, int],
     output: Path,
     current_seed_path: Path | None = None,
+    all_available: bool = False,
+    approved_source_ids: set[str] | None = None,
 ) -> int:
     existing = load_json(existing_seed_path, list)
     current_seed = (
@@ -1279,13 +1281,20 @@ def prepare_enrichment(
         for path in sorted(input_dir.glob("*.jsonl"))
         for record in read_jsonl(path)
     ]
+    if approved_source_ids is not None:
+        records = [
+            record
+            for record in records
+            if record.get("sourceID") in approved_source_ids
+        ]
+    index_keys = None if all_available else current_keys
     senses_by_headword: dict[str, list[dict]] = {}
     pronunciations_by_headword: dict[str, list[dict]] = {}
     plain_expressions_by_headword: dict[str, set[str]] = {}
     validation_sources_by_headword: dict[str, set[str]] = {}
     for record in records:
         key = normalized(record.get("headword", ""))
-        if not key or (current_keys is not None and key not in current_keys):
+        if not key or (index_keys is not None and key not in index_keys):
             continue
         source_ref = source_reference(record)
         senses = [
@@ -1347,7 +1356,16 @@ def prepare_enrichment(
     parallel_records: list[tuple[dict, str, str]] = []
     cefr_exact: dict[tuple[str, str], tuple[str, dict]] = {}
     cefr_any: dict[str, tuple[str, dict]] = {}
-    reference_sources: dict[str, set[str]] = {}
+
+    def cefr_evidence_key(value: tuple[str, dict]) -> tuple:
+        cefr, reference = value
+        return (
+            cefr,
+            reference["sourceID"],
+            reference["sourceEntryRef"],
+            tuple(reference.get("senseRefs", [])),
+        )
+
     lexical: list[dict] = []
     for record in records:
         key = normalized(record.get("headword", ""))
@@ -1370,10 +1388,13 @@ def prepare_enrichment(
             word_translation_records.extend((record, value) for value in values)
         if record.get("cefr") in CEFR_LEVEL:
             value = (record["cefr"], source_reference(record))
-            cefr_exact.setdefault((key, part_of_speech_code(record.get("partOfSpeech"))), value)
-            cefr_any.setdefault(key, value)
-        if record.get("sourceID", "").split("-", 1)[0] in {"bsl", "nawl", "ngsl", "tsl"}:
-            reference_sources.setdefault(key, set()).add(record["sourceID"])
+            exact_key = (key, part_of_speech_code(record.get("partOfSpeech")))
+            cefr_exact[exact_key] = min(
+                cefr_exact.get(exact_key, value), value, key=cefr_evidence_key
+            )
+            cefr_any[key] = min(
+                cefr_any.get(key, value), value, key=cefr_evidence_key
+            )
         if (
             record.get("sourceID", "").startswith(("oewn", "grundwortschatz"))
             and record.get("definitions")
@@ -1382,10 +1403,6 @@ def prepare_enrichment(
             lexical.append(record)
 
     converted_word_values = traditionalize([value for _, value in word_translation_records])
-    requires_cedict = any(
-        "cedict" in record.get("sourceID", "").casefold()
-        for record, _ in word_translation_records
-    )
     translations: dict[str, list[dict]] = {}
     cedict_definitions_by_translation: dict[str, set[str]] = {}
     cedict_references_by_translation: dict[str, dict[tuple[str, str], dict]] = {}
@@ -1412,6 +1429,7 @@ def prepare_enrichment(
                 "reference": source_reference(record),
                 "definitions": record.get("definitions", []),
                 "sourceID": record["sourceID"],
+                "partOfSpeech": part_of_speech_code(record.get("partOfSpeech")),
             }
         )
 
@@ -1607,7 +1625,12 @@ def prepare_enrichment(
         translation_options = [
             item
             for item in translation_options
-            if item["definitionMatch"] or item["synonymMatch"]
+            if (item["definitionMatch"] or item["synonymMatch"])
+            and (
+                not item["partOfSpeech"]
+                or not pos
+                or item["partOfSpeech"] == pos
+            )
         ]
         cedict_options = [
             item
@@ -1636,7 +1659,7 @@ def prepare_enrichment(
                     item["reference"]["sourceEntryRef"],
                 ),
             )
-        elif requires_cedict:
+        elif cedict_options:
             translation_options = cedict_options
         if not translation_options:
             continue
@@ -1691,7 +1714,7 @@ def prepare_enrichment(
             )
             if context_match == 0:
                 continue
-            for option in translation_options[:40]:
+            for option_rank, option in enumerate(translation_options[:40]):
                 if option["value"] in pair["translation"]:
                     parallel_matches.append(
                         (
@@ -1703,6 +1726,7 @@ def prepare_enrichment(
                             len(pair["sentence"]),
                             pair["reference"]["sourceEntryRef"],
                             option["reference"]["sourceEntryRef"],
+                            option_rank,
                             option,
                             pair,
                         )
@@ -1765,7 +1789,6 @@ def prepare_enrichment(
         }
         score = (
             0 if cefr_entry else 1,
-            -len(reference_sources.get(key, set())),
             0 if parallel else 1,
             translation_entry.get("semanticDistance", 2.0),
             -translation_entry["definitionMatch"],
@@ -1826,6 +1849,7 @@ def prepare_enrichment(
             packet = {
                 key: value for key, value in candidate.items() if key != "_score"
             }
+            packet["target"] = current["upgradedExpression"]
             packet["id"] = current["id"]
             if packet["level"] != current["level"]:
                 issues.append("level-evidence-mismatch")
@@ -1848,6 +1872,49 @@ def prepare_enrichment(
                 issues.append("missing-pronunciation")
             packet["issues"] = sorted(issues)
             selected.append(packet)
+        if all_available:
+            used_ids = {item["id"] for item in current_seed}
+            for level in LEVEL_ORDER:
+                next_sort_order = max(
+                    (
+                        item["sortOrder"]
+                        for item in current_seed
+                        if item["level"] == level
+                    ),
+                    default=0,
+                )
+                numeric_ids = []
+                for item in current_seed:
+                    if item["level"] != level:
+                        continue
+                    match = re.fullmatch(rf"bank-{re.escape(level)}-(\d+)", item["id"])
+                    if match:
+                        numeric_ids.append(int(match.group(1)))
+                next_id_number = max(numeric_ids, default=0)
+                available = sorted(
+                    (
+                        item
+                        for key, item in candidates.items()
+                        if key not in current_keys and item["level"] == level
+                    ),
+                    key=lambda item: item["_score"],
+                )
+                for candidate in available:
+                    item = {
+                        key: value
+                        for key, value in candidate.items()
+                        if key != "_score"
+                    }
+                    next_sort_order += 1
+                    next_id_number += 1
+                    item["id"] = f"bank-{level}-{next_id_number:04d}"
+                    while item["id"] in used_ids:
+                        next_id_number += 1
+                        item["id"] = f"bank-{level}-{next_id_number:04d}"
+                    used_ids.add(item["id"])
+                    item["sortOrder"] = next_sort_order
+                    item["issues"] = []
+                    selected.append(item)
     else:
         for level in LEVEL_ORDER:
             available = sorted(
@@ -1949,8 +2016,8 @@ def provenance_source(source: dict) -> dict:
         "attributionParties": [source.get("name", source["id"])],
         "attributionText": source.get("decision"),
         "rights": {key: "approved" for key in RIGHTS},
-        "rightsReviewer": "codex-content-review-2026-07-11",
-        "rightsVerifiedAt": "2026-07-11",
+        "rightsReviewer": "codex-content-review-2026-07-15",
+        "rightsVerifiedAt": "2026-07-15",
     }
 
 
@@ -2023,8 +2090,8 @@ def build_reviewed(
         "attributionParties": [],
         "attributionText": None,
         "rights": {key: "approved" for key in RIGHTS},
-        "rightsReviewer": "codex-content-review-2026-07-11",
-        "rightsVerifiedAt": "2026-07-11",
+        "rightsReviewer": "codex-content-review-2026-07-15",
+        "rightsVerifiedAt": "2026-07-15",
     }
     seed = []
     provenance_items = []
@@ -2044,8 +2111,13 @@ def build_reviewed(
                 raise SourceError(f"source {source_id} is not approved for app use")
             used_source_ids.add(source_id)
         for source_id in validation_source_ids:
-            if source_id != "vocaby-original" and source_id not in catalog:
-                raise SourceError(f"unknown validation source {source_id}")
+            if source_id == "vocaby-original":
+                continue
+            source = catalog.get(source_id)
+            if source is None or source.get("appUse") != "approved":
+                raise SourceError(
+                    f"validation source {source_id} is not approved for app use"
+                )
         seed.append({key: item[key] for key in SEED_KEYS})
         difficulty = {"basic": 2, "intermediate": 5, "advanced": 8}[
             item["level"]
@@ -2081,7 +2153,7 @@ def build_reviewed(
                 "rightsReviewer": item.get(
                     "rightsReviewer", item["englishReviewer"]
                 ),
-                "reviewedAt": item.get("reviewedAt", "2026-07-11"),
+                "reviewedAt": item.get("reviewedAt", "2026-07-15"),
                 "levelOverrideReason": None,
                 "status": item["reviewStatus"],
             }
@@ -2099,7 +2171,7 @@ def build_reviewed(
     ]
     provenance = {
         "schemaVersion": 2,
-        "bankVersion": "2026.07.3",
+        "bankVersion": "2026.07.4",
         "sources": sources,
         "items": provenance_items,
     }
@@ -2371,11 +2443,16 @@ def promote(
             raise SourceError(f"provenance item {item_id} uses an unknown source")
         validation_source_ids = item.get("validationSourceIDs")
         if not isinstance(validation_source_ids, list) or any(
-            source_id != "vocaby-original" and source_id not in external
+            source_id != "vocaby-original"
+            and (
+                source_id not in external
+                or external[source_id].get("appUse") != "approved"
+            )
             for source_id in validation_source_ids
         ):
             raise SourceError(
-                f"provenance item {item_id} uses an unknown validation source"
+                f"provenance item {item_id} uses a validation source "
+                "that is not approved for app use"
             )
         if (
             CEFR_LEVEL.get(item["cefr"]) != item["appLevel"]
@@ -2410,6 +2487,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--input-dir", type=Path, required=True)
     prepare_parser.add_argument("--existing-seed", type=Path, required=True)
     prepare_parser.add_argument("--current-seed", type=Path)
+    prepare_parser.add_argument("--all-available", action="store_true")
     prepare_parser.add_argument("--basic", type=int, default=950)
     prepare_parser.add_argument("--intermediate", type=int, default=1600)
     prepare_parser.add_argument("--advanced", type=int, default=2800)
@@ -2485,12 +2563,21 @@ def main(argv: list[str] | None = None) -> int:
         }
         if any(value < 0 for value in quotas.values()):
             raise SourceError("level quotas cannot be negative")
+        if args.all_available and args.current_seed is None:
+            raise SourceError("--all-available requires --current-seed")
+        approved_source_ids = {
+            source["id"]
+            for source in manifest["sources"]
+            if source.get("appUse") == "approved"
+        }
         count = prepare_enrichment(
             args.input_dir,
             args.existing_seed,
             quotas,
             args.output,
             args.current_seed,
+            args.all_available,
+            approved_source_ids,
         )
         print(f"prepared {count} enrichment candidate(s) to {args.output}")
     elif args.command == "build-reviewed":
