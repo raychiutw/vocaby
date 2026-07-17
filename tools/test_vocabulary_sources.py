@@ -1161,6 +1161,245 @@ class VocabularySourcesTests(unittest.TestCase):
 
         self.assertEqual(senses[0]["partOfSpeech"], "verb")
 
+    def test_review_senses_hydrates_an_additional_sense_only_from_aligned_examples(self):
+        packet = {
+            "id": "bank-intermediate-0036",
+            "target": "ache",
+            "definition": "have a desire for something that is not present",
+            "example": "She ached for a cigarette.",
+            "partOfSpeech": "verb",
+            "sourceRefs": [
+                {"sourceID": "oewn-2025", "sourceEntryRef": "ache#v#1"}
+            ],
+            "candidateSenses": [
+                {
+                    "id": "ache#v#1",
+                    "partOfSpeech": "verb",
+                    "glosses": ["have a desire for something that is not present"],
+                    "examples": ["She ached for a cigarette."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "ache#v#1",
+                    },
+                },
+                {
+                    "id": "ache#n#1",
+                    "partOfSpeech": "noun",
+                    "glosses": ["a dull persistent pain"],
+                    "examples": [],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "ache#n#1",
+                    },
+                },
+                {
+                    "id": "wiktextract-ache-noun",
+                    "partOfSpeech": "noun",
+                    "glosses": ["continued dull pain"],
+                    "examples": ["You may feel a minor ache in your side."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "ache#noun#1",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(
+            [sense["id"] for sense in senses],
+            ["ache#v#1", "ache#n#1"],
+        )
+        self.assertEqual(
+            senses[1]["exampleCandidate"],
+            "You may feel a minor ache in your side.",
+        )
+
+    def test_review_senses_prefers_untagged_everyday_context_over_abstract_context(self):
+        packet = {
+            "id": "bank-basic-0576",
+            "target": "free",
+            "definition": "Unconstrained.",
+            "example": "The fundamental group is free of rank two.",
+            "partOfSpeech": "adjective",
+            "sourceRefs": [],
+            "candidateSenses": [
+                {
+                    "id": "abstract-free",
+                    "partOfSpeech": "adjective",
+                    "glosses": ["Unconstrained."],
+                    "examples": ["The fundamental group is free of rank two."],
+                    "tags": ["abstract"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "free#abstract",
+                    },
+                },
+                {
+                    "id": "social-free-fragment",
+                    "partOfSpeech": "adjective",
+                    "glosses": ["Unconstrained."],
+                    "examples": ["a free person"],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "free#social-fragment",
+                    },
+                },
+                {
+                    "id": "social-free-sentence",
+                    "partOfSpeech": "adjective",
+                    "glosses": ["Unconstrained."],
+                    "examples": ["This is a free country."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "free#social-sentence",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "social-free-fragment")
+        self.assertEqual(senses[0]["exampleCandidate"], "This is a free country.")
+
+    def test_review_senses_prefers_the_candidate_closest_to_the_lesson_context(self):
+        packet = {
+            "id": "bank-basic-0576",
+            "target": "free",
+            "definition": "Unconstrained.",
+            "example": "I thought that the metro was free, so I went without a ticket.",
+            "partOfSpeech": "adjective",
+            "sourceRefs": [],
+            "candidateSenses": [
+                {
+                    "id": "physical-free",
+                    "partOfSpeech": "adjective",
+                    "glosses": ["Unconstrained.", "Not attached; loose."],
+                    "examples": ["In these mushrooms, the gills are free."],
+                    "tags": ["physical"],
+                    "reviewDistance": 1.03,
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "free#physical",
+                    },
+                },
+                {
+                    "id": "free-of-charge",
+                    "partOfSpeech": "adjective",
+                    "glosses": ["Obtainable without any payment."],
+                    "examples": ["It's free real estate."],
+                    "tags": [],
+                    "reviewDistance": 0.89,
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "free#no-payment",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "free-of-charge")
+        self.assertEqual(senses[0]["meaning"], "Obtainable without any payment.")
+
+    def test_review_senses_keeps_the_lesson_sense_when_sources_are_too_distant(self):
+        packet = {
+            "id": "bank-basic-0612",
+            "target": "forest",
+            "definition": "A dense tract of trees and undergrowth.",
+            "example": "Because of these trees, he can't see the forest.",
+            "partOfSpeech": "noun",
+            "sourceRefs": [
+                {"sourceID": "vocaby-original", "sourceEntryRef": "bank-basic-0612"}
+            ],
+            "candidateSenses": [
+                {
+                    "id": "figurative-forest",
+                    "partOfSpeech": "noun",
+                    "glosses": ["Any dense collection or amount."],
+                    "examples": ["A forest of criticism surrounded the proposal."],
+                    "tags": [],
+                    "reviewDistance": 1.15,
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "forest#figurative",
+                    },
+                }
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "bank-basic-0612-sense-1")
+        self.assertEqual(senses[0]["meaning"], "A dense tract of trees and undergrowth.")
+        self.assertEqual(
+            senses[0]["exampleCandidate"],
+            "Because of these trees, he can't see the forest.",
+        )
+
+    def test_review_senses_uses_the_specific_final_gloss(self):
+        packet = {
+            "id": "bank-basic-0181",
+            "target": "boy",
+            "definition": "a youthful male person",
+            "example": "That tall boy saved the drowning child.",
+            "exampleTranslationMode": "parallel",
+            "partOfSpeech": "noun",
+            "sourceRefs": [],
+            "candidateSenses": [
+                {
+                    "id": "male-child",
+                    "partOfSpeech": "noun",
+                    "glosses": ["A male human.", "A male child."],
+                    "examples": ["Kieran plays football with other boys."],
+                    "tags": [],
+                    "reviewDistance": 0.80,
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "boy#noun",
+                    },
+                }
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["meaning"], "A male child.")
+        self.assertEqual(
+            senses[0]["exampleCandidate"],
+            "That tall boy saved the drowning child.",
+        )
+
+    def test_source_sentence_check_rejects_titles_and_phrases(self):
+        self.assertFalse(
+            vocabulary_sources.looks_like_source_sentence(
+                "aged", "Caring for My Aged Mother XXIII."
+            )
+        )
+        self.assertFalse(
+            vocabulary_sources.looks_like_source_sentence(
+                "attractive", "A book with attractive illustrations."
+            )
+        )
+        self.assertTrue(
+            vocabulary_sources.looks_like_source_sentence(
+                "author", "She authored this play."
+            )
+        )
+        self.assertTrue(
+            vocabulary_sources.looks_like_source_sentence(
+                "menu", "The server handed us the menu."
+            )
+        )
+
     def test_audit_reviewed_reports_complete_bank_counts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -2604,7 +2843,7 @@ class VocabularySourcesTests(unittest.TestCase):
                 json.loads(output.read_text())["translationDraft"], "優秀品質"
             )
 
-    def test_prepare_enrichment_rejects_an_unmatched_translation(self):
+    def test_prepare_enrichment_keeps_english_candidate_when_translation_is_unmatched(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
@@ -2634,15 +2873,25 @@ class VocabularySourcesTests(unittest.TestCase):
                 str(root / "draft.jsonl"),
             )
 
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("not enough basic candidates", result.stderr)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                json.loads((root / "draft.jsonl").read_text())["translationDraft"],
+                "",
+            )
 
-    def test_prepare_enrichment_falls_back_to_aligned_freedict(self):
+    def test_prepare_enrichment_ignores_uncorroborated_freedict_translation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
+            freedict_path = input_dir / "freedict.jsonl"
+            freedict = json.loads(freedict_path.read_text())
+            freedict["sourceID"] = "freedict-eng-zho-2025.11.23"
+            freedict_path.write_text(
+                json.dumps(freedict, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
             cedict = {
-                **json.loads((input_dir / "freedict.jsonl").read_text()),
+                **freedict,
                 "sourceID": "cc-cedict-2026-07-11",
                 "sourceEntryRef": "line-1:unrelated",
                 "headword": "unrelated",
@@ -2672,8 +2921,8 @@ class VocabularySourcesTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             packet = json.loads((root / "draft.jsonl").read_text())
-            self.assertEqual(packet["translationDraft"], "優秀")
-            self.assertIn(
+            self.assertEqual(packet["translationDraft"], "")
+            self.assertNotIn(
                 "freedict",
                 {reference["sourceID"] for reference in packet["sourceRefs"]},
             )
@@ -2719,7 +2968,7 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertIn("cc-cedict-2026-07-11", source_ids)
             self.assertNotIn("freedict", source_ids)
 
-    def test_prepare_enrichment_rejects_freedict_part_of_speech_mismatch(self):
+    def test_prepare_enrichment_ignores_freedict_part_of_speech_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
@@ -2748,8 +2997,11 @@ class VocabularySourcesTests(unittest.TestCase):
                 str(root / "draft.jsonl"),
             )
 
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("not enough basic candidates", result.stderr)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                json.loads((root / "draft.jsonl").read_text())["translationDraft"],
+                "",
+            )
 
     def test_prepare_enrichment_prefers_exact_ili_sense_translation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -2870,6 +3122,7 @@ class VocabularySourcesTests(unittest.TestCase):
             direct["translations"] = {"zh": ["烤箱"]}
             synonym = {
                 **direct,
+                "sourceID": "cc-cedict-2026-07-11",
                 "sourceEntryRef": "entry-superb",
                 "headword": "superb",
                 "definitions": ["of very high quality"],

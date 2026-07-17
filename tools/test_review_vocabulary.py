@@ -190,6 +190,80 @@ class ReviewVocabularyTests(unittest.TestCase):
                 output[0]["items"][0], batch["items"][0]["target"]
             )
 
+    def test_run_local_enrichment_retries_a_semantically_invalid_plain(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch = {
+                "batchID": "0000",
+                "items": [
+                    {
+                        "id": "author::1",
+                        "target": "author",
+                        "partOfSpeech": "verb",
+                        "meaning": "be the author of",
+                        "plainCandidates": [],
+                        "exampleCandidate": "She authored this play.",
+                    }
+                ],
+            }
+            draft = {
+                "packet": {
+                    "id": "author",
+                    "target": "author",
+                    "plain": "be the author of",
+                    "definition": "be the author of",
+                    "candidatePlainExpressions": [],
+                },
+                "senses": [
+                    {
+                        "id": "1",
+                        "partOfSpeech": "verb",
+                        "meaning": "be the author of",
+                        "exampleCandidate": "She authored this play.",
+                    }
+                ],
+            }
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n",
+                encoding="utf-8",
+            )
+            calls = 0
+
+            def helper(_executable, _mode, payload):
+                nonlocal calls
+                calls += 1
+                request = json.loads(payload)
+                plain = "author" if calls == 1 else "write"
+                return json.dumps(
+                    {
+                        "batchID": request["batchID"],
+                        "items": [
+                            {
+                                "id": "author::1",
+                                "plainExpression": plain,
+                                "example": "She authored this play.",
+                            }
+                        ],
+                    }
+                ) + "\n"
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
+                )
+
+            self.assertEqual(result["completed"], 1)
+            self.assertEqual(calls, 2)
+
     def test_run_local_enrichment_fails_closed_when_invalid_singleton_fallback_is_invalid(
         self,
     ):
@@ -288,6 +362,42 @@ class ReviewVocabularyTests(unittest.TestCase):
             self.assertFalse(
                 output.exists() and review_vocabulary.sources.read_jsonl(output)
             )
+
+    def test_enrichment_repair_keeps_a_valid_model_plain_when_fallback_plain_is_invalid(self):
+        expected = {
+            "batchID": "0003",
+            "items": [{"id": "aged-1", "target": "aged"}],
+        }
+        batch = {
+            "batchID": "0003",
+            "items": [
+                {
+                    "id": "aged-1",
+                    "plainExpression": "age",
+                    "example": "She is growing old.",
+                }
+            ],
+        }
+        repairs = {
+            "aged-1": {
+                "id": "aged-1",
+                "plainExpression": "grow aged",
+                "example": "The aged teacher shared her story.",
+            }
+        }
+
+        result = review_vocabulary.validate_enrichment_batch(
+            batch,
+            expected,
+            repairs,
+            repair_invalid=True,
+        )
+
+        self.assertEqual(result["items"][0]["plainExpression"], "age")
+        self.assertEqual(
+            result["items"][0]["example"],
+            "The aged teacher shared her story.",
+        )
 
     def test_run_local_enrichment_propagates_unrelated_generation_error_without_retry(
         self,
@@ -1363,6 +1473,71 @@ class ReviewVocabularyTests(unittest.TestCase):
 
             self.assertFalse((work / "translation-output.jsonl").exists())
 
+    def test_seed_source_translations_writes_resume_fingerprint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            content_id = "item-1::sense-1"
+            draft = {
+                "packet": {
+                    "id": "item-1",
+                    "target": "menu",
+                    "translationDraft": "菜單",
+                    "example": "The server handed us the menu.",
+                    "exampleTranslationDraft": "服務生把菜單遞給我們。",
+                },
+                "senses": [{"id": "sense-1"}],
+                "enrichment": {
+                    "sense-1": {
+                        "example": "The server handed us the menu."
+                    }
+                },
+            }
+            requests = [
+                {"id": f"{content_id}::meaning", "text": "A list of dishes."},
+                {
+                    "id": f"{content_id}::example",
+                    "text": "The server handed us the menu.",
+                },
+            ]
+            (work / "enriched.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+            (work / "translation-input.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in requests),
+                encoding="utf-8",
+            )
+
+            count = review_vocabulary.seed_source_translations(work)
+
+            self.assertEqual(count, 1)
+            self.assertEqual(
+                review_vocabulary.sources.read_jsonl(
+                    work / "translation-output.jsonl"
+                )[0]["id"],
+                f"{content_id}::example",
+            )
+            fingerprint = json.loads(
+                (work / "translation-output.fingerprint.json").read_text()
+            )
+            self.assertEqual(
+                fingerprint["inputSHA256"],
+                review_vocabulary.sources.sha256(work / "translation-input.jsonl"),
+            )
+            self.assertEqual(
+                fingerprint["swiftSourceSHA256"],
+                review_vocabulary.sources.sha256(
+                    Path(review_vocabulary.__file__).with_name(
+                        "apple_language_services.swift"
+                    )
+                ),
+            )
+            self.assertEqual(
+                review_vocabulary.sources.read_jsonl(
+                    work / "translation-input.snapshot.jsonl"
+                ),
+                requests,
+            )
+
     def test_validate_enrichment_requires_the_target_in_a_full_sentence(self):
         item = {
             "id": "bank-basic-0001::sense-1",
@@ -1400,17 +1575,51 @@ class ReviewVocabularyTests(unittest.TestCase):
             "imprecise but fairly close to correct",
         )
 
-    def test_source_example_wraps_a_fragment_as_a_complete_teaching_sentence(self):
+    def test_reviewable_senses_drops_an_additional_sense_without_a_safe_plain(self):
+        packet = {
+            "target": "advantage",
+            "plain": "a favorable condition",
+            "definition": "a favorable condition",
+            "candidatePlainExpressions": ["vantage"],
+        }
+        senses = [
+            {"id": "noun", "meaning": "a favorable condition"},
+            {"id": "verb", "meaning": "give an advantage to"},
+        ]
+
         self.assertEqual(
+            review_vocabulary.reviewable_senses(packet, senses),
+            [senses[0]],
+        )
+
+    def test_fallback_plain_removes_target_forms_and_dangling_prepositions(self):
+        packet = {
+            "target": "angel",
+            "plain": "",
+            "definition": "",
+            "candidatePlainExpressions": [],
+        }
+        sense = {
+            "meaning": "A person having qualities traditionally attributed to angels."
+        }
+
+        self.assertEqual(
+            review_vocabulary.fallback_plain(packet, sense),
+            "A person having qualities traditionally attributed",
+        )
+
+    def test_source_example_rejects_a_fragment(self):
+        with self.assertRaisesRegex(
+            review_vocabulary.sources.SourceError,
+            "full source example",
+        ):
             review_vocabulary.source_example(
                 "Italian",
                 {
                     "partOfSpeech": "adjective",
                     "exampleCandidate": "Italian cooking",
                 },
-            ),
-            "The phrase “Italian cooking” shows how Italian is used in context.",
-        )
+            )
         self.assertEqual(
             review_vocabulary.source_example(
                 "zip",
@@ -1422,21 +1631,7 @@ class ReviewVocabularyTests(unittest.TestCase):
             "He's full of zip.",
         )
 
-    def test_wrapped_example_translation_preserves_the_learning_phrase(self):
-        self.assertEqual(
-            review_vocabulary.wrapped_example_translation(
-                "The phrase “Italian cooking” shows how Italian is used in context."
-            ),
-            "「Italian cooking」這個片語顯示 Italian 在語境中的用法。",
-        )
-
-    def test_example_translation_fallback_is_a_clear_usage_hint(self):
-        self.assertEqual(
-            review_vocabulary.example_translation_fallback("Italian"),
-            "這個例句示範「Italian」的用法。",
-        )
-
-    def test_prepare_review_rejects_only_items_without_verified_pronunciation(self):
+    def test_prepare_review_rejects_items_without_pronunciation_or_full_example(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             queue = root / "queue.jsonl"
@@ -1484,20 +1679,37 @@ class ReviewVocabularyTests(unittest.TestCase):
                 "target": "unpronounceable",
                 "candidatePronunciations": [],
             }
+            fragment = {
+                **accepted,
+                "id": "bank-basic-0003",
+                "sortOrder": 3,
+                "target": "Italian",
+                "plain": "from Italy",
+                "definition": "from Italy",
+                "example": "Italian cooking",
+            }
             queue.write_text(
-                "".join(json.dumps(item) + "\n" for item in (accepted, rejected)),
+                "".join(
+                    json.dumps(item) + "\n"
+                    for item in (accepted, rejected, fragment)
+                ),
                 encoding="utf-8",
             )
             cmu.write_text("", encoding="utf-8")
 
             result = review_vocabulary.prepare_review(queue, cmu, work, batch_size=10)
 
-            self.assertEqual(result, {"accepted": 1, "rejected": 1, "senses": 1})
+            self.assertEqual(result, {"accepted": 1, "rejected": 2, "senses": 1})
             draft = json.loads((work / "draft.jsonl").read_text())
             self.assertEqual(draft["pronunciations"][0]["ipa"], "ˈɛksələnt")
-            rejection = json.loads((work / "rejections.jsonl").read_text())
-            self.assertEqual(rejection["reason"], "no-verified-pronunciation")
-            self.assertEqual(rejection["sourceIDs"], ["oewn-2025"])
+            rejections = review_vocabulary.sources.read_jsonl(
+                work / "rejections.jsonl"
+            )
+            self.assertEqual(
+                [item["reason"] for item in rejections],
+                ["no-verified-pronunciation", "no-full-source-example"],
+            )
+            self.assertEqual(rejections[0]["sourceIDs"], ["oewn-2025"])
             accepted_queue = json.loads(
                 (work / "accepted-queue.jsonl").read_text()
             )
@@ -1550,7 +1762,7 @@ class ReviewVocabularyTests(unittest.TestCase):
                         "id": "sense-2",
                         "partOfSpeech": "noun",
                         "glosses": ["a person or thing of outstanding quality"],
-                        "examples": ["The award recognizes excellence."],
+                        "examples": ["The judges called the excellent a winner."],
                         "tags": [],
                         "sourceRef": {
                             "sourceID": "oewn-2025",
@@ -1571,6 +1783,17 @@ class ReviewVocabularyTests(unittest.TestCase):
             self.assertEqual(
                 [item["id"] for item in requests],
                 ["bank-basic-0001::sense-1", "bank-basic-0001::sense-2"],
+            )
+            self.assertEqual(
+                [item["exampleCandidate"] for item in requests],
+                [
+                    "She shared an excellent idea.",
+                    "The judges called the excellent a winner.",
+                ],
+            )
+            self.assertEqual(
+                [item["plainCandidates"] for item in requests],
+                [[], []],
             )
 
     def test_prepare_review_batches_ten_lessons_even_with_multiple_senses(self):
@@ -1594,7 +1817,7 @@ class ReviewVocabularyTests(unittest.TestCase):
                         "target": target,
                         "plain": f"plain {index}",
                         "definition": f"meaning {index}",
-                        "example": f"The {target} works.",
+                        "example": f"The {target} works well.",
                         "partOfSpeech": "noun",
                         "cefr": "A2",
                         "sourceRefs": [source_ref],
@@ -1614,7 +1837,7 @@ class ReviewVocabularyTests(unittest.TestCase):
                                 "id": f"sense-{sense}",
                                 "partOfSpeech": "noun" if sense == 0 else "verb",
                                 "glosses": [f"meaning {index} sense {sense}"],
-                                "examples": [f"The {target} works."],
+                                "examples": [f"The {target} works well."],
                                 "tags": [],
                                 "sourceRef": source_ref,
                             }
@@ -1716,6 +1939,15 @@ class ReviewVocabularyTests(unittest.TestCase):
             reviewed = json.loads(output.read_text())
             self.assertEqual(reviewed["cefr"], "A1")
             self.assertEqual(reviewed["level"], "basic")
+            self.assertEqual(reviewed["plainExpression"], "very good")
+            self.assertEqual(
+                reviewed["senses"][0]["example"]["text"],
+                "She shared an excellent idea.",
+            )
+            self.assertEqual(
+                reviewed["senses"][0]["meaning"]["zh-Hant"],
+                "品質非常好。",
+            )
 
     def test_finish_enrichment_reconciles_every_sense_id(self):
         with tempfile.TemporaryDirectory() as directory:

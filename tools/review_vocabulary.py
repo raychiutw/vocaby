@@ -57,7 +57,9 @@ def prepare_review(
     enrichment_groups = []
     rejections = []
     sense_count = 0
-    for packet in sources.read_jsonl(queue_path):
+    packets = sources.read_jsonl(queue_path)
+    sources.add_review_sense_distances(packets)
+    for packet in packets:
         pronunciations, pronunciation_refs = sources.review_pronunciations(
             packet["target"], packet.get("candidatePronunciations", []), cmudict
         )
@@ -79,27 +81,31 @@ def prepare_review(
                 }
             )
             continue
-        senses = sources.review_senses(packet)
-        sense_count += len(senses)
-        plain_candidates = [
-            value
-            for value in packet.get("candidatePlainExpressions", [])
-            if sources.normalized(value) != sources.normalized(packet["target"])
-            and len(value.split()) <= 8
-        ]
+        senses = reviewable_senses(packet, sources.review_senses(packet))
         if (
-            isinstance(packet.get("plain"), str)
-            and len(packet["plain"].split()) <= 8
-            and sources.normalized(packet["plain"])
-            != sources.normalized(packet["target"])
-            and sources.normalized(packet["plain"])
-            != sources.normalized(packet.get("definition", ""))
+            not senses
+            or not sources.looks_like_source_sentence(
+                packet["target"], senses[0].get("exampleCandidate", "")
+            )
         ):
-            plain_candidates.append(packet["plain"])
-        plain_candidates = sorted(
-            set(plain_candidates),
-            key=lambda value: (len(value.split()), len(value), sources.normalized(value)),
-        )[:8]
+            rejections.append(
+                {
+                    "id": packet["id"],
+                    "target": packet["target"],
+                    "level": packet["level"],
+                    "sortOrder": packet["sortOrder"],
+                    "reason": "no-full-source-example",
+                    "sourceIDs": sorted(
+                        {
+                            ref["sourceID"]
+                            for ref in packet.get("sourceRefs", [])
+                            if ref.get("sourceID")
+                        }
+                    ),
+                }
+            )
+            continue
+        sense_count += len(senses)
         drafts.append(
             {
                 "packet": packet,
@@ -116,8 +122,8 @@ def prepare_review(
                     "target": packet["target"],
                     "partOfSpeech": sense["partOfSpeech"],
                     "meaning": sense["meaning"][:120],
-                    "plainCandidates": plain_candidates,
-                    "exampleCandidate": "",
+                    "plainCandidates": [],
+                    "exampleCandidate": sense["exampleCandidate"],
                 }
             )
         enrichment_groups.append(lesson_items)
@@ -155,6 +161,7 @@ def validate_enrichment(item: dict, target: str) -> None:
         or not plain.strip()
         or len(plain.split()) > 8
         or sources.normalized(plain) == sources.normalized(target)
+        or sources.contains_target_form(target, plain)
     ):
         raise sources.SourceError(f"enrichment {item.get('id')} has invalid plain expression")
     if (
@@ -173,67 +180,81 @@ def validate_enrichment(item: dict, target: str) -> None:
 
 def source_example(target: str, sense: dict) -> str:
     value = " ".join(sense.get("exampleCandidate", "").split()).strip()
-    if sources.contains_target_form(target, value):
-        if value and value[0].islower():
-            value = value[0].upper() + value[1:]
-        if value and re.search(r'[.!?]["’”)]?$', value) is None:
-            value += "."
-        if looks_like_full_sentence(value):
-            return value
-        phrase = value.rstrip(".!? ")
-        return f"The phrase “{phrase}” shows how {target} is used in context."
-    part = sense["partOfSpeech"]
-    article = "an" if part[0] in "aeiou" else "a"
-    return f'The lesson uses “{target}” as {article} {part} in context.'
+    if not sources.looks_like_source_sentence(target, value):
+        raise sources.SourceError(f"{target} has no full source example")
+    if value[0].islower():
+        value = value[0].upper() + value[1:]
+    if re.search(r'[.!?]["’”)]?$', value) is None:
+        value += "."
+    return value
 
 
-def looks_like_full_sentence(value: str) -> bool:
-    words = re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?", value)
-    if not words:
-        return False
-    if re.match(
-        r"^(I|You|He|She|It|We|They|There|This|That|These|Those|Please|Do|Don't|Let|Let's)\b",
-        value,
-        flags=re.I,
-    ):
-        return True
-    if re.search(
-        r"\b(am|is|are|was|were|be|been|being|has|have|had|does|did|can|could|will|would|shall|should|may|might|must|it's|he's|she's|they're|we're)\b",
-        value,
-        flags=re.I,
-    ):
-        return True
-    if len(words) >= 5 and any(
-        re.search(r"(ed|es|s)$", word, flags=re.I) and not word.casefold().endswith("ss")
-        for word in words[1:]
-    ):
-        return True
-    return len(words) >= 8
-
-
-def fallback_plain(packet: dict) -> str:
-    value = re.sub(r"\([^)]*\)", "", packet.get("plain", "")).strip(" ,;:.-")
+def fallback_plain(packet: dict, sense: dict | None = None) -> str:
+    value = re.sub(
+        r"\([^)]*\)",
+        "",
+        (
+            sense.get("meaning") or packet.get("plain", "")
+            if sense is not None
+            else packet.get("plain", "")
+        ),
+    ).strip(" ,;:.-")
     value = re.sub(r"^(the act of|the state of|the quality of)\s+", "", value, flags=re.I)
     if (
         value
         and len(value.split()) <= 8
         and sources.normalized(value) != sources.normalized(packet["target"])
+        and not sources.contains_target_form(packet["target"], value)
     ):
         return value
     candidates = [
         candidate.strip()
-        for candidate in packet.get("candidatePlainExpressions", [])
+        for candidate in (
+            [] if sense is not None else packet.get("candidatePlainExpressions", [])
+        )
         if candidate.strip()
         and len(candidate.split()) <= 8
         and sources.normalized(candidate) != sources.normalized(packet["target"])
+        and not sources.contains_target_form(packet["target"], candidate)
     ]
     if candidates:
         return candidates[0]
-    words = re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?", value or packet.get("definition", ""))
-    result = " ".join(words[:8]).strip()
-    if result and sources.normalized(result) != sources.normalized(packet["target"]):
+    words = re.findall(
+        r"[A-Za-z]+(?:'[A-Za-z]+)?",
+        value or packet.get("definition", ""),
+    )
+    target_forms = sources.target_forms(packet["target"])
+    words = [word for word in words if word.casefold() not in target_forms]
+    words = words[:8]
+    while words and words[-1].casefold() in {
+        "a", "an", "the", "as", "at", "by", "for", "from", "in", "of", "on",
+        "to", "with",
+    }:
+        words.pop()
+    result = " ".join(words).strip()
+    if (
+        len(words) >= 2
+        and sources.normalized(result) != sources.normalized(packet["target"])
+        and not sources.contains_target_form(packet["target"], result)
+    ):
         return result
     return f"a common use of {packet['target']}"
+
+
+def reviewable_senses(packet: dict, senses: list[dict]) -> list[dict]:
+    if not senses:
+        return []
+    reviewed = [senses[0]]
+    for sense in senses[1:]:
+        plain = fallback_plain(packet, sense)
+        if (
+            plain
+            and len(plain.split()) <= 8
+            and sources.normalized(plain) != sources.normalized(packet["target"])
+            and not sources.contains_target_form(packet["target"], plain)
+        ):
+            reviewed.append(sense)
+    return reviewed
 
 
 def draft_source_enrichment(work_dir: Path) -> int:
@@ -353,21 +374,6 @@ def sentence_key(value: str) -> str:
     return sources.normalized(value).rstrip(".!?")
 
 
-def wrapped_example_translation(value: str) -> str | None:
-    match = re.fullmatch(
-        r"The phrase “(.+)” shows how (.+) is used in context\.",
-        value,
-    )
-    if match is None:
-        return None
-    phrase, target = match.groups()
-    return f"「{phrase}」這個片語顯示 {target} 在語境中的用法。"
-
-
-def example_translation_fallback(target: str) -> str:
-    return f"這個例句示範「{target}」的用法。"
-
-
 def applicable_pronunciation_ids(draft: dict, sense: dict) -> list[str]:
     candidates = draft["packet"].get("candidatePronunciations", [])
     selected = []
@@ -403,6 +409,7 @@ def build_reviewed(
         item["id"]: value
         for item, value in zip(translation_items, traditional, strict=True)
     }
+
     levels: dict[str, list[dict]] = {level: [] for level in sources.LEVEL_ORDER}
     for draft in enriched:
         packet = draft["packet"]
@@ -447,12 +454,16 @@ def build_reviewed(
                         "partOfSpeech": sense["partOfSpeech"],
                         "meaning": {
                             "en": clean_english(sense["meaning"]),
-                            "zh-Hant": clean_zh_sentence(translations[f"{content_id}::meaning"]),
+                            "zh-Hant": clean_zh_sentence(
+                                translations[f"{content_id}::meaning"]
+                            ),
                         },
                         "example": {
                             "text": enrichment["example"].strip(),
                             "translation": {
-                                "zh-Hant": clean_zh_sentence(translations[f"{content_id}::example"])
+                                "zh-Hant": clean_zh_sentence(
+                                    translations[f"{content_id}::example"]
+                                )
                             },
                         },
                         "pronunciationIDs": applicable_pronunciation_ids(draft, sense),
@@ -488,7 +499,9 @@ def build_reviewed(
                     "sortOrder": packet["sortOrder"],
                     "contentLanguageCode": "en",
                     "supportLanguageCodes": ["zh-Hant"],
-                    "plainExpression": draft["enrichment"][primary["id"]]["plainExpression"].strip(),
+                    "plainExpression": draft["enrichment"][primary["id"]][
+                        "plainExpression"
+                    ].strip(),
                     "upgradedExpression": packet["target"],
                     "primarySenseID": primary["id"],
                     "pronunciations": draft["pronunciations"],
@@ -676,7 +689,7 @@ def deterministic_enrichment_repairs(work_dir: Path) -> dict[str, dict]:
             item_id = f"{packet['id']}::{sense['id']}"
             repairs[item_id] = {
                 "id": item_id,
-                "plainExpression": fallback_plain(packet),
+                "plainExpression": fallback_plain(packet, sense),
                 "example": source_example(packet["target"], sense),
             }
     return repairs
@@ -751,29 +764,11 @@ def validate_enrichment_batch(
                         f"no deterministic enrichment repair for {item['id']}"
                     ) from error
             else:
-                validate_enrichment(repair, target)
+                candidate["example"] = repair["example"]
                 try:
-                    validate_enrichment(
-                        {
-                            "id": item["id"],
-                            "plainExpression": candidate.get("plainExpression"),
-                            "example": repair["example"],
-                        },
-                        target,
-                    )
+                    validate_enrichment(candidate, target)
                 except sources.SourceError:
                     candidate["plainExpression"] = repair["plainExpression"]
-                try:
-                    validate_enrichment(
-                        {
-                            "id": item["id"],
-                            "plainExpression": repair["plainExpression"],
-                            "example": candidate.get("example"),
-                        },
-                        target,
-                    )
-                except sources.SourceError:
-                    candidate["example"] = repair["example"]
         validate_enrichment(candidate, target)
         validated.append(candidate)
     return {"batchID": expected["batchID"], "items": validated}
@@ -832,6 +827,16 @@ def run_local_enrichment(
 
         def enrich(batch: dict) -> dict:
 
+            def reviewed_fallback(input_items: list[dict]) -> list[dict]:
+                fallback = []
+                for input_item in input_items:
+                    repair = repairs.get(input_item["id"])
+                    if repair is None:
+                        return deterministic_input_enrichment(input_items)
+                    validate_enrichment(repair, input_item["target"])
+                    fallback.append(repair)
+                return fallback
+
             def enrich_items(
                 input_items: list[dict], invalid_attempts: int = 0
             ) -> list[dict]:
@@ -846,7 +851,7 @@ def run_local_enrichment(
                     ]
                 except sources.SourceError as error:
                     if "Detected content likely to be unsafe" in str(error):
-                        return deterministic_input_enrichment(input_items)
+                        return reviewed_fallback(input_items)
                     if len(input_items) < 2 or "context window size" not in str(error):
                         raise
                 else:
@@ -862,7 +867,7 @@ def run_local_enrichment(
                     if len(input_items) < 2:
                         if invalid_attempts < 2:
                             return enrich_items(input_items, invalid_attempts + 1)
-                        return deterministic_input_enrichment(input_items)
+                        return reviewed_fallback(input_items)
                 midpoint = len(input_items) // 2
                 return enrich_items(input_items[:midpoint]) + enrich_items(
                     input_items[midpoint:]
@@ -875,21 +880,31 @@ def run_local_enrichment(
             ]
             return {"batchID": batch["batchID"], "items": items}
 
+        def enrich_validated(batch: dict) -> dict:
+            for attempt in range(3):
+                try:
+                    return validate_enrichment_batch(
+                        enrich(batch),
+                        expected_by_id[batch["batchID"]],
+                        repairs,
+                        repair_invalid=True,
+                    )
+                except sources.SourceError as error:
+                    if attempt == 2 or "invalid plain expression" not in str(error):
+                        raise
+            raise AssertionError("unreachable")
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(enrich, batch): batch["batchID"] for batch in pending
+                pool.submit(enrich_validated, batch): batch["batchID"]
+                for batch in pending
             }
             for enriched_count, future in enumerate(
                 concurrent.futures.as_completed(futures), 1
             ):
                 batch_id = futures[future]
                 try:
-                    output = validate_enrichment_batch(
-                        future.result(),
-                        expected_by_id[batch_id],
-                        repairs,
-                        repair_invalid=True,
-                    )
+                    output = future.result()
                 except Exception as error:
                     for pending_future in futures:
                         pending_future.cancel()
@@ -1089,18 +1104,14 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
 
 def seed_source_translations(work_dir: Path) -> int:
     output = work_dir / "translation-output.jsonl"
+    input_path = work_dir / "translation-input.jsonl"
+    swift_source = Path(__file__).with_name("apple_language_services.swift")
     seeded = sources.read_jsonl(output) if output.is_file() else []
     by_id = {item["id"]: item for item in seeded}
     for draft in sources.read_jsonl(work_dir / "enriched.jsonl"):
         packet = draft["packet"]
         primary = draft["senses"][0]
         content_id = f"{packet['id']}::{primary['id']}"
-        meaning = packet.get("translationDraft")
-        if isinstance(meaning, str) and meaning.strip():
-            by_id[f"{content_id}::meaning"] = {
-                "id": f"{content_id}::meaning",
-                "text": clean_zh_sentence(meaning),
-            }
         example = packet.get("exampleTranslationDraft")
         if (
             isinstance(example, str)
@@ -1112,21 +1123,21 @@ def seed_source_translations(work_dir: Path) -> int:
                 "id": f"{content_id}::example",
                 "text": clean_zh_sentence(example),
             }
-        for sense in draft["senses"]:
-            sense_id = f"{packet['id']}::{sense['id']}"
-            example_id = f"{sense_id}::example"
-            translation = wrapped_example_translation(
-                draft["enrichment"][sense["id"]]["example"]
-            )
-            if translation is None:
-                translation = example_translation_fallback(packet["target"])
-            if example_id not in by_id:
-                by_id[example_id] = {
-                    "id": example_id,
-                    "text": translation,
-                }
     completed = sorted(by_id.values(), key=lambda item: item["id"])
     sources.atomic_write(output, jsonl(completed))
+    requests = sources.read_jsonl(input_path)
+    fingerprint = {
+        "inputSHA256": sources.sha256(input_path),
+        "swiftSourceSHA256": sources.sha256(swift_source),
+    }
+    sources.atomic_write(
+        work_dir / "translation-output.fingerprint.json",
+        json.dumps(fingerprint, sort_keys=True, separators=(",", ":")) + "\n",
+    )
+    sources.atomic_write(
+        work_dir / "translation-input.snapshot.jsonl",
+        jsonl(requests),
+    )
     return len(completed)
 
 

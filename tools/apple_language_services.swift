@@ -153,14 +153,21 @@ private struct AppleLanguageServices {
                 the meaning-aligned value from that list. The example MUST contain the exact
                 target expression and use its supplied part of speech and meaning. Never replace
                 target with plainExpression. Write one original natural full sentence under 18
-                words and do not quote source examples. Return exactly one item per input in the
-                same order.
+                words. Use exampleCandidate as sense guidance when it is present, but rewrite it
+                naturally rather than copying it. Return exactly one item per input in the same
+                order.
                 """)
             let response = try await session.respond(
                 to: "Edit these records and return exactly \(batch.items.count) items in the same order:\n\(payload)",
                 generating: ReviewedEnrichmentBatch.self
             )
-            try write(EnrichmentResponse(batchID: batch.batchID, items: response.content.items))
+            try write(
+                EnrichmentResponse(
+                    batchID: batch.batchID,
+                    items: response.content.items
+                )
+            )
         }
     }
+
 }

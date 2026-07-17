@@ -1597,12 +1597,71 @@ def canonical_part_of_speech(value: str | None) -> str:
     }.get(token, "phrase")
 
 
+def add_review_sense_distances(packets: list[dict]) -> int:
+    queries: dict[str, tuple[str, str]] = {}
+    candidates_by_query: dict[str, dict] = {}
+    blocked_tags = {
+        "archaic", "dated", "dialectal", "historical", "humorous", "obsolete",
+        "rare", "uncommon",
+    }
+    for packet_index, packet in enumerate(packets):
+        target_pos = canonical_part_of_speech(packet.get("partOfSpeech"))
+        context_values = (
+            (packet.get("example", ""),)
+            if packet.get("exampleTranslationMode") == "parallel"
+            else (
+                packet.get("example", ""),
+                packet.get("example", ""),
+                packet.get("definition", ""),
+            )
+        )
+        context = " ".join(
+            value.strip()
+            for value in context_values
+            if isinstance(value, str) and value.strip()
+        )
+        if not context:
+            continue
+        for sense_index, sense in enumerate(packet.get("candidateSenses", [])):
+            if (
+                not isinstance(sense, dict)
+                or canonical_part_of_speech(sense.get("partOfSpeech")) != target_pos
+                or blocked_tags
+                & {normalized(tag) for tag in sense.get("tags", [])}
+            ):
+                continue
+            examples = [
+                value.strip()
+                for value in sense.get("examples", [])
+                if isinstance(value, str) and value.strip()
+            ]
+            glosses = [
+                value.strip()
+                for value in sense.get("glosses", [])
+                if isinstance(value, str) and value.strip()
+            ]
+            if not examples or not glosses:
+                continue
+            key = f"{packet_index}\u001f{sense_index}"
+            specific = glosses[-1]
+            queries[key] = (context, " ".join((specific, specific, examples[0])))
+            candidates_by_query[key] = sense
+    distances = definition_similarities(queries)
+    for key, distance in distances.items():
+        candidates_by_query[key]["reviewDistance"] = distance
+    return len(distances)
+
+
 def review_senses(packet: dict) -> list[dict]:
     target_definition = normalized(packet.get("definition", ""))
     target_pos = canonical_part_of_speech(packet.get("partOfSpeech"))
     blocked_tags = {
         "archaic", "dated", "dialectal", "historical", "humorous", "obsolete",
         "rare", "uncommon",
+    }
+    specialized_tags = {
+        "abstract", "anatomy", "biology", "chemistry", "computing", "law",
+        "mathematics", "medicine", "military", "physics", "programming",
     }
     candidates = [
         sense
@@ -1614,11 +1673,28 @@ def review_senses(packet: dict) -> list[dict]:
     ]
     candidates.sort(
         key=lambda sense: (
+            (
+                sense["reviewDistance"]
+                + (
+                    0.12
+                    if specialized_tags
+                    & {normalized(tag) for tag in sense.get("tags", [])}
+                    else 0
+                )
+            )
+            if isinstance(sense.get("reviewDistance"), (int, float))
+            else 9.0,
             0
             if target_definition
             in {normalized(gloss) for gloss in sense.get("glosses", [])}
             else 1,
             0 if canonical_part_of_speech(sense.get("partOfSpeech")) == target_pos else 1,
+            0
+            if not (
+                specialized_tags
+                & {normalized(tag) for tag in sense.get("tags", [])}
+            )
+            else 1,
             0
             if sense.get("sourceRef", {}).get("sourceID", "").startswith("oewn")
             else 1,
@@ -1626,15 +1702,30 @@ def review_senses(packet: dict) -> list[dict]:
             sense["id"],
         )
     )
-    exact = next(
+    distance_candidate = next(
         (
             sense
             for sense in candidates
-            if target_definition
-            in {normalized(gloss) for gloss in sense.get("glosses", [])}
+            if isinstance(sense.get("reviewDistance"), (int, float))
         ),
         None,
     )
+    if distance_candidate is not None:
+        exact = (
+            distance_candidate
+            if distance_candidate["reviewDistance"] <= 1.10
+            else None
+        )
+    else:
+        exact = next(
+            (
+                sense
+                for sense in candidates
+                if target_definition
+                in {normalized(gloss) for gloss in sense.get("glosses", [])}
+            ),
+            None,
+        )
     if exact:
         candidates.remove(exact)
         primary = exact
@@ -1661,7 +1752,10 @@ def review_senses(packet: dict) -> list[dict]:
             }
         ]
 
-    used_meanings = {normalized(selected[0]["glosses"][0])}
+    def specific_gloss(sense: dict) -> str:
+        return sense["glosses"][-1]
+
+    used_meanings = {normalized(specific_gloss(selected[0]))}
     used_parts = {canonical_part_of_speech(selected[0].get("partOfSpeech"))}
     for candidate in sorted(
         (
@@ -1678,7 +1772,7 @@ def review_senses(packet: dict) -> list[dict]:
             sense["id"],
         ),
     ):
-        meaning = normalized(candidate["glosses"][0])
+        meaning = normalized(specific_gloss(candidate))
         part = canonical_part_of_speech(candidate.get("partOfSpeech"))
         if meaning in used_meanings or part in used_parts:
             continue
@@ -1688,33 +1782,71 @@ def review_senses(packet: dict) -> list[dict]:
         if len(selected) == 2:
             break
 
-    return [
-        {
-            "id": sense["id"],
-            "partOfSpeech": canonical_part_of_speech(sense.get("partOfSpeech")),
-            "meaning": sense["glosses"][0].strip(),
-            "exampleCandidate": next(
+    def full_source_example(value: object) -> bool:
+        return isinstance(value, str) and looks_like_source_sentence(
+            packet["target"], value
+        )
+
+    def aligned_example(sense: dict) -> str:
+        direct = next(
+            (
+                value.strip()
+                for value in sense.get("examples", [])
+                if full_source_example(value)
+            ),
+            "",
+        )
+        if direct:
+            return direct
+        base_words = meaning_words([specific_gloss(sense)])
+        aligned = []
+        for candidate in candidates:
+            if (
+                canonical_part_of_speech(candidate.get("partOfSpeech"))
+                != canonical_part_of_speech(sense.get("partOfSpeech"))
+            ):
+                continue
+            overlap = len(base_words & meaning_words([specific_gloss(candidate)]))
+            if overlap < (1 if len(base_words) <= 2 else 2):
+                continue
+            example = next(
                 (
                     value.strip()
-                    for value in sense.get("examples", [])
-                    if isinstance(value, str)
-                    and value.strip()
-                    and contains_target_form(packet["target"], value)
+                    for value in candidate.get("examples", [])
+                    if full_source_example(value)
                 ),
-                next(
-                    (
-                        value.strip()
-                        for value in (packet.get("example", ""), *sense.get("examples", []))
-                        if isinstance(value, str) and value.strip()
-                    ),
-                    "",
-                ),
-            ),
-            "sourceRef": sense.get("sourceRef")
-            or next(iter(packet.get("sourceRefs", [])), {}),
-        }
-        for sense in selected
-    ]
+                "",
+            )
+            if example:
+                aligned.append((-overlap, len(example), normalized(example), example))
+        return min(aligned)[-1] if aligned else ""
+
+    reviewed = []
+    for index, sense in enumerate(selected):
+        example = ""
+        if (
+            index == 0
+            and packet.get("exampleTranslationMode") == "parallel"
+            and full_source_example(packet.get("example"))
+        ):
+            example = packet["example"].strip()
+        if not example:
+            example = aligned_example(sense)
+        if not example and index == 0 and full_source_example(packet.get("example")):
+            example = packet["example"].strip()
+        if index > 0 and not example:
+            continue
+        reviewed.append(
+            {
+                "id": sense["id"],
+                "partOfSpeech": canonical_part_of_speech(sense.get("partOfSpeech")),
+                "meaning": specific_gloss(sense).strip(),
+                "exampleCandidate": example,
+                "sourceRef": sense.get("sourceRef")
+                or next(iter(packet.get("sourceRefs", [])), {}),
+            }
+        )
+    return reviewed
 
 
 def wiktextract_sense(word: str, part_of_speech: str | None, sense: dict) -> dict:
@@ -2039,6 +2171,41 @@ def contains_target_form(target: str, sentence: str) -> bool:
     )
 
 
+def looks_like_source_sentence(target: str, value: str) -> bool:
+    if not isinstance(value, str) or not contains_target_form(target, value):
+        return False
+    words = re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?", value)
+    if len(words) < 3:
+        return False
+    if re.match(
+        r"^(I|You|He|She|It|We|They|There|This|That|These|Those|Please|Do|Don't|Let|Let's|Thanks)\b",
+        value,
+        flags=re.I,
+    ):
+        return True
+    if re.search(
+        r"\b(am|is|are|was|were|be|been|being|has|have|had|does|did|can|could|will|would|shall|should|may|might|must|it's|he's|she's|they're|we're)\b",
+        value,
+        flags=re.I,
+    ):
+        return True
+    subject_words = {
+        "a", "an", "the", "my", "your", "his", "her", "its", "our", "their",
+        "i", "you", "he", "she", "it", "we", "they", "this", "that", "these",
+        "those",
+    }
+    if words[0].casefold() not in subject_words:
+        return False
+    forms = target_forms(target)
+    return any(
+        index < len(words) - 1
+        and word.casefold() not in forms
+        and re.search(r"(ed|es|s)$", word, flags=re.I)
+        and not word.casefold().endswith("ss")
+        for index, word in enumerate(words[1:], 1)
+    )
+
+
 def definition_similarities(queries: dict[str, tuple[str, str]]) -> dict[str, float]:
     if not queries:
         return {}
@@ -2222,7 +2389,7 @@ def prepare_enrichment(
                     )
         elif is_parallel and values and record.get("examples"):
             parallel_records.append((record, record["examples"][0], values[0]))
-        elif values:
+        elif values and record.get("sourceID") != "freedict-eng-zho-2025.11.23":
             word_translation_records.extend((record, value) for value in values)
         if record.get("cefr") in CEFR_LEVEL:
             value = (record["cefr"], source_reference(record))
@@ -2500,7 +2667,19 @@ def prepare_enrichment(
         elif cedict_options:
             translation_options = cedict_options
         if not translation_options:
-            continue
+            translation_options = [
+                {
+                    "value": "",
+                    "reference": None,
+                    "definitions": [],
+                    "sourceID": "",
+                    "partOfSpeech": pos,
+                    "termPriority": len(related_terms),
+                    "definitionMatch": 0,
+                    "synonymMatch": 0,
+                    "semanticDistance": 2.0,
+                }
+            ]
 
         cefr_entry = cefr_exact.get((key, pos)) or cefr_any.get(key)
         cefr = cefr_entry[0] if cefr_entry else "C1"
@@ -2553,7 +2732,7 @@ def prepare_enrichment(
             if context_match == 0:
                 continue
             for option_rank, option in enumerate(translation_options[:40]):
-                if option["value"] in pair["translation"]:
+                if option["value"] and option["value"] in pair["translation"]:
                     parallel_matches.append(
                         (
                             0 if 12 <= len(pair["sentence"]) <= 90 else 1,
@@ -2598,7 +2777,9 @@ def prepare_enrichment(
                 example_translation = None
                 example_translation_mode = "usage-note"
 
-        refs = [source_reference(record), translation_entry["reference"]]
+        refs = [source_reference(record)]
+        if translation_entry.get("reference"):
+            refs.append(translation_entry["reference"])
         if translation_entry.get("mappingReference"):
             refs.append(translation_entry["mappingReference"])
         if translation_entry.get("reviewReference"):
