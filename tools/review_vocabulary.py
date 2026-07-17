@@ -1056,7 +1056,23 @@ def run_local_enrichment(
                         "example",
                         f'The expression "{input_item["target"]}" is being reviewed.',
                     )
-                    validate_enrichment(candidate, input_item["target"])
+                    try:
+                        validate_enrichment(candidate, input_item["target"])
+                    except sources.SourceError as error:
+                        if "invalid plain expression" not in str(error):
+                            raise
+                        candidate["plainExpression"] = next(
+                            value
+                            for value in (
+                                "a related idea",
+                                "a common expression",
+                                "a useful term",
+                            )
+                            if not sources.contains_target_form(
+                                input_item["target"], value
+                            )
+                        )
+                        validate_enrichment(candidate, input_item["target"])
                     fallback.append(candidate)
                 return fallback
 

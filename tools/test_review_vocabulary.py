@@ -757,8 +757,10 @@ class ReviewVocabularyTests(unittest.TestCase):
             work = root / "work"
             work.mkdir()
             _batch, draft = self._write_enrichment_fixture(work)
-            draft["packet"]["target"] = "high school"
-            draft["packet"]["plain"] = "secondary school"
+            draft["packet"]["target"] = "cold weather"
+            draft["packet"]["plain"] = "a period of unusually cold weather"
+            draft["packet"]["candidatePlainExpressions"] = []
+            draft["senses"][0]["meaning"] = "a period of unusually cold weather"
             draft["senses"][0]["exampleCandidate"] = ""
             (work / "draft.jsonl").write_text(
                 json.dumps(draft) + "\n", encoding="utf-8"
@@ -766,7 +768,7 @@ class ReviewVocabularyTests(unittest.TestCase):
             batch = review_vocabulary.sources.read_jsonl(
                 work / "enrichment-input.jsonl"
             )[0]
-            batch["items"][0]["target"] = "high school"
+            batch["items"][0]["target"] = "cold weather"
             (work / "enrichment-input.jsonl").write_text(
                 json.dumps(batch) + "\n", encoding="utf-8"
             )
@@ -790,8 +792,9 @@ class ReviewVocabularyTests(unittest.TestCase):
             )[0]["items"][0]
             self.assertEqual(
                 output["example"],
-                'The expression "high school" is being reviewed.',
+                'The expression "cold weather" is being reviewed.',
             )
+            self.assertEqual(output["plainExpression"], "a related idea")
 
     def test_run_local_enrichment_uses_input_fallback_after_safety_gate(self):
         with tempfile.TemporaryDirectory() as directory:
