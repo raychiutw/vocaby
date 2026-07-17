@@ -1,7 +1,7 @@
 # Question Bank Sources and Level Calibration
 
 Status: implemented V1 policy
-Last reviewed: 2026-07-16
+Last reviewed: 2026-07-17
 
 This document defines how Vocaby imports, enriches, reviews, levels, and
 ships vocabulary content. It is an engineering and editorial policy, not legal
@@ -41,7 +41,7 @@ composable pronunciation.
 
 ## Source Inventory and Shipping Decisions
 
-Fifteen exact upstream snapshots and their evidence are tracked under
+Sixteen exact upstream snapshots and their evidence are tracked under
 `Content/Sources/Raw`. A source being public or locally imported does not make it
 eligible to ship.
 
@@ -55,13 +55,14 @@ eligible to ship.
 | `tatoeba-eng-cmn-2026-07-04` | context-aligned example translations | approved |
 | `freedict-eng-zho-2025.11.23` | Chinese dictionary evidence; 1,532 selected references in this release | approved |
 | `cmudict-7479086` | pronunciation cross-check; inline comments stripped before comparison | approved |
+| `moby-pronunciator-ii-3205` | public-domain pronunciation coverage | approved |
 | `grundwortschatz-voc-en-004977a` | English vocabulary and explicit A1-B2 evidence | approved |
 | `bsl-1.2` | research candidate list | blocked |
 | `gcide-0.54` | dictionary research | blocked |
 | `nawl-1.2` | research candidate list | blocked |
 | `ngsl-1.2` | research candidate list | blocked |
 | `tsl-1.2` | research candidate list | blocked |
-| `wiktextract-en-2026-07-09` | target-only English Wiktionary POS, gloss, translation, example, and IPA evidence | approved |
+| `wiktextract-en-2026-07-09` | 108,000-target English Wiktionary POS, gloss, example, and IPA evidence in 10 verified shards | approved |
 
 The shipping provenance catalog also contains `vocaby-original` for continuity
 with the existing app bank. Exact versions, canonical URLs, hashes, license

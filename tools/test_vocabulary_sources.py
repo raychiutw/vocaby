@@ -144,6 +144,19 @@ class VocabularySourcesTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual([item["target"] for item in first], ["alpha"])
 
+    def test_select_target_candidates_rejects_raw_inflection_senses(self):
+        lemma = self.target_candidate("reduce", utility="general")
+        inflection = self.target_candidate(
+            "reduces", utility="general", tags=["form-of", "third-person"]
+        )
+
+        with self.assertRaisesRegex(
+            vocabulary_sources.SourceError, "only 1 eligible candidate"
+        ):
+            vocabulary_sources.select_target_candidates(
+                [inflection, lemma], [], target_count=2
+            )
+
     def test_snapshot_target_selection_allows_pending_pronunciation_only(self):
         candidate = self.target_candidate("itinerary", utility="travel")
         candidate["candidatePronunciations"] = []
@@ -538,12 +551,65 @@ class VocabularySourcesTests(unittest.TestCase):
                 ],
             )
 
+    def test_wiktextract_discovery_targets_add_verified_pronunciation_headwords(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+            records = [
+                {
+                    "sourceID": "pron",
+                    "sourceEntryRef": "itinerary",
+                    "headword": "Itinerary",
+                    "pronunciations": [
+                        {"notation": "ipa", "value": "aɪˈtɪnərɛri"}
+                    ],
+                },
+                {
+                    "sourceID": "pron",
+                    "sourceEntryRef": "missing",
+                    "headword": "missing",
+                    "pronunciations": [],
+                },
+                {
+                    "sourceID": "blocked",
+                    "sourceEntryRef": "blocked",
+                    "headword": "blocked",
+                    "pronunciations": [
+                        {"notation": "ipa", "value": "blɒkt"}
+                    ],
+                },
+            ]
+            (input_dir / "records.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in records),
+                encoding="utf-8",
+            )
+            retained = root / "targets.json"
+            retained.write_text(
+                json.dumps([{"upgradedExpression": "breakfast"}]),
+                encoding="utf-8",
+            )
+            output = root / "discovery.json"
+
+            count = vocabulary_sources.wiktextract_discovery_targets(
+                input_dir, retained, output, {"pron"}
+            )
+
+            self.assertEqual(count, 2)
+            self.assertEqual(
+                json.loads(output.read_text()),
+                [
+                    {"upgradedExpression": "breakfast"},
+                    {"upgradedExpression": "itinerary"},
+                ],
+            )
+
     def test_frozen_100k_baseline_inputs(self):
         expected_hashes = {
             "Vocaby/Resources/VocabularySeed.json": "0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9",
             "Content/VocabularyProvenance.json": "eacf3d158eec48fab86f437e74975f3feff55145427201d8a3d8bfc7aa45188f",
             "Vocaby/Resources/ThirdPartyNotices.txt": "3f152459c424d7451fc08c3ea65f17e7d368d335bd78a93afda2307408e55d5c",
-            "Content/Sources/source-manifest.json": "91302e0632d29d24f402bc67b7009cf180983a98f73c55e67191cd60616a3261",
+            "Content/Sources/source-manifest.json": "4ae978b9a562231a18558c72607f0074ca20d1888f41c4396b86431ef052258e",
         }
 
         for relative_path, expected_hash in expected_hashes.items():
@@ -1986,6 +2052,37 @@ class VocabularySourcesTests(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                [json.loads(line)["headword"] for line in output.read_text().splitlines()],
+                ["alpha", "bravo"],
+            )
+
+    def test_import_wiktextract_shards_merges_temporary_discovery_snapshot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = []
+            for number, word in enumerate(("bravo", "alpha"), 1):
+                path = root / f"part-{number:04d}.jsonl.gz"
+                with gzip.open(path, "wt", encoding="utf-8") as stream:
+                    stream.write(
+                        json.dumps(
+                            {
+                                "word": word,
+                                "lang_code": "en",
+                                "pos": "noun",
+                                "senses": [{"glosses": [f"Meaning of {word}."]}],
+                            }
+                        )
+                        + "\n"
+                    )
+                paths.append(path)
+            output = root / "imported.jsonl"
+
+            count = vocabulary_sources.import_wiktextract_shards(
+                list(reversed(paths)), "wiktextract-test", output
+            )
+
+            self.assertEqual(count, 2)
             self.assertEqual(
                 [json.loads(line)["headword"] for line in output.read_text().splitlines()],
                 ["alpha", "bravo"],

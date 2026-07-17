@@ -55,6 +55,7 @@ LEARNER_UTILITY_ORDER = {
 BLOCKED_SENSE_TAGS = {
     "archaic",
     "dated",
+    "form-of",
     "offensive",
     "obsolete",
     "rare",
@@ -836,6 +837,45 @@ def targets_to_seed(
     ordered = [
         {"upgradedExpression": targets[key]}
         for key in sorted(targets)
+    ]
+    atomic_write(
+        output,
+        json.dumps(ordered, ensure_ascii=False, indent=2) + "\n",
+    )
+    return len(ordered)
+
+
+def wiktextract_discovery_targets(
+    input_dir: Path,
+    retained_path: Path,
+    output: Path,
+    approved_source_ids: set[str],
+) -> int:
+    targets = {
+        normalized(item.get("target") or item.get("upgradedExpression") or "")
+        for item in _retained_items(retained_path)
+    }
+    targets.discard("")
+    for path in sorted(input_dir.glob("*.jsonl")):
+        for record in _iter_jsonl(path):
+            if record.get("sourceID") not in approved_source_ids:
+                continue
+            pronunciations = record.get("pronunciations")
+            if not isinstance(pronunciations, list) or not any(
+                isinstance(item, dict)
+                and item.get("notation") in {"ipa", "arpabet"}
+                and isinstance(item.get("value"), str)
+                and item["value"].strip()
+                for item in pronunciations
+            ):
+                continue
+            target = normalized(record.get("headword", ""))
+            if ENGLISH_TERM.fullmatch(target) is None or len(target.split()) > 8:
+                continue
+            targets.add(target)
+    ordered = [
+        {"upgradedExpression": target}
+        for target in sorted(targets)
     ]
     atomic_write(
         output,
@@ -2109,6 +2149,30 @@ def atomic_write(path: Path, content: str) -> None:
         stream.write(content)
         temporary = Path(stream.name)
     os.replace(temporary, path)
+
+
+def import_wiktextract_shards(
+    paths: Iterable[Path], source_id: str, output: Path
+) -> int:
+    records = merge_records(
+        record
+        for path in sorted(paths, key=lambda value: str(value))
+        for record in parse_wiktextract(path, source_id)
+    )
+    atomic_write(
+        output,
+        "".join(
+            json.dumps(
+                record,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+            for record in records
+        ),
+    )
+    return len(records)
 
 
 def import_source(root: Path, source: dict, output: Path) -> int:
@@ -3724,6 +3788,16 @@ def main(argv: list[str] | None = None) -> int:
     targets_parser.add_argument("--input", type=Path, required=True)
     targets_parser.add_argument("--output", type=Path, required=True)
     targets_parser.add_argument("--retained", type=Path)
+    discovery_parser = commands.add_parser("prepare-wiktextract-discovery")
+    discovery_parser.add_argument("--input-dir", type=Path, required=True)
+    discovery_parser.add_argument("--retained", type=Path, required=True)
+    discovery_parser.add_argument("--output", type=Path, required=True)
+    import_wiktextract_parser = commands.add_parser("import-wiktextract-shards")
+    import_wiktextract_parser.add_argument("--input", type=Path, nargs="+", required=True)
+    import_wiktextract_parser.add_argument(
+        "--source-id", default="wiktextract-en-2026-07-09"
+    )
+    import_wiktextract_parser.add_argument("--output", type=Path, required=True)
     build_parser = commands.add_parser("build-reviewed")
     build_parser.add_argument("--input", type=Path, required=True)
     build_parser.add_argument("--existing-seed", type=Path, required=True)
@@ -3844,6 +3918,26 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "targets-to-seed":
         count = targets_to_seed(args.input, args.output, args.retained)
         print(f"wrote {count} Wiktextract target(s) to {args.output}")
+    elif args.command == "prepare-wiktextract-discovery":
+        approved_source_ids = {
+            source["id"]
+            for source in manifest["sources"]
+            if source.get("appUse") == "approved"
+        }
+        count = wiktextract_discovery_targets(
+            args.input_dir,
+            args.retained,
+            args.output,
+            approved_source_ids,
+        )
+        print(f"wrote {count} Wiktextract discovery target(s) to {args.output}")
+    elif args.command == "import-wiktextract-shards":
+        count = import_wiktextract_shards(
+            args.input,
+            args.source_id,
+            args.output,
+        )
+        print(f"imported {count} Wiktextract record(s) to {args.output}")
     elif args.command == "build-reviewed":
         count = build_reviewed(
             root,

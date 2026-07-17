@@ -632,12 +632,15 @@ gate.
 python3 -B tools/vocabulary_sources.py snapshot-wiktextract \
   --source-url https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz \
   --seed /tmp/vocabulary-100k-target-seed.json \
-  --output /tmp/english-targets-2026-07-09-expanded.jsonl.gz
+  --output /tmp/english-targets-2026-07-09-expanded.jsonl.gz \
+  --records-per-shard 15000
 python3 -B tools/vocabulary_sources.py verify --source wiktextract-en-2026-07-09
 ```
 
-Before replacing the tracked file, record the official URL shown above, exact
-bytes, SHA-256, row count, and retained-target reconciliation.
+Before replacing the tracked files, record the official URL shown above, exact
+bytes, SHA-256, row count, and retained-target reconciliation for every shard.
+Declare the result as ordered `rawFiles`; no shard may approach GitHub's 100 MB
+single-file limit.
 
 - [ ] **Step 4: Re-import twice and compare**
 

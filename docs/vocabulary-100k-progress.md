@@ -3,9 +3,9 @@
 ## Frozen baseline — 2026-07-17
 
 - Branch: `feat/all-approved-vocabulary`
-- Approved source entries: 15
-- Canonical import records: 904,681
-- Unique normalized headwords: 583,652
+- Approved source entries: 16
+- Canonical import records: 1,192,018
+- Unique normalized headwords: 670,996
 - Shipping rich lessons: 14,064
 - Final target: 100,000 fully reviewed lessons
 - Review cadence: 10 lessons per batch; audit, commit, and push after every 20 batches
@@ -16,7 +16,7 @@
 | `Vocaby/Resources/VocabularySeed.json` | `0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9` |
 | `Content/VocabularyProvenance.json` | `eacf3d158eec48fab86f437e74975f3feff55145427201d8a3d8bfc7aa45188f` |
 | `Vocaby/Resources/ThirdPartyNotices.txt` | `3f152459c424d7451fc08c3ea65f17e7d368d335bd78a93afda2307408e55d5c` |
-| `Content/Sources/source-manifest.json` | `033cca5fcd5d199ad34087e62ce21551ba48cbc4d9c1bc989d77e017897126cb` |
+| `Content/Sources/source-manifest.json` | `4ae978b9a562231a18558c72607f0074ca20d1888f41c4396b86431ef052258e` |
 
 The frozen hashes are updated only by an intentional reviewed checkpoint. Raw,
 imported, generated, or rejected drafts do not count toward the 100,000 target.
@@ -48,6 +48,18 @@ The rejected candidates were not assigned guessed IPA. A full Wiktextract probe
 confirmed that 635 of the remaining 636 rare candidates still lacked source IPA,
 so they were replaced by complete, higher-utility candidates from the approved
 source pool.
+
+## Source checkpoint — expanded Wiktextract targets
+
+- Pinned upstream extraction: 2026-07-06 enwiktionary dump
+- Final snapshot targets: 108,000 (14,064 retained, 85,936 target, 8,000 reserve)
+- Raw English POS records retained: 143,678
+- Repository shards: 10; largest shard: 35,283,035 bytes
+- Canonical merged records: 143,677
+- Deterministic import SHA-256: `2c88dbe559fc921880c79348ca8c95a03c9e4d8397979dad48b5e993026f198f`
+- Selection order: everyday, business, travel, practical-life, general, specialized
+- Raw inflection-only senses and translation-gloss pseudo-headwords: rejected
+- Final strict queue requires both an approved English sense and verified pronunciation
 
 ## Review checkpoint 0001
 
