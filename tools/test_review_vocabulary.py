@@ -244,7 +244,46 @@ class ReviewVocabularyTests(unittest.TestCase):
                         work, root / "helper.swift", 1
                     )
 
-            self.assertEqual(len(calls), 3)
+                self.assertEqual(len(calls), 3)
+
+    def test_deterministic_enrichment_repairs_include_every_reviewed_sense(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            draft = {
+                "packet": {
+                    "id": "bank-basic-0002",
+                    "target": "about",
+                    "plain": "approximately",
+                    "candidatePlainExpressions": ["near"],
+                },
+                "senses": [
+                    {
+                        "id": "sense-1",
+                        "meaning": "approximately",
+                        "partOfSpeech": "adverb",
+                        "exampleCandidate": "It is about five minutes away.",
+                    },
+                    {
+                        "id": "sense-2",
+                        "meaning": "on the move",
+                        "partOfSpeech": "adjective",
+                        "exampleCandidate": "They are up and about.",
+                    },
+                ],
+            }
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+
+            repairs = review_vocabulary.deterministic_enrichment_repairs(work)
+
+            self.assertEqual(
+                sorted(repairs),
+                ["bank-basic-0002::sense-1", "bank-basic-0002::sense-2"],
+            )
+            review_vocabulary.validate_enrichment(
+                repairs["bank-basic-0002::sense-2"], "about"
+            )
             output = work / "enrichment-output.jsonl"
             self.assertFalse(
                 output.exists() and review_vocabulary.sources.read_jsonl(output)
@@ -1459,6 +1498,10 @@ class ReviewVocabularyTests(unittest.TestCase):
             rejection = json.loads((work / "rejections.jsonl").read_text())
             self.assertEqual(rejection["reason"], "no-verified-pronunciation")
             self.assertEqual(rejection["sourceIDs"], ["oewn-2025"])
+            accepted_queue = json.loads(
+                (work / "accepted-queue.jsonl").read_text()
+            )
+            self.assertEqual(accepted_queue["id"], "bank-basic-0001")
             batch = json.loads((work / "enrichment-input.jsonl").read_text())
             self.assertEqual(batch["items"][0]["id"], "bank-basic-0001::bank-basic-0001-sense-1")
 

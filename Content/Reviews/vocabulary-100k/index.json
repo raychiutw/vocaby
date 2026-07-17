@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "shards": [
+    {
+      "cumulativeItems": 200,
+      "final": false,
+      "firstID": "bank-basic-0001",
+      "items": 200,
+      "lastID": "basic-019",
+      "path": "checkpoint-0001.jsonl",
+      "sha256": "6a26a5e1cac61b8ca3871386e49f1f1f4d395a3a7849cef7b65d71ae1e68675c",
+      "status": "approved"
+    }
+  ]
+}

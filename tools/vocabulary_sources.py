@@ -797,6 +797,27 @@ def prepare_100k(
     }
 
 
+def targets_to_seed(input_path: Path, output: Path) -> int:
+    targets = {}
+    for item in _iter_jsonl(input_path):
+        target = item.get("target") or item.get("upgradedExpression")
+        if not isinstance(target, str) or not target.strip():
+            raise SourceError("target queue row must contain a target")
+        key = normalized(target)
+        if key in targets:
+            raise SourceError(f"duplicate target queue expression: {target}")
+        targets[key] = target.strip()
+    ordered = [
+        {"upgradedExpression": targets[key]}
+        for key in sorted(targets)
+    ]
+    atomic_write(
+        output,
+        json.dumps(ordered, ensure_ascii=False, indent=2) + "\n",
+    )
+    return len(ordered)
+
+
 def load_manifest(root: Path) -> dict:
     path = root / "Content/Sources/source-manifest.json"
     try:
@@ -3422,6 +3443,9 @@ def main(argv: list[str] | None = None) -> int:
     prepare_100k_parser.add_argument("--output", type=Path, required=True)
     prepare_100k_parser.add_argument("--target-count", type=int, default=100_000)
     prepare_100k_parser.add_argument("--reserve-count", type=int, default=10_000)
+    targets_parser = commands.add_parser("targets-to-seed")
+    targets_parser.add_argument("--input", type=Path, required=True)
+    targets_parser.add_argument("--output", type=Path, required=True)
     build_parser = commands.add_parser("build-reviewed")
     build_parser.add_argument("--input", type=Path, required=True)
     build_parser.add_argument("--existing-seed", type=Path, required=True)
@@ -3533,6 +3557,9 @@ def main(argv: list[str] | None = None) -> int:
             reserve_count=args.reserve_count,
         )
         print(json.dumps(result, sort_keys=True))
+    elif args.command == "targets-to-seed":
+        count = targets_to_seed(args.input, args.output)
+        print(f"wrote {count} Wiktextract target(s) to {args.output}")
     elif args.command == "build-reviewed":
         count = build_reviewed(
             root,

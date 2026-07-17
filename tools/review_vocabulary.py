@@ -134,6 +134,10 @@ def prepare_review(
         for start in range(0, len(enrichment_groups), batch_size)
     ]
     sources.atomic_write(work_dir / "draft.jsonl", jsonl(drafts))
+    sources.atomic_write(
+        work_dir / "accepted-queue.jsonl",
+        jsonl(draft["packet"] for draft in drafts),
+    )
     sources.atomic_write(work_dir / "rejections.jsonl", jsonl(rejections))
     sources.atomic_write(work_dir / "enrichment-input.jsonl", jsonl(batches))
     return {
@@ -668,13 +672,13 @@ def deterministic_enrichment_repairs(work_dir: Path) -> dict[str, dict]:
     repairs = {}
     for draft in sources.read_jsonl(draft_path):
         packet = draft["packet"]
-        primary = draft["senses"][0]
-        item_id = f"{packet['id']}::{primary['id']}"
-        repairs[item_id] = {
-            "id": item_id,
-            "plainExpression": fallback_plain(packet),
-            "example": source_example(packet["target"], primary),
-        }
+        for sense in draft["senses"]:
+            item_id = f"{packet['id']}::{sense['id']}"
+            repairs[item_id] = {
+                "id": item_id,
+                "plainExpression": fallback_plain(packet),
+                "example": source_example(packet["target"], sense),
+            }
     return repairs
 
 

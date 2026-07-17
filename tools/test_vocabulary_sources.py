@@ -280,6 +280,50 @@ class VocabularySourcesTests(unittest.TestCase):
                 queue[1]["learnerUtilityEvidence"]["method"], "inferred"
             )
 
+    def test_targets_to_seed_is_deterministic_and_rejects_duplicates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first_input = root / "first.jsonl"
+            second_input = root / "second.jsonl"
+            first_output = root / "first.json"
+            second_output = root / "second.json"
+            rows = [{"target": "invoice"}, {"target": "breakfast"}]
+            first_input.write_text(
+                "".join(json.dumps(item) + "\n" for item in rows),
+                encoding="utf-8",
+            )
+            second_input.write_text(
+                "".join(json.dumps(item) + "\n" for item in reversed(rows)),
+                encoding="utf-8",
+            )
+
+            first_count = vocabulary_sources.targets_to_seed(
+                first_input, first_output
+            )
+            second_count = vocabulary_sources.targets_to_seed(
+                second_input, second_output
+            )
+
+            self.assertEqual(first_count, 2)
+            self.assertEqual(first_output.read_bytes(), second_output.read_bytes())
+            self.assertEqual(
+                json.loads(first_output.read_text()),
+                [
+                    {"upgradedExpression": "breakfast"},
+                    {"upgradedExpression": "invoice"},
+                ],
+            )
+
+            second_input.write_text(
+                json.dumps({"target": "invoice"})
+                + "\n"
+                + json.dumps({"target": "INVOICE"})
+                + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(vocabulary_sources.SourceError, "duplicate"):
+                vocabulary_sources.targets_to_seed(second_input, second_output)
+
     def test_frozen_100k_baseline_inputs(self):
         expected_hashes = {
             "Vocaby/Resources/VocabularySeed.json": "0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9",

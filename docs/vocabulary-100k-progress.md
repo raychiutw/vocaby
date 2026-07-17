@@ -32,3 +32,33 @@ imported, generated, or rejected drafts do not count toward the 100,000 target.
 - Approved source entries after checkpoint: 16
 - Canonical records after checkpoint: 1,079,876
 - Unique normalized headwords after checkpoint: 670,996
+
+## Baseline selection repair
+
+- Requested baseline targets: 15,336
+- Existing shipping lessons retained: 14,064
+- Additional source-aligned candidates with verified pronunciation: 636
+- Unpronounceable rare candidates replaced: 636
+- Replacement priority: common everyday vocabulary
+- Final prepared baseline: 15,336 accepted, 0 missing pronunciations
+- Selected senses: 19,718
+- Review batches: 1,534 at 10 lessons per batch
+
+The rejected candidates were not assigned guessed IPA. A full Wiktextract probe
+confirmed that 635 of the remaining 636 rare candidates still lacked source IPA,
+so they were replaced by complete, higher-utility candidates from the approved
+source pool.
+
+## Review checkpoint 0001
+
+- Completed batches: 20 / 1,534
+- Approved lessons: 200 / 15,336 baseline; 200 / 100,000 final target
+- Reviewed senses: 295
+- Pronunciations: 586
+- Multi-sense lessons: 95
+- CEFR: A1 88, A2 111, B1 1
+- Rejections: 0
+- Known generic examples: 0
+- Examples missing the target expression: 0
+- Shard: `Content/Reviews/vocabulary-100k/checkpoint-0001.jsonl`
+- Shard SHA-256: `6a26a5e1cac61b8ca3871386e49f1f1f4d395a3a7849cef7b65d71ae1e68675c`
