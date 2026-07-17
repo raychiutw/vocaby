@@ -22,6 +22,264 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class VocabularySourcesTests(unittest.TestCase):
+    def target_candidate(
+        self,
+        target: str,
+        *,
+        utility: str = "general",
+        frequency_rank: int = 100,
+        source_count: int = 2,
+        cefr: str = "B2",
+        cefr_method: str = "exact",
+        tags: list[str] | None = None,
+        proper_name: bool = False,
+    ) -> dict:
+        source_refs = [
+            {"sourceID": f"source-{index}", "sourceEntryRef": f"{target}-{index}"}
+            for index in range(source_count)
+        ]
+        evidence = {
+            "method": "exact",
+            "evidence": [f"source:{target}"],
+            "confidence": 1.0,
+            "reviewer": "source",
+        }
+        candidate = {
+            "target": target,
+            "candidateSenses": [
+                {
+                    "id": f"{target}-sense-1",
+                    "partOfSpeech": "noun",
+                    "glosses": [f"meaning of {target}"],
+                    "tags": tags or [],
+                    "sourceRef": source_refs[0],
+                }
+            ],
+            "candidatePronunciations": [
+                {
+                    "notation": "ipa",
+                    "value": "tɛst",
+                    "speechLocale": "en-US",
+                    "region": "General",
+                    "sourceRef": source_refs[-1],
+                }
+            ],
+            "validationSourceIDs": [ref["sourceID"] for ref in source_refs],
+            "sourceRefs": source_refs,
+            "learnerUtility": utility,
+            "learnerUtilityEvidence": evidence,
+            "approvedFrequencyRank": frequency_rank,
+            "approvedCorpusOccurrences": max(0, 1_000 - frequency_rank),
+            "isProperName": proper_name,
+        }
+        if cefr_method == "exact":
+            candidate["exactCEFREvidence"] = [
+                {"value": cefr, "sourceRef": source_refs[0]}
+            ]
+        else:
+            candidate["inferredCEFR"] = {
+                "value": cefr,
+                "evidence": ["reviewed Taiwan learner rubric"],
+                "confidence": 0.9,
+                "reviewer": "codex-content-review-2026-07-17",
+            }
+        return candidate
+
+    def test_select_target_candidates_preserves_retained_and_uses_utility(self):
+        retained = [
+            {
+                "id": "stable-1",
+                "upgradedExpression": "keep",
+                "level": "basic",
+                "sortOrder": 1,
+                "cefr": "A1",
+            }
+        ]
+        records = [
+            self.target_candidate("specialist", utility="specialized", source_count=5),
+            self.target_candidate("invoice", utility="business", source_count=2),
+            self.target_candidate("breakfast", utility="everyday", source_count=2),
+        ]
+
+        selected = vocabulary_sources.select_target_candidates(
+            records, retained, target_count=3
+        )
+
+        self.assertEqual(
+            [item["target"] for item in selected],
+            ["keep", "breakfast", "invoice"],
+        )
+
+    def test_select_target_candidates_orders_practical_domains_before_general(self):
+        records = [
+            self.target_candidate("general", utility="general", frequency_rank=1),
+            self.target_candidate("daily", utility="everyday", frequency_rank=100),
+            self.target_candidate("business", utility="business", frequency_rank=100),
+            self.target_candidate("travel", utility="travel", frequency_rank=100),
+            self.target_candidate("life", utility="practical-life", frequency_rank=100),
+            self.target_candidate("technical", utility="specialized", frequency_rank=1),
+        ]
+
+        selected = vocabulary_sources.select_target_candidates(
+            list(reversed(records)), [], target_count=len(records)
+        )
+
+        self.assertEqual(
+            [item["target"] for item in selected],
+            ["daily", "business", "travel", "life", "general", "technical"],
+        )
+
+    def test_select_target_candidates_is_deterministic_and_filters_invalid_rows(self):
+        valid = self.target_candidate("alpha", utility="everyday")
+        duplicate = self.target_candidate("ALPHA", utility="business")
+        proper_name = self.target_candidate("London", proper_name=True)
+        obsolete = self.target_candidate("forsooth", tags=["obsolete"])
+        records = [proper_name, duplicate, obsolete, valid]
+
+        first = vocabulary_sources.select_target_candidates(records, [], 1)
+        second = vocabulary_sources.select_target_candidates(
+            list(reversed(records)), [], 1
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual([item["target"] for item in first], ["alpha"])
+
+    def test_cefr_evidence_prefers_exact_and_requires_reviewed_inference(self):
+        exact = self.target_candidate("exact", cefr="A2")
+        inferred = self.target_candidate(
+            "inferred", cefr="C1", cefr_method="inferred"
+        )
+
+        self.assertEqual(
+            vocabulary_sources.cefr_evidence(exact)["method"], "exact"
+        )
+        self.assertEqual(
+            vocabulary_sources.cefr_evidence(inferred),
+            {
+                "value": "C1",
+                "method": "inferred",
+                "evidence": ["reviewed Taiwan learner rubric"],
+                "confidence": 0.9,
+                "reviewer": "codex-content-review-2026-07-17",
+            },
+        )
+        inferred["inferredCEFR"]["reviewer"] = ""
+        with self.assertRaisesRegex(
+            vocabulary_sources.SourceError, "reviewed inferred CEFR"
+        ):
+            vocabulary_sources.cefr_evidence(inferred)
+
+    def test_prepare_100k_builds_target_and_reserve_queue_from_approved_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+            retained = root / "retained.jsonl"
+            retained.write_text(
+                json.dumps(
+                    {
+                        "id": "stable-1",
+                        "upgradedExpression": "keep",
+                        "level": "basic",
+                        "sortOrder": 1,
+                        "cefr": "A1",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            def canonical(
+                target: str,
+                source_id: str,
+                *,
+                definition: str = "",
+                pronunciation: str = "",
+                cefr: str | None = None,
+            ) -> dict:
+                return {
+                    "headword": target,
+                    "sourceID": source_id,
+                    "sourceEntryRef": f"{source_id}:{target}",
+                    "partOfSpeech": "noun",
+                    "definitions": [definition] if definition else [],
+                    "examples": [],
+                    "senses": [],
+                    "pronunciations": (
+                        [
+                            {
+                                "notation": "ipa",
+                                "value": pronunciation,
+                                "speechLocale": "en-US",
+                                "region": "General",
+                                "tags": [],
+                            }
+                        ]
+                        if pronunciation
+                        else []
+                    ),
+                    "cefr": cefr,
+                }
+
+            rows = [
+                canonical("technical", "lex", definition="specialized knowledge"),
+                canonical("invoice", "lex", definition="a business payment request"),
+                canonical("breakfast", "lex", definition="the first daily meal"),
+                canonical("technical", "pron", pronunciation="ˈtɛknɪkəl"),
+                canonical("invoice", "pron", pronunciation="ˈɪnvɔɪs"),
+                canonical("breakfast", "pron", pronunciation="ˈbrɛkfəst"),
+                canonical("technical", "cefr", cefr="C2"),
+                canonical("invoice", "cefr", cefr="B1"),
+                canonical("breakfast", "cefr", cefr="A1"),
+            ]
+            for source_id in ("lex", "pron", "cefr"):
+                selected = [row for row in rows if row["sourceID"] == source_id]
+                (input_dir / f"{source_id}.jsonl").write_text(
+                    "".join(
+                        json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
+                        for row in reversed(selected)
+                    ),
+                    encoding="utf-8",
+                )
+            (input_dir / "corpus.jsonl").write_text(
+                json.dumps(
+                    canonical(
+                        "I eat breakfast before work.",
+                        "corpus",
+                    ),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            output = root / "queue.jsonl"
+
+            result = vocabulary_sources.prepare_100k(
+                input_dir,
+                retained,
+                output,
+                {"lex", "pron", "cefr", "corpus"},
+                target_count=2,
+                reserve_count=1,
+                corpus_source_ids={"corpus"},
+            )
+            queue = vocabulary_sources.read_jsonl(output)
+
+            self.assertEqual(result, {"retained": 1, "target": 1, "reserve": 1})
+            self.assertEqual(
+                [(item["target"], item["selectionStatus"]) for item in queue],
+                [("breakfast", "target"), ("invoice", "reserve")],
+            )
+            self.assertEqual(queue[0]["learnerUtility"], "everyday")
+            self.assertEqual(queue[1]["learnerUtility"], "business")
+            self.assertEqual(queue[0]["level"], "basic")
+            self.assertEqual(queue[1]["level"], "intermediate")
+            self.assertEqual(queue[0]["approvedCorpusOccurrences"], 1)
+            self.assertEqual(
+                queue[1]["learnerUtilityEvidence"]["method"], "inferred"
+            )
+
     def test_frozen_100k_baseline_inputs(self):
         expected_hashes = {
             "Vocaby/Resources/VocabularySeed.json": "0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9",

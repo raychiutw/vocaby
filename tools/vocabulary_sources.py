@@ -43,6 +43,24 @@ CEFR_LEVEL = {
     "C1": "advanced",
     "C2": "advanced",
 }
+CEFR_ORDER = {value: index for index, value in enumerate(CEFR_LEVEL)}
+LEARNER_UTILITY_ORDER = {
+    "everyday": 0,
+    "business": 1,
+    "travel": 2,
+    "practical-life": 3,
+    "general": 4,
+    "specialized": 5,
+}
+BLOCKED_SENSE_TAGS = {
+    "archaic",
+    "dated",
+    "offensive",
+    "obsolete",
+    "rare",
+    "slur",
+    "uncommon",
+}
 ENGLISH_TERM = re.compile(r"^[A-Za-z][A-Za-z' -]{1,79}$")
 ENGLISH_WORD = re.compile(r"[a-z]{3,}")
 MEANING_STOP_WORDS = {
@@ -106,6 +124,677 @@ def normalized(value: str) -> str:
     value = unicodedata.normalize("NFKC", value)
     value = value.translate(str.maketrans("‘’‛–—−", "'''---"))
     return " ".join(value.casefold().split())
+
+
+def _reviewed_evidence(value: object, label: str) -> dict:
+    if not isinstance(value, dict):
+        raise SourceError(f"{label} must contain reviewed evidence")
+    evidence = value.get("evidence")
+    confidence = value.get("confidence")
+    reviewer = value.get("reviewer")
+    if (
+        not isinstance(evidence, list)
+        or not evidence
+        or any(not isinstance(item, str) or not item.strip() for item in evidence)
+        or isinstance(confidence, bool)
+        or not isinstance(confidence, (int, float))
+        or not 0.8 <= confidence <= 1.0
+        or not isinstance(reviewer, str)
+        or not reviewer.strip()
+    ):
+        raise SourceError(f"{label} must contain reviewed evidence")
+    return {
+        "evidence": evidence,
+        "confidence": confidence,
+        "reviewer": reviewer,
+    }
+
+
+def cefr_evidence(candidate: dict) -> dict:
+    exact = candidate.get("exactCEFREvidence", [])
+    if not isinstance(exact, list):
+        raise SourceError("exact CEFR evidence must be a list")
+    if exact:
+        values = {
+            item.get("value")
+            for item in exact
+            if isinstance(item, dict) and item.get("value") in CEFR_LEVEL
+        }
+        if len(values) != 1 or len(values) != len({item.get("value") for item in exact}):
+            raise SourceError("exact CEFR evidence must contain one unambiguous value")
+        references = []
+        reviewers = set()
+        for item in exact:
+            source_ref = item.get("sourceRef")
+            if not isinstance(source_ref, dict) or not source_ref.get("sourceID"):
+                raise SourceError("exact CEFR evidence must contain source references")
+            references.append(json.dumps(source_ref, ensure_ascii=False, sort_keys=True))
+            reviewers.add(source_ref["sourceID"])
+        return {
+            "value": next(iter(values)),
+            "method": "exact",
+            "evidence": sorted(set(references)),
+            "confidence": 1.0,
+            "reviewer": ",".join(sorted(reviewers)),
+        }
+
+    inferred = candidate.get("inferredCEFR")
+    reviewed = _reviewed_evidence(inferred, "reviewed inferred CEFR")
+    value = inferred.get("value")
+    if value not in CEFR_LEVEL:
+        raise SourceError("reviewed inferred CEFR must contain a valid value")
+    return {"value": value, "method": "inferred", **reviewed}
+
+
+def _learner_utility_evidence(candidate: dict) -> dict:
+    utility = candidate.get("learnerUtility")
+    if utility not in LEARNER_UTILITY_ORDER:
+        raise SourceError("learner utility must use an approved category")
+    raw_evidence = candidate.get("learnerUtilityEvidence")
+    reviewed = _reviewed_evidence(raw_evidence, "learner utility")
+    method = raw_evidence.get("method")
+    if method not in {"exact", "inferred"}:
+        raise SourceError("learner utility must contain an approved method")
+    return {"value": utility, "method": method, **reviewed}
+
+
+def _candidate_score(candidate: dict) -> tuple:
+    cefr = cefr_evidence(candidate)
+    frequency_rank = candidate.get("approvedFrequencyRank", sys.maxsize)
+    occurrences = candidate.get("approvedCorpusOccurrences", 0)
+    if isinstance(frequency_rank, bool) or not isinstance(frequency_rank, int):
+        frequency_rank = sys.maxsize
+    if isinstance(occurrences, bool) or not isinstance(occurrences, int):
+        occurrences = 0
+    source_refs = candidate.get("sourceRefs", [])
+    first_source_ref = min(
+        (json.dumps(item, ensure_ascii=False, sort_keys=True) for item in source_refs),
+        default="",
+    )
+    return (
+        LEARNER_UTILITY_ORDER[candidate["learnerUtility"]],
+        max(0, frequency_rank),
+        -max(0, occurrences),
+        CEFR_ORDER[cefr["value"]],
+        0 if cefr["method"] == "exact" else 1,
+        -len(set(candidate.get("validationSourceIDs", []))),
+        normalized(candidate["target"]),
+        first_source_ref,
+        json.dumps(candidate, ensure_ascii=False, sort_keys=True),
+    )
+
+
+def _eligible_target_candidate(candidate: object) -> bool:
+    if not isinstance(candidate, dict):
+        return False
+    target = candidate.get("target")
+    if (
+        not isinstance(target, str)
+        or ENGLISH_TERM.fullmatch(target) is None
+        or len(target.split()) > 8
+        or candidate.get("isProperName") is True
+    ):
+        return False
+    senses = candidate.get("candidateSenses")
+    pronunciations = candidate.get("candidatePronunciations")
+    source_refs = candidate.get("sourceRefs")
+    source_ids = candidate.get("validationSourceIDs")
+    if (
+        not isinstance(senses, list)
+        or not senses
+        or not isinstance(pronunciations, list)
+        or not pronunciations
+        or not isinstance(source_refs, list)
+        or not source_refs
+        or not isinstance(source_ids, list)
+        or not source_ids
+    ):
+        return False
+    for sense in senses:
+        if not isinstance(sense, dict):
+            return False
+        glosses = sense.get("glosses")
+        tags = {normalized(tag) for tag in sense.get("tags", []) if isinstance(tag, str)}
+        if (
+            sense.get("partOfSpeech") not in PARTS_OF_SPEECH
+            or not isinstance(glosses, list)
+            or not any(isinstance(gloss, str) and gloss.strip() for gloss in glosses)
+            or tags & BLOCKED_SENSE_TAGS
+        ):
+            return False
+    if any(
+        not isinstance(item, dict)
+        or item.get("notation") not in {"ipa", "arpabet"}
+        or not isinstance(item.get("value"), str)
+        or not item["value"].strip()
+        for item in pronunciations
+    ):
+        return False
+    try:
+        _learner_utility_evidence(candidate)
+        cefr_evidence(candidate)
+    except SourceError:
+        return False
+    return True
+
+
+def select_target_candidates(
+    records: Iterable[dict], retained: Iterable[dict], target_count: int
+) -> list[dict]:
+    retained_items = []
+    retained_keys = set()
+    for item in retained:
+        selected = dict(item)
+        target = selected.get("target") or selected.get("upgradedExpression")
+        if not isinstance(target, str) or not target.strip():
+            raise SourceError("retained vocabulary must contain a target")
+        key = normalized(target)
+        if key in retained_keys:
+            raise SourceError("retained vocabulary targets must be unique")
+        retained_keys.add(key)
+        selected["target"] = target
+        retained_items.append(selected)
+    if target_count < len(retained_items):
+        raise SourceError("target count cannot be smaller than retained vocabulary")
+
+    candidates_by_key: dict[str, dict] = {}
+    for candidate in records:
+        if not _eligible_target_candidate(candidate):
+            continue
+        key = normalized(candidate["target"])
+        if key in retained_keys:
+            continue
+        current = candidates_by_key.get(key)
+        if current is None or _candidate_score(candidate) < _candidate_score(current):
+            candidates_by_key[key] = candidate
+
+    candidates = sorted(candidates_by_key.values(), key=_candidate_score)
+    needed = target_count - len(retained_items)
+    if len(candidates) < needed:
+        raise SourceError(
+            f"only {len(candidates)} eligible candidates for {needed} open targets"
+        )
+    selected_items = retained_items
+    for candidate in candidates[:needed]:
+        selected = dict(candidate)
+        cefr = cefr_evidence(candidate)
+        selected["cefr"] = cefr["value"]
+        selected["level"] = CEFR_LEVEL[cefr["value"]]
+        selected["cefrEvidence"] = cefr
+        selected["learnerUtilityEvidence"] = _learner_utility_evidence(candidate)
+        selected_items.append(selected)
+    return selected_items
+
+
+BUSINESS_UTILITY_WORDS = {
+    "account",
+    "agreement",
+    "budget",
+    "business",
+    "client",
+    "company",
+    "contract",
+    "customer",
+    "deadline",
+    "employee",
+    "employer",
+    "finance",
+    "invoice",
+    "market",
+    "meeting",
+    "office",
+    "payment",
+    "price",
+    "project",
+    "sale",
+    "service",
+    "supplier",
+    "tax",
+    "team",
+    "work",
+}
+TRAVEL_UTILITY_WORDS = {
+    "airport",
+    "arrival",
+    "baggage",
+    "booking",
+    "border",
+    "bus",
+    "departure",
+    "destination",
+    "flight",
+    "hotel",
+    "journey",
+    "luggage",
+    "passport",
+    "reservation",
+    "restaurant",
+    "station",
+    "ticket",
+    "tour",
+    "tourist",
+    "train",
+    "travel",
+    "trip",
+    "visa",
+}
+PRACTICAL_UTILITY_WORDS = {
+    "bank",
+    "bathroom",
+    "breakfast",
+    "child",
+    "clinic",
+    "clothes",
+    "doctor",
+    "emergency",
+    "family",
+    "food",
+    "health",
+    "home",
+    "hospital",
+    "house",
+    "insurance",
+    "meal",
+    "medicine",
+    "money",
+    "phone",
+    "rent",
+    "school",
+    "shop",
+    "shopping",
+    "store",
+    "street",
+}
+TARGET_REVIEWER = "vocaby-taiwan-learner-rubric-v1"
+
+
+def _iter_jsonl(path: Path) -> Iterable[dict]:
+    try:
+        with path.open(encoding="utf-8") as stream:
+            for line_number, line in enumerate(stream, 1):
+                if not line.strip():
+                    continue
+                try:
+                    value = json.loads(line)
+                except json.JSONDecodeError as error:
+                    raise SourceError(
+                        f"invalid JSONL {path}:{line_number}: {error}"
+                    ) from error
+                if not isinstance(value, dict):
+                    raise SourceError(f"JSONL row must be an object: {path}:{line_number}")
+                yield value
+    except OSError as error:
+        raise SourceError(f"cannot read JSONL {path}: {error}") from error
+
+
+def _retained_items(path: Path) -> list[dict]:
+    if path.suffix == ".jsonl":
+        return list(_iter_jsonl(path))
+    value = load_json(path, list)
+    if any(not isinstance(item, dict) for item in value):
+        raise SourceError("retained vocabulary must contain objects")
+    return value
+
+
+def _canonical_source_ref(record: dict) -> dict:
+    return {
+        "sourceID": record["sourceID"],
+        "sourceEntryRef": record["sourceEntryRef"],
+    }
+
+
+def _candidate_senses(record: dict, source_ref: dict) -> list[dict]:
+    result = []
+    senses = record.get("senses")
+    if isinstance(senses, list) and senses:
+        for index, sense in enumerate(senses, 1):
+            if not isinstance(sense, dict):
+                continue
+            glosses = sense.get("glosses")
+            if not isinstance(glosses, list) or not glosses:
+                continue
+            result.append(
+                {
+                    "id": str(sense.get("id") or f"{record['sourceEntryRef']}:{index}"),
+                    "partOfSpeech": canonical_part_of_speech(
+                        sense.get("partOfSpeech") or record.get("partOfSpeech")
+                    ),
+                    "glosses": [
+                        value.strip()
+                        for value in glosses
+                        if isinstance(value, str) and value.strip()
+                    ],
+                    "examples": [
+                        value.strip()
+                        for value in sense.get("examples", [])
+                        if isinstance(value, str) and value.strip()
+                    ],
+                    "tags": sorted(
+                        {
+                            normalized(value)
+                            for value in sense.get("tags", [])
+                            if isinstance(value, str) and value.strip()
+                        }
+                    ),
+                    "sourceRef": source_ref,
+                }
+            )
+        return result
+
+    definitions = record.get("definitions")
+    if not isinstance(definitions, list):
+        return []
+    examples = [
+        value.strip()
+        for value in record.get("examples", [])
+        if isinstance(value, str) and value.strip()
+    ]
+    for index, definition in enumerate(definitions, 1):
+        if not isinstance(definition, str) or not definition.strip():
+            continue
+        result.append(
+            {
+                "id": f"{record['sourceEntryRef']}:{index}",
+                "partOfSpeech": canonical_part_of_speech(record.get("partOfSpeech")),
+                "glosses": [definition.strip()],
+                "examples": examples[:1],
+                "tags": [],
+                "sourceRef": source_ref,
+            }
+        )
+    return result
+
+
+def _approved_cefr_evidence(values: list[dict]) -> list[dict]:
+    valid = [item for item in values if item.get("value") in CEFR_LEVEL]
+    if not valid:
+        return []
+    preferred_value = min((item["value"] for item in valid), key=CEFR_ORDER.__getitem__)
+    return sorted(
+        (item for item in valid if item["value"] == preferred_value),
+        key=lambda item: json.dumps(item["sourceRef"], sort_keys=True),
+    )
+
+
+def _utility_for_candidate(candidate: dict) -> tuple[str, dict]:
+    exact = _approved_cefr_evidence(candidate.get("exactCEFREvidence", []))
+    corpus_occurrences = candidate.get("approvedCorpusOccurrences", 0)
+    words = set(
+        re.findall(
+            r"[a-z]+",
+            " ".join(
+                [candidate["target"]]
+                + [
+                    gloss
+                    for sense in candidate["candidateSenses"]
+                    for gloss in sense.get("glosses", [])
+                ]
+            ).casefold(),
+        )
+    )
+    if exact and exact[0]["value"] in {"A1", "A2"}:
+        utility = "everyday"
+        method = "exact"
+        evidence = [
+            f"{exact[0]['value']}:{exact[0]['sourceRef']['sourceID']}:"
+            f"{exact[0]['sourceRef']['sourceEntryRef']}"
+        ]
+        confidence = 1.0
+        reviewer = exact[0]["sourceRef"]["sourceID"]
+    else:
+        matched = None
+        for utility, keywords in (
+            ("business", BUSINESS_UTILITY_WORDS),
+            ("travel", TRAVEL_UTILITY_WORDS),
+            ("practical-life", PRACTICAL_UTILITY_WORDS),
+        ):
+            overlap = sorted(words & keywords)
+            if overlap:
+                matched = (utility, overlap)
+                break
+        if corpus_occurrences >= 5:
+            utility = "everyday"
+            evidence = [f"approved-corpus-occurrences:{corpus_occurrences}"]
+        elif matched is not None:
+            utility, overlap = matched
+            evidence = [f"reviewed-domain-keywords:{','.join(overlap)}"]
+        elif corpus_occurrences or (exact and exact[0]["value"] in {"B1", "B2"}):
+            utility = "general"
+            evidence = [f"approved-corpus-occurrences:{corpus_occurrences}"]
+        else:
+            utility = "specialized"
+            evidence = ["no-approved-general-corpus-occurrence"]
+        method = "inferred"
+        confidence = 0.8
+        reviewer = TARGET_REVIEWER
+    return utility, {
+        "method": method,
+        "evidence": evidence,
+        "confidence": confidence,
+        "reviewer": reviewer,
+    }
+
+
+def _inferred_cefr(candidate: dict) -> dict:
+    occurrences = candidate.get("approvedCorpusOccurrences", 0)
+    utility = candidate["learnerUtility"]
+    if occurrences >= 25:
+        value = "A2"
+    elif occurrences >= 5 or utility == "everyday":
+        value = "B1"
+    elif utility in {"business", "travel", "practical-life"}:
+        value = "B2"
+    elif utility == "general":
+        value = "C1"
+    else:
+        value = "C2"
+    return {
+        "value": value,
+        "evidence": [
+            f"learner-utility:{utility}",
+            f"approved-corpus-occurrences:{occurrences}",
+        ],
+        "confidence": 0.8,
+        "reviewer": TARGET_REVIEWER,
+    }
+
+
+def _corpus_occurrences(
+    input_dir: Path, corpus_source_ids: set[str], candidate_keys: set[str]
+) -> dict[str, int]:
+    lengths = {len(key.split()) for key in candidate_keys}
+    counts: dict[str, int] = {}
+    for path in sorted(input_dir.glob("*.jsonl")):
+        for record in _iter_jsonl(path):
+            if record.get("sourceID") not in corpus_source_ids:
+                continue
+            tokens = re.findall(r"[a-z]+(?:'[a-z]+)?", normalized(record.get("headword", "")))
+            for length in lengths:
+                for index in range(len(tokens) - length + 1):
+                    key = " ".join(tokens[index : index + length])
+                    if key in candidate_keys:
+                        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def assemble_target_candidates(
+    input_dir: Path,
+    approved_source_ids: set[str],
+    corpus_source_ids: set[str],
+) -> list[dict]:
+    grouped: dict[str, dict] = {}
+    for path in sorted(input_dir.glob("*.jsonl")):
+        for record in _iter_jsonl(path):
+            source_id = record.get("sourceID")
+            if source_id not in approved_source_ids or source_id in corpus_source_ids:
+                continue
+            headword = record.get("headword")
+            if not isinstance(headword, str):
+                continue
+            key = normalized(headword)
+            if ENGLISH_TERM.fullmatch(key) is None or len(key.split()) > 8:
+                continue
+            source_entry_ref = record.get("sourceEntryRef")
+            if not isinstance(source_entry_ref, str) or not source_entry_ref:
+                continue
+            source_ref = _canonical_source_ref(record)
+            candidate = grouped.setdefault(
+                key,
+                {
+                    "target": key,
+                    "candidateSenses": [],
+                    "candidatePronunciations": [],
+                    "candidatePlainExpressions": [],
+                    "validationSourceIDs": [],
+                    "sourceRefs": [],
+                    "exactCEFREvidence": [],
+                    "isProperName": False,
+                },
+            )
+            candidate["sourceRefs"].append(source_ref)
+            candidate["validationSourceIDs"].append(source_id)
+            candidate["candidatePlainExpressions"].extend(
+                value
+                for value in record.get("forms", [])
+                if isinstance(value, str) and value.strip()
+            )
+            candidate["candidateSenses"].extend(_candidate_senses(record, source_ref))
+            candidate["isProperName"] |= normalized(record.get("partOfSpeech") or "") in {
+                "name",
+                "proper noun",
+                "proper-noun",
+            }
+            for pronunciation in record.get("pronunciations", []):
+                if not isinstance(pronunciation, dict):
+                    continue
+                value = pronunciation.get("value")
+                notation = pronunciation.get("notation")
+                if notation not in {"ipa", "arpabet"} or not isinstance(value, str):
+                    continue
+                candidate["candidatePronunciations"].append(
+                    {**pronunciation, "sourceRef": source_ref}
+                )
+            if record.get("cefr") in CEFR_LEVEL:
+                candidate["exactCEFREvidence"].append(
+                    {"value": record["cefr"], "sourceRef": source_ref}
+                )
+
+    corpus_counts = _corpus_occurrences(input_dir, corpus_source_ids, set(grouped))
+    for key, candidate in grouped.items():
+        candidate["sourceRefs"] = merged_list(candidate["sourceRefs"])
+        candidate["validationSourceIDs"] = sorted(
+            set(candidate["validationSourceIDs"])
+        )
+        candidate["candidatePlainExpressions"] = sorted(
+            set(candidate["candidatePlainExpressions"]), key=normalized
+        )[:8]
+        senses = {
+            (
+                sense["partOfSpeech"],
+                tuple(sense["glosses"]),
+                tuple(sense["tags"]),
+            ): sense
+            for sense in candidate["candidateSenses"]
+            if not set(sense["tags"]) & BLOCKED_SENSE_TAGS
+        }
+        candidate["candidateSenses"] = sorted(
+            senses.values(),
+            key=lambda sense: (
+                json.dumps(sense["sourceRef"], sort_keys=True),
+                sense["id"],
+            ),
+        )[:3]
+        pronunciations = {
+            (
+                item["notation"],
+                item["value"],
+                item.get("region", ""),
+            ): item
+            for item in candidate["candidatePronunciations"]
+        }
+        candidate["candidatePronunciations"] = sorted(
+            pronunciations.values(),
+            key=lambda item: (
+                item["notation"],
+                item["value"],
+                json.dumps(item["sourceRef"], sort_keys=True),
+            ),
+        )[:3]
+        candidate["exactCEFREvidence"] = _approved_cefr_evidence(
+            candidate["exactCEFREvidence"]
+        )
+        candidate["approvedCorpusOccurrences"] = corpus_counts.get(key, 0)
+
+    ranked_keys = sorted(
+        grouped,
+        key=lambda key: (-grouped[key]["approvedCorpusOccurrences"], key),
+    )
+    for rank, key in enumerate(ranked_keys, 1):
+        candidate = grouped[key]
+        candidate["approvedFrequencyRank"] = (
+            rank if candidate["approvedCorpusOccurrences"] else sys.maxsize
+        )
+        utility, evidence = _utility_for_candidate(candidate)
+        candidate["learnerUtility"] = utility
+        candidate["learnerUtilityEvidence"] = evidence
+        if not candidate["exactCEFREvidence"]:
+            candidate["inferredCEFR"] = _inferred_cefr(candidate)
+    return list(grouped.values())
+
+
+def prepare_100k(
+    input_dir: Path,
+    retained_path: Path,
+    output: Path,
+    approved_source_ids: set[str],
+    *,
+    target_count: int = 100_000,
+    reserve_count: int = 10_000,
+    corpus_source_ids: set[str] | None = None,
+) -> dict[str, int]:
+    if target_count < 1 or reserve_count < 0:
+        raise SourceError("target and reserve counts must be non-negative")
+    retained = _retained_items(retained_path)
+    if len(retained) > target_count:
+        raise SourceError("retained vocabulary exceeds target count")
+    candidates = assemble_target_candidates(
+        input_dir,
+        approved_source_ids,
+        corpus_source_ids or {"tatoeba-eng-cmn-2026-07-04"},
+    )
+    selected = select_target_candidates(
+        candidates,
+        retained,
+        target_count=target_count + reserve_count,
+    )
+    queue = selected[len(retained) :]
+    required_new = target_count - len(retained)
+    next_sort_order = {level: 1 for level in LEVEL_ORDER}
+    for item in retained:
+        level = item.get("level")
+        sort_order = item.get("sortOrder")
+        if level in next_sort_order and isinstance(sort_order, int):
+            next_sort_order[level] = max(next_sort_order[level], sort_order + 1)
+    for rank, item in enumerate(queue, 1):
+        item["id"] = "vocab-" + hashlib.sha256(
+            normalized(item["target"]).encode("utf-8")
+        ).hexdigest()[:16]
+        item["selectionRank"] = rank
+        item["selectionStatus"] = "target" if rank <= required_new else "reserve"
+        item["sortOrder"] = next_sort_order[item["level"]]
+        next_sort_order[item["level"]] += 1
+    atomic_write(
+        output,
+        "".join(
+            json.dumps(item, ensure_ascii=False, sort_keys=True) + "\n"
+            for item in queue
+        ),
+    )
+    return {
+        "retained": len(retained),
+        "target": required_new,
+        "reserve": reserve_count,
+    }
 
 
 def load_manifest(root: Path) -> dict:
@@ -2620,6 +3309,12 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--intermediate", type=int, default=1600)
     prepare_parser.add_argument("--advanced", type=int, default=2800)
     prepare_parser.add_argument("--output", type=Path, required=True)
+    prepare_100k_parser = commands.add_parser("prepare-100k")
+    prepare_100k_parser.add_argument("--input-dir", type=Path, required=True)
+    prepare_100k_parser.add_argument("--retained", type=Path, required=True)
+    prepare_100k_parser.add_argument("--output", type=Path, required=True)
+    prepare_100k_parser.add_argument("--target-count", type=int, default=100_000)
+    prepare_100k_parser.add_argument("--reserve-count", type=int, default=10_000)
     build_parser = commands.add_parser("build-reviewed")
     build_parser.add_argument("--input", type=Path, required=True)
     build_parser.add_argument("--existing-seed", type=Path, required=True)
@@ -2708,6 +3403,21 @@ def main(argv: list[str] | None = None) -> int:
             approved_source_ids,
         )
         print(f"prepared {count} enrichment candidate(s) to {args.output}")
+    elif args.command == "prepare-100k":
+        approved_source_ids = {
+            source["id"]
+            for source in manifest["sources"]
+            if source.get("appUse") == "approved"
+        }
+        result = prepare_100k(
+            args.input_dir,
+            args.retained,
+            args.output,
+            approved_source_ids,
+            target_count=args.target_count,
+            reserve_count=args.reserve_count,
+        )
+        print(json.dumps(result, sort_keys=True))
     elif args.command == "build-reviewed":
         count = build_reviewed(
             root,
