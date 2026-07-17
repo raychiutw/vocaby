@@ -451,6 +451,10 @@ def _canonical_source_ref(record: dict) -> dict:
     }
 
 
+def _supplies_english_lexical_senses(source_id: str) -> bool:
+    return not source_id.casefold().startswith("cc-cedict")
+
+
 def _candidate_senses(record: dict, source_ref: dict) -> list[dict]:
     result = []
     senses = record.get("senses")
@@ -666,7 +670,10 @@ def assemble_target_candidates(
                 for value in record.get("forms", [])
                 if isinstance(value, str) and value.strip()
             )
-            candidate["candidateSenses"].extend(_candidate_senses(record, source_ref))
+            if _supplies_english_lexical_senses(source_id):
+                candidate["candidateSenses"].extend(
+                    _candidate_senses(record, source_ref)
+                )
             candidate["isProperName"] |= normalized(record.get("partOfSpeech") or "") in {
                 "name",
                 "proper noun",

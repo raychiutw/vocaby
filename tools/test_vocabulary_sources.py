@@ -264,6 +264,72 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(result, {"retained": 0, "target": 1, "reserve": 0})
             self.assertEqual(json.loads(output.read_text())["target"], "itinerary")
 
+    def test_translation_sources_do_not_create_english_lexical_senses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+            rows = [
+                {
+                    "sourceID": "cc-cedict-2026-07-11",
+                    "sourceEntryRef": "line-1:籃子",
+                    "headword": "a basket carried on the back",
+                    "partOfSpeech": None,
+                    "cefr": None,
+                    "definitions": ["a basket carried on the back"],
+                    "examples": [],
+                    "relatedTerms": [],
+                    "translations": {"zh-Hant": ["背簍"]},
+                    "pronunciations": [],
+                    "forms": [],
+                    "senses": [],
+                },
+                {
+                    "sourceID": "pron",
+                    "sourceEntryRef": "pron:a basket carried on the back",
+                    "headword": "a basket carried on the back",
+                    "partOfSpeech": None,
+                    "cefr": None,
+                    "definitions": [],
+                    "examples": [],
+                    "relatedTerms": [],
+                    "translations": {},
+                    "pronunciations": [
+                        {
+                            "notation": "ipa",
+                            "value": "ə bɑːskɪt",
+                            "speechLocale": "en-US",
+                            "region": "General",
+                            "tags": [],
+                        }
+                    ],
+                    "forms": [],
+                    "senses": [],
+                },
+            ]
+            for source_id in ("cc-cedict-2026-07-11", "pron"):
+                (input_dir / f"{source_id}.jsonl").write_text(
+                    "".join(
+                        json.dumps(row) + "\n"
+                        for row in rows
+                        if row["sourceID"] == source_id
+                    ),
+                    encoding="utf-8",
+                )
+
+            candidates = vocabulary_sources.assemble_target_candidates(
+                input_dir,
+                {"cc-cedict-2026-07-11", "pron"},
+                set(),
+            )
+
+            candidate = next(
+                item
+                for item in candidates
+                if item["target"] == "a basket carried on the back"
+            )
+            self.assertEqual(candidate["candidateSenses"], [])
+
     def test_cefr_evidence_prefers_exact_and_requires_reviewed_inference(self):
         exact = self.target_candidate("exact", cefr="A2")
         inferred = self.target_candidate(
