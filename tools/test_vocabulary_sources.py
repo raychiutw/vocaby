@@ -974,6 +974,40 @@ class VocabularySourcesTests(unittest.TestCase):
             [("US", "æmˈbɪɡ.ju.əs"), ("UK", "æmˈbɪɡ.ju.əs")],
         )
 
+    def test_review_pronunciations_accepts_explicit_general_region(self):
+        source_ref = {
+            "sourceID": "moby-pronunciator-ii-3205",
+            "sourceEntryRef": "impermanent",
+        }
+
+        pronunciations, references = vocabulary_sources.review_pronunciations(
+            "impermanent",
+            [
+                {
+                    "notation": "ipa",
+                    "value": "ɪmˈpɝɹmənənt",
+                    "speechLocale": "en-US",
+                    "region": "General",
+                    "tags": [],
+                    "sourceRef": source_ref,
+                }
+            ],
+            {},
+        )
+
+        self.assertEqual(
+            pronunciations,
+            [
+                {
+                    "id": "impermanent-general-1",
+                    "ipa": "ɪmˈpɝɹmənənt",
+                    "speechLocale": "en-US",
+                    "region": "General",
+                }
+            ],
+        )
+        self.assertEqual(references, [source_ref])
+
     def test_review_pronunciations_adds_cmudict_us_when_other_ipa_is_unmarked(self):
         pronunciations, references = vocabulary_sources.review_pronunciations(
             "leverage",

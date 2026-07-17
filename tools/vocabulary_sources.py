@@ -1443,7 +1443,7 @@ def reviewed_region(candidate: dict) -> str | None:
         return "US"
     if region in {"UK", "Received-Pronunciation"} or "Received-Pronunciation" in tags:
         return "UK"
-    return "General" if region is None else None
+    return "General" if region in {None, "General"} else None
 
 
 def review_pronunciations(
