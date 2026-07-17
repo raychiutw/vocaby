@@ -399,14 +399,17 @@ def applicable_pronunciation_ids(draft: dict, sense: dict) -> list[str]:
     return selected or [value["id"] for value in draft["pronunciations"]]
 
 
-def apply_review_overrides(reviewed: list[dict], path: Path) -> None:
-    if not path.is_file():
-        return
+def apply_review_overrides(reviewed: list[dict], paths: list[Path]) -> None:
     by_target = {item["upgradedExpression"]: item for item in reviewed}
     if len(by_target) != len(reviewed):
         raise sources.SourceError("reviewed vocabulary contains duplicate targets")
     seen = set()
-    for override in sources.read_jsonl(path):
+    for override in (
+        override
+        for path in paths
+        if path.is_file()
+        for override in sources.read_jsonl(path)
+    ):
         target = override.get("target")
         if not isinstance(target, str) or not target.strip():
             raise sources.SourceError("review override has no target")
@@ -461,6 +464,81 @@ def apply_review_overrides(reviewed: list[dict], path: Path) -> None:
         )
 
 
+def review_drafts_in_order(enriched: list[dict]) -> list[tuple[str, dict]]:
+    ordered = []
+    for draft in enriched:
+        packet = draft["packet"]
+        level = sources.CEFR_LEVEL.get(packet.get("cefr"))
+        if level is None:
+            raise sources.SourceError(
+                f"invalid CEFR for {packet['id']}: {packet.get('cefr')}"
+            )
+        ordered.append((level, draft))
+    return ordered
+
+
+def review_target_groups(
+    work_dir: Path, enriched: list[dict]
+) -> tuple[dict[str, tuple[str, int]], dict[tuple[str, int], list[str]]]:
+    draft_path = work_dir / "draft.jsonl"
+    pool = sources.read_jsonl(draft_path) if draft_path.is_file() else list(enriched)
+    pool_by_id = {
+        item.get("packet", {}).get("id"): item
+        for item in pool
+        if item.get("packet", {}).get("id")
+    }
+    for item in enriched:
+        packet_id = item.get("packet", {}).get("id")
+        if packet_id and packet_id not in pool_by_id:
+            pool.append(item)
+            pool_by_id[packet_id] = item
+    by_level: dict[str, list[dict]] = {level: [] for level in sources.LEVEL_ORDER}
+    for draft in pool:
+        packet = draft.get("packet", {})
+        level = sources.CEFR_LEVEL.get(packet.get("cefr"))
+        if level is None:
+            raise sources.SourceError(
+                f"invalid CEFR for quiz target {packet.get('id')}: {packet.get('cefr')}"
+            )
+        if not packet.get("id") or not packet.get("target"):
+            raise sources.SourceError("quiz target draft is missing an ID or target")
+        by_level[level].append(packet)
+
+    group_by_id: dict[str, tuple[str, int]] = {}
+    target_groups: dict[tuple[str, int], list[str]] = {}
+    for level, packets in by_level.items():
+        packets.sort(key=lambda packet: (packet["sortOrder"], packet["id"]))
+        all_targets = [packet["target"] for packet in packets]
+        for index, packet in enumerate(packets):
+            key = (level, index // 200)
+            group_by_id[packet["id"]] = key
+            target_groups.setdefault(key, []).append(packet["target"])
+        for key, targets in list(target_groups.items()):
+            if key[0] != level or len(targets) >= 4:
+                continue
+            target_groups[key] = [
+                *targets,
+                *[
+                    target for target in all_targets if target not in targets
+                ][: 4 - len(targets)],
+            ]
+    global_targets = [
+        packet["target"]
+        for level in sources.LEVEL_ORDER
+        for packet in by_level[level]
+    ]
+    for key, targets in list(target_groups.items()):
+        if len(targets) >= 4:
+            continue
+        target_groups[key] = [
+            *targets,
+            *[
+                target for target in global_targets if target not in targets
+            ][: 4 - len(targets)],
+        ]
+    return group_by_id, target_groups
+
+
 def build_reviewed(
     work_dir: Path,
     output: Path,
@@ -476,121 +554,98 @@ def build_reviewed(
         for item, value in zip(translation_items, traditional, strict=True)
     }
 
-    levels: dict[str, list[dict]] = {level: [] for level in sources.LEVEL_ORDER}
-    for draft in enriched:
-        packet = draft["packet"]
-        level = sources.CEFR_LEVEL.get(packet.get("cefr"))
-        if level is None:
-            raise sources.SourceError(
-                f"invalid CEFR for {packet['id']}: {packet.get('cefr')}"
-            )
-        levels[level].append(draft)
-    for values in levels.values():
-        values.sort(key=lambda draft: (draft["packet"]["sortOrder"], draft["packet"]["id"]))
-
-    targets = {}
-    for level, values in levels.items():
-        for draft in values:
-            packet = draft["packet"]
-            selection_rank = packet.get("selectionRank")
-            block = (
-                (selection_rank - 1) // 200
-                if isinstance(selection_rank, int) and selection_rank > 0
-                else 0
-            )
-            targets.setdefault(block, []).append(packet["target"])
+    ordered_drafts = review_drafts_in_order(enriched)
+    target_group_by_id, target_groups = review_target_groups(work_dir, enriched)
     reviewed = []
-    for level, drafts in levels.items():
-        for draft in drafts:
-            packet = draft["packet"]
-            selection_rank = packet.get("selectionRank")
-            block = (
-                (selection_rank - 1) // 200
-                if isinstance(selection_rank, int) and selection_rank > 0
-                else 0
-            )
-            options_for_level = targets[block]
-            senses = []
-            for sense in draft["senses"]:
-                content_id = f"{packet['id']}::{sense['id']}"
-                enrichment = draft["enrichment"][sense["id"]]
-                senses.append(
-                    {
-                        "id": sense["id"],
-                        "partOfSpeech": sense["partOfSpeech"],
-                        "meaning": {
-                            "en": clean_english(sense["meaning"]),
-                            "zh-Hant": clean_zh_sentence(
-                                translations[f"{content_id}::meaning"]
-                            ),
-                        },
-                        "example": {
-                            "text": enrichment["example"].strip(),
-                            "translation": {
-                                "zh-Hant": clean_zh_sentence(
-                                    translations[f"{content_id}::example"]
-                                )
-                            },
-                        },
-                        "pronunciationIDs": applicable_pronunciation_ids(draft, sense),
-                    }
-                )
-            target_index = options_for_level.index(packet["target"])
-            distractors = [
-                options_for_level[(target_index + offset) % len(options_for_level)]
-                for offset in range(1, 4)
-            ]
-            correct_index = int(hashlib.sha256(packet["id"].encode()).hexdigest()[:2], 16) % 4
-            options = distractors
-            options.insert(correct_index, packet["target"])
-            refs = sources.merged_list(
-                ref
-                for ref in [
-                    *packet["sourceRefs"],
-                    *draft["pronunciationSourceRefs"],
-                    *(sense.get("sourceRef", {}) for sense in draft["senses"]),
-                    {"sourceID": "vocaby-original", "sourceEntryRef": packet["id"]},
-                ]
-                if ref.get("sourceID") and ref.get("sourceEntryRef")
-            )
-            validation_ids = sorted(
-                set(packet["validationSourceIDs"])
-                | {ref["sourceID"] for ref in refs if ref.get("sourceID")}
-            )
-            primary = draft["senses"][0]
-            reviewed.append(
+    for level, draft in ordered_drafts:
+        packet = draft["packet"]
+        group_key = target_group_by_id.get(packet["id"])
+        if group_key is None:
+            raise sources.SourceError(f"missing quiz target group: {packet['id']}")
+        options_for_level = target_groups[group_key]
+        senses = []
+        for sense in draft["senses"]:
+            content_id = f"{packet['id']}::{sense['id']}"
+            enrichment = draft["enrichment"][sense["id"]]
+            senses.append(
                 {
-                    "id": packet["id"],
-                    "level": level,
-                    "sortOrder": packet["sortOrder"],
-                    "contentLanguageCode": "en",
-                    "supportLanguageCodes": ["zh-Hant"],
-                    "plainExpression": draft["enrichment"][primary["id"]][
-                        "plainExpression"
-                    ].strip(),
-                    "upgradedExpression": packet["target"],
-                    "primarySenseID": primary["id"],
-                    "pronunciations": draft["pronunciations"],
-                    "senses": senses,
-                    "quiz": {
-                        "prompt": {
-                            "en": f"Which expression best matches ‘{draft['enrichment'][primary['id']]['plainExpression'].strip()}’?",
-                            "zh-Hant": f"哪個詞最符合「{senses[0]['meaning']['zh-Hant'].rstrip('。')}」？",
-                        },
-                        "options": options,
-                        "correctOptionIndex": correct_index,
+                    "id": sense["id"],
+                    "partOfSpeech": sense["partOfSpeech"],
+                    "meaning": {
+                        "en": clean_english(sense["meaning"]),
+                        "zh-Hant": clean_zh_sentence(
+                            translations[f"{content_id}::meaning"]
+                        ),
                     },
-                    "sourceRefs": refs,
-                    "validationSourceIDs": validation_ids,
-                    "cefr": packet["cefr"],
-                    "reviewStatus": "approved",
-                    "englishReviewer": "codex-content-review-2026-07-15",
-                    "zhHantReviewer": "codex-content-review-2026-07-15",
-                    "reviewedAt": "2026-07-15",
+                    "example": {
+                        "text": enrichment["example"].strip(),
+                        "translation": {
+                            "zh-Hant": clean_zh_sentence(
+                                translations[f"{content_id}::example"]
+                            )
+                        },
+                    },
+                    "pronunciationIDs": applicable_pronunciation_ids(draft, sense),
                 }
             )
+        target_index = options_for_level.index(packet["target"])
+        distractors = [
+            options_for_level[(target_index + offset) % len(options_for_level)]
+            for offset in range(1, 4)
+        ]
+        correct_index = int(hashlib.sha256(packet["id"].encode()).hexdigest()[:2], 16) % 4
+        options = distractors
+        options.insert(correct_index, packet["target"])
+        refs = sources.merged_list(
+            ref
+            for ref in [
+                *packet["sourceRefs"],
+                *draft["pronunciationSourceRefs"],
+                *(sense.get("sourceRef", {}) for sense in draft["senses"]),
+                {"sourceID": "vocaby-original", "sourceEntryRef": packet["id"]},
+            ]
+            if ref.get("sourceID") and ref.get("sourceEntryRef")
+        )
+        validation_ids = sorted(
+            set(packet["validationSourceIDs"])
+            | {ref["sourceID"] for ref in refs if ref.get("sourceID")}
+        )
+        primary = draft["senses"][0]
+        reviewed.append(
+            {
+                "id": packet["id"],
+                "level": level,
+                "sortOrder": packet["sortOrder"],
+                "contentLanguageCode": "en",
+                "supportLanguageCodes": ["zh-Hant"],
+                "plainExpression": draft["enrichment"][primary["id"]][
+                    "plainExpression"
+                ].strip(),
+                "upgradedExpression": packet["target"],
+                "primarySenseID": primary["id"],
+                "pronunciations": draft["pronunciations"],
+                "senses": senses,
+                "quiz": {
+                    "prompt": {
+                        "en": f"Which expression best matches ‘{draft['enrichment'][primary['id']]['plainExpression'].strip()}’?",
+                        "zh-Hant": f"哪個詞最符合「{senses[0]['meaning']['zh-Hant'].rstrip('。')}」？",
+                    },
+                    "options": options,
+                    "correctOptionIndex": correct_index,
+                },
+                "sourceRefs": refs,
+                "validationSourceIDs": validation_ids,
+                "cefr": packet["cefr"],
+                "reviewStatus": "approved",
+                "englishReviewer": "codex-content-review-2026-07-15",
+                "zhHantReviewer": "codex-content-review-2026-07-15",
+                "reviewedAt": "2026-07-15",
+            }
+        )
 
-    apply_review_overrides(reviewed, work_dir / "review-overrides.jsonl")
+    apply_review_overrides(
+        reviewed, sorted(work_dir.glob("review-overrides*.jsonl"))
+    )
     sources.atomic_write(output, jsonl(reviewed))
     rejections = sources.read_jsonl(work_dir / "rejections.jsonl")
     reason_counts = Counter(item["reason"] for item in rejections)
@@ -685,12 +740,15 @@ def write_review_checkpoint(
             )
     previous_ids = {item["id"] for item in previous}
     new_items = [item for item in reviewed if item.get("id") not in previous_ids]
-    expected_items = range(1, 201) if final else {200}
-    if len(new_items) not in expected_items:
+    available_items = len(new_items)
+    valid_count = 1 <= available_items <= 200 if final else available_items >= 200
+    if not valid_count:
         requirement = "1 to 200" if final else "exactly 200"
         raise sources.SourceError(
-            f"review checkpoint must contain {requirement} new items; got {len(new_items)}"
+            f"review checkpoint must contain {requirement} new items; got {available_items}"
         )
+    if not final:
+        new_items = new_items[:200]
     for item in new_items:
         sources.validate_reviewed_item(item)
 

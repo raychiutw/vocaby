@@ -1010,6 +1010,43 @@ class ReviewVocabularyTests(unittest.TestCase):
                 264,
             )
 
+    def test_write_review_checkpoint_takes_the_next_200_from_cumulative_review(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            review_dir = root / "reviews"
+            work.mkdir()
+            items = self._reviewed_items(400)
+
+            def build_all(_work, output, _report, **_kwargs):
+                output.write_text(
+                    "".join(json.dumps(item) + "\n" for item in items),
+                    encoding="utf-8",
+                )
+                return {"items": 400}
+
+            with mock.patch.object(
+                review_vocabulary, "build_reviewed", side_effect=build_all
+            ):
+                first = review_vocabulary.write_review_checkpoint(
+                    work, review_dir, checkpoint=1
+                )
+                second = review_vocabulary.write_review_checkpoint(
+                    work, review_dir, checkpoint=2
+                )
+
+            self.assertEqual(first["items"], 200)
+            self.assertEqual(second["items"], 200)
+            self.assertEqual(second["cumulativeItems"], 400)
+            self.assertEqual(
+                len(
+                    review_vocabulary.sources.load_review_index(
+                        review_dir / "index.json", 400
+                    )
+                ),
+                400,
+            )
+
     def test_run_local_services_chunks_enrichment_helper_input(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -2316,6 +2353,52 @@ class ReviewVocabularyTests(unittest.TestCase):
                 "Which expression best matches ‘in fact’?",
             )
             self.assertIn(new_ref, reviewed["sourceRefs"])
+
+    def test_review_target_groups_use_the_full_draft_for_stable_quiz_options(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            drafts = [
+                {
+                    "packet": {
+                        "id": f"bank-basic-{index:04d}",
+                        "target": target,
+                        "cefr": "A1",
+                        "sortOrder": index,
+                    }
+                }
+                for index, target in enumerate(
+                    ("actor", "actually", "add", "difficult", "addition"), 1
+                )
+            ]
+            (work / "draft.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in drafts),
+                encoding="utf-8",
+            )
+
+            first_groups = review_vocabulary.review_target_groups(work, drafts[:3])
+            later_groups = review_vocabulary.review_target_groups(work, drafts[:5])
+
+            first_key = first_groups[0]["bank-basic-0001"]
+            later_key = later_groups[0]["bank-basic-0001"]
+            self.assertEqual(first_key, later_key)
+            self.assertEqual(
+                first_groups[1][first_key],
+                ["actor", "actually", "add", "difficult", "addition"],
+            )
+            self.assertEqual(first_groups, later_groups)
+
+    def test_review_drafts_keep_queue_order_across_cefr_levels(self):
+        drafts = [
+            {"packet": {"id": "intermediate-first", "cefr": "B1"}},
+            {"packet": {"id": "basic-second", "cefr": "A1"}},
+        ]
+
+        ordered = review_vocabulary.review_drafts_in_order(drafts)
+
+        self.assertEqual(
+            [(level, draft["packet"]["id"]) for level, draft in ordered],
+            [("intermediate", "intermediate-first"), ("basic", "basic-second")],
+        )
 
     def test_finish_enrichment_reconciles_every_sense_id(self):
         with tempfile.TemporaryDirectory() as directory:

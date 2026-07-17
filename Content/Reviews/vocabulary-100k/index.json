@@ -6,9 +6,19 @@
       "final": false,
       "firstID": "bank-basic-0001",
       "items": 200,
-      "lastID": "basic-019",
+      "lastID": "bank-basic-0234",
       "path": "checkpoint-0001.jsonl",
-      "sha256": "deeccc8c0e456f77bfa46a10d641fd3f173703905db9fa7eedb67f3efbdaa944",
+      "sha256": "c855a0bdd53a2c86f7d189c107df24ecef9d10c04a7aa398e76a99e356a933ff",
+      "status": "approved"
+    },
+    {
+      "cumulativeItems": 400,
+      "final": false,
+      "firstID": "bank-basic-0235",
+      "items": 200,
+      "lastID": "bank-basic-0476",
+      "path": "checkpoint-0002.jsonl",
+      "sha256": "e0c81d400716a44dfce60d311a14ad583249ff32a7a3941020c716ffb5b2332c",
       "status": "approved"
     }
   ]
