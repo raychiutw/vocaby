@@ -452,6 +452,46 @@ class ReviewVocabularyTests(unittest.TestCase):
             )
             self.assertNotIn("example", repairs["bank-basic-0003::sense-1"])
 
+    def test_invalid_enrichment_uses_review_only_example_as_last_resort(self):
+        expected = {
+            "batchID": "0000",
+            "items": [
+                {
+                    "id": "vocab-high-school::sense",
+                    "target": "high school",
+                }
+            ],
+        }
+        actual = {
+            "batchID": "0000",
+            "items": [
+                {
+                    "id": "vocab-high-school::sense",
+                    "plainExpression": "secondary school",
+                    "example": "The students arrived early.",
+                }
+            ],
+        }
+        repairs = {
+            "vocab-high-school::sense": {
+                "id": "vocab-high-school::sense",
+                "plainExpression": "secondary school",
+            }
+        }
+
+        result = review_vocabulary.validate_enrichment_batch(
+            actual,
+            expected,
+            repairs,
+            repair_invalid=True,
+        )
+
+        self.assertEqual(
+            result["items"][0]["example"],
+            'The expression "high school" is being reviewed.',
+        )
+        review_vocabulary.validate_enrichment(result["items"][0], "high school")
+
     def test_deterministic_enrichment_repairs_add_contraction_example_without_source(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
@@ -544,6 +584,7 @@ class ReviewVocabularyTests(unittest.TestCase):
             "have time": "Do you have time for a quick meeting?",
             "think about": "Please think about the offer tonight.",
             "come back": "Please come back before the store closes.",
+            "paid": "This is a paid service.",
         }
 
         for target, example in expected.items():
@@ -708,6 +749,48 @@ class ReviewVocabularyTests(unittest.TestCase):
             output = work / "enrichment-output.jsonl"
             self.assertFalse(
                 output.exists() and review_vocabulary.sources.read_jsonl(output)
+            )
+
+    def test_run_local_enrichment_repairs_helper_full_sentence_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            _batch, draft = self._write_enrichment_fixture(work)
+            draft["packet"]["target"] = "high school"
+            draft["packet"]["plain"] = "secondary school"
+            draft["senses"][0]["exampleCandidate"] = ""
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+            batch = review_vocabulary.sources.read_jsonl(
+                work / "enrichment-input.jsonl"
+            )[0]
+            batch["items"][0]["target"] = "high school"
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary,
+                "run_helper",
+                side_effect=review_vocabulary.sources.SourceError(
+                    "Apple enrich failed: enrichment must use target in a full sentence"
+                ),
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
+                )
+
+            self.assertEqual(result, {"batches": 1, "completed": 1, "processed": 1})
+            output = review_vocabulary.sources.read_jsonl(
+                work / "enrichment-output.jsonl"
+            )[0]["items"][0]
+            self.assertEqual(
+                output["example"],
+                'The expression "high school" is being reviewed.',
             )
 
     def test_run_local_enrichment_uses_input_fallback_after_safety_gate(self):
@@ -1164,6 +1247,38 @@ class ReviewVocabularyTests(unittest.TestCase):
                 ),
                 264,
             )
+
+    def test_write_review_checkpoint_rejects_review_only_example_placeholder(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            review_dir = root / "reviews"
+            work.mkdir()
+            items = self._reviewed_items(200)
+            target = items[0]["upgradedExpression"]
+            items[0]["senses"][0]["example"]["text"] = (
+                f'The expression "{target}" is being reviewed.'
+            )
+
+            def build(_work, output, _report, **_kwargs):
+                output.write_text(
+                    "".join(json.dumps(item) + "\n" for item in items),
+                    encoding="utf-8",
+                )
+                return {"items": 200}
+
+            with mock.patch.object(
+                review_vocabulary, "build_reviewed", side_effect=build
+            ), self.assertRaisesRegex(
+                review_vocabulary.sources.SourceError,
+                "review-only example placeholder",
+            ):
+                review_vocabulary.write_review_checkpoint(
+                    work, review_dir, checkpoint=1
+                )
+
+            self.assertFalse((review_dir / "checkpoint-0001.jsonl").exists())
+            self.assertFalse((review_dir / "index.json").exists())
 
     def test_write_review_checkpoint_takes_the_next_200_from_cumulative_review(self):
         with tempfile.TemporaryDirectory() as directory:

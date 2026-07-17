@@ -1550,6 +1550,18 @@ class VocabularySourcesTests(unittest.TestCase):
     def test_rich_review_accepts_complete_record(self):
         vocabulary_sources.validate_reviewed_item(self.rich_review_record())
 
+    def test_rich_review_rejects_review_only_example_placeholder(self):
+        item = self.rich_review_record()
+        target = item["upgradedExpression"]
+        item["senses"][0]["example"]["text"] = (
+            f'The expression "{target}" is being reviewed.'
+        )
+
+        with self.assertRaisesRegex(
+            vocabulary_sources.SourceError, "review-only example placeholder"
+        ):
+            vocabulary_sources.validate_reviewed_item(item)
+
     def test_load_review_index_accepts_complete_and_final_shards(self):
         with tempfile.TemporaryDirectory() as directory:
             review_dir = Path(directory)
@@ -1663,6 +1675,14 @@ class VocabularySourcesTests(unittest.TestCase):
             vocabulary_sources.SourceError, "full-sentence translation"
         ):
             vocabulary_sources.validate_reviewed_item(item)
+
+    def test_rich_review_accepts_translation_ending_with_chinese_quote(self):
+        item = self.rich_review_record()
+        item["senses"][0]["example"]["translation"]["zh-Hant"] = (
+            "她說：「讓我來帶領會議。」"
+        )
+
+        vocabulary_sources.validate_reviewed_item(item)
 
     def test_rich_review_rejects_more_than_three_senses(self):
         item = self.rich_review_record()

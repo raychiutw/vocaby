@@ -3796,7 +3796,10 @@ def validate_seed_item(item: dict) -> None:
         if (
             translation["zh-Hant"].startswith(USAGE_NOTE_PREFIX)
             or re.search(r'[.!?]["’”)]?$', example["text"].strip()) is None
-            or re.search(r'[。！？!?]["’”)]?$', translation["zh-Hant"].strip())
+            or re.search(
+                r'[。！？!?](?:["’”）」』】])?$',
+                translation["zh-Hant"].strip(),
+            )
             is None
         ):
             raise SourceError(
@@ -3825,6 +3828,14 @@ def validate_seed_item(item: dict) -> None:
 
 def validate_reviewed_item(item: dict) -> None:
     validate_seed_item(item)
+    if any(
+        sense["example"]["text"].startswith('The expression "')
+        and sense["example"]["text"].endswith('" is being reviewed.')
+        for sense in item["senses"]
+    ):
+        raise SourceError(
+            f"review item {item['id']} contains a review-only example placeholder"
+        )
     required = (
         "sourceRefs",
         "validationSourceIDs",
