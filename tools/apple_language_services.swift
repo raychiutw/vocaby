@@ -34,7 +34,7 @@ private struct EnrichmentResponse: Codable {
 @Generable
 struct ReviewedEnrichment: Codable {
     let id: String
-    @Guide(description: "A natural simpler English equivalent, at most eight words, never a definition")
+    @Guide(description: "A natural simpler English equivalent, at most eight words, never a definition, target, or inflected target form")
     let plainExpression: String
     @Guide(description: "One original full English sentence containing the exact target expression")
     let example: String
@@ -149,8 +149,8 @@ private struct AppleLanguageServices {
                 You edit English vocabulary content for Taiwan learners. Return JSON only.
                 Preserve every id and target exactly. For each input produce plainExpression,
                 and example. plainExpression is a natural simpler equivalent of at most eight
-                words, never a dictionary definition. If plainCandidates is nonempty, choose
-                the meaning-aligned value from that list. The example MUST contain the exact
+                words, never a dictionary definition. plainExpression must never contain target or any inflected target form.
+                If plainCandidates is nonempty, choose the meaning-aligned value from that list. The example MUST contain the exact
                 target expression and use its supplied part of speech and meaning. Never replace
                 target with plainExpression. Write one original natural full sentence under 18
                 words. Use exampleCandidate as sense guidance when it is present, but rewrite it

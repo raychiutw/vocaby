@@ -1412,6 +1412,122 @@ class VocabularySourcesTests(unittest.TestCase):
         self.assertEqual([sense["id"] for sense in senses], ["lead-verb-guide", "lead-noun-clue"])
         self.assertEqual(senses[0]["partOfSpeech"], "verb")
 
+    def test_review_senses_drops_additional_part_without_trusted_cefr_evidence(self):
+        packet = {
+            "id": "bank-basic-0001",
+            "target": "action",
+            "definition": "something done to achieve a purpose",
+            "example": "We need to take action today.",
+            "partOfSpeech": "noun",
+            "trustedCEFRParts": ["noun"],
+            "sourceRefs": [
+                {"sourceID": "oewn-2025", "sourceEntryRef": "action#n#1"}
+            ],
+            "candidateSenses": [
+                {
+                    "id": "action-noun",
+                    "partOfSpeech": "noun",
+                    "glosses": ["something done to achieve a purpose"],
+                    "examples": ["We need to take action today."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "action#n#1",
+                    },
+                },
+                {
+                    "id": "action-verb",
+                    "partOfSpeech": "verb",
+                    "glosses": ["put into effect"],
+                    "examples": ["We can action the request today."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "action#v#1",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual([sense["id"] for sense in senses], ["action-noun"])
+
+    def test_review_senses_keeps_exact_primary_over_closer_unrelated_distance(self):
+        packet = {
+            "id": "bank-basic-0001",
+            "target": "action",
+            "definition": "the state of being active",
+            "example": "Now is the time for action.",
+            "partOfSpeech": "noun",
+            "trustedCEFRParts": ["noun"],
+            "sourceRefs": [
+                {"sourceID": "oewn-2025", "sourceEntryRef": "action#n#active"}
+            ],
+            "candidateSenses": [
+                {
+                    "id": "action-betting",
+                    "partOfSpeech": "noun",
+                    "glosses": ["the opportunity to act during a betting round"],
+                    "examples": ["The action moved to the next player."],
+                    "tags": [],
+                    "reviewDistance": 0.1,
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "action#noun#betting",
+                    },
+                },
+                {
+                    "id": "action-active",
+                    "partOfSpeech": "noun",
+                    "glosses": ["the state of being active"],
+                    "examples": ["Now is the time for action."],
+                    "tags": [],
+                    "reviewDistance": 0.4,
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "action#n#active",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual([sense["id"] for sense in senses], ["action-active"])
+
+    def test_review_senses_uses_the_exact_selected_gloss_from_a_multi_gloss_sense(self):
+        packet = {
+            "id": "bank-basic-0001",
+            "target": "after",
+            "definition": "Subsequently to; following in time; later than.",
+            "example": "We had lunch after the meeting.",
+            "partOfSpeech": "preposition",
+            "candidateSenses": [
+                {
+                    "id": "after-preposition",
+                    "partOfSpeech": "preposition",
+                    "glosses": [
+                        "Subsequently to; following in time; later than.",
+                        "Subsequently to and in spite of.",
+                    ],
+                    "examples": ["We had lunch after the meeting."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "after#prep#1",
+                    },
+                }
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(
+            senses[0]["meaning"],
+            "Subsequently to; following in time; later than.",
+        )
+
     def test_review_senses_infer_legacy_primary_part_of_speech(self):
         senses = vocabulary_sources.review_senses(
             {
@@ -1678,6 +1794,46 @@ class VocabularySourcesTests(unittest.TestCase):
             vocabulary_sources.looks_like_source_sentence(
                 "menu", "The server handed us the menu."
             )
+        )
+        self.assertTrue(
+            vocabulary_sources.looks_like_source_sentence(
+                "bench", "Bench the poodles at the dog show."
+            )
+        )
+
+    def test_review_senses_does_not_align_examples_by_target_word_alone(self):
+        packet = {
+            "id": "bench-1",
+            "target": "bench",
+            "definition": "exhibit on a bench",
+            "example": "Bench the poodles at the dog show.",
+            "exampleTranslationMode": "usage-note",
+            "partOfSpeech": "verb",
+            "sourceRefs": [
+                {"sourceID": "oewn-2025", "sourceEntryRef": "bench#verb"}
+            ],
+            "candidateSenses": [
+                {
+                    "id": "weightlifting",
+                    "partOfSpeech": "verb",
+                    "glosses": ["To lift by bench pressing."],
+                    "examples": ["I heard he can bench 150 pounds."],
+                    "tags": [],
+                    "reviewDistance": 1.23,
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "bench#verb#weightlifting",
+                    },
+                }
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["meaning"], "exhibit on a bench")
+        self.assertEqual(
+            senses[0]["exampleCandidate"],
+            "Bench the poodles at the dog show.",
         )
 
     def test_audit_reviewed_reports_complete_bank_counts(self):
@@ -2527,6 +2683,7 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             records = [json.loads(line) for line in output.read_text().splitlines()]
             self.assertEqual(len(records), 2)
+            self.assertEqual([item["senseRank"] for item in records], [0, 1])
             self.assertEqual(
                 [(item["definitions"][0], item["examples"][0], item["relatedTerms"][1]) for item in records],
                 [
@@ -2959,6 +3116,688 @@ class VocabularySourcesTests(unittest.TestCase):
                 {ref["sourceEntryRef"] for ref in packet["sourceRefs"]},
             )
 
+    def test_prepare_enrichment_prefers_same_part_of_speech_cefr_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+            lexical = [
+                {
+                    "sourceID": "oewn",
+                    "sourceEntryRef": "book#noun#1",
+                    "headword": "book",
+                    "partOfSpeech": "noun",
+                    "cefr": None,
+                    "definitions": ["a written work"],
+                    "examples": ["The book is on the table."],
+                    "relatedTerms": [],
+                    "translations": {},
+                    "pronunciations": [],
+                    "forms": [],
+                    "senseRefs": ["book-noun"],
+                    "senses": [],
+                },
+                {
+                    "sourceID": "oewn",
+                    "sourceEntryRef": "book#verb#1",
+                    "headword": "book",
+                    "partOfSpeech": "verb",
+                    "cefr": None,
+                    "definitions": ["reserve"],
+                    "examples": ["Please book a room."],
+                    "relatedTerms": [],
+                    "translations": {},
+                    "pronunciations": [],
+                    "forms": [],
+                    "senseRefs": ["book-verb"],
+                    "senses": [],
+                },
+            ]
+            (input_dir / "oewn.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in lexical),
+                encoding="utf-8",
+            )
+            (input_dir / "cefr.jsonl").write_text(
+                json.dumps(
+                    {
+                        **lexical[0],
+                        "sourceID": "cefr",
+                        "sourceEntryRef": "book#noun#A1",
+                        "cefr": "A1",
+                        "definitions": [],
+                        "examples": [],
+                        "senseRefs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+            current = root / "current.json"
+            current.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "written work",
+                            "upgradedExpression": "book",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "queue.jsonl"
+
+            vocabulary_sources.prepare_enrichment(
+                input_dir,
+                existing,
+                {"basic": 0, "intermediate": 0, "advanced": 0},
+                output,
+                current_seed_path=current,
+                approved_source_ids={"oewn", "cefr"},
+            )
+
+            packet = json.loads(output.read_text())
+            self.assertEqual(packet["partOfSpeech"], "n")
+            self.assertEqual(packet["definition"], "a written work")
+
+    def test_prepare_enrichment_prefers_cefr_j_part_over_other_cefr_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+            noun = {
+                "sourceID": "oewn",
+                "sourceEntryRef": "add#noun#condition",
+                "headword": "ADD",
+                "partOfSpeech": "noun",
+                "cefr": None,
+                "definitions": ["an attention-related condition"],
+                "examples": [],
+                "relatedTerms": [],
+                "translations": {},
+                "pronunciations": [],
+                "forms": [],
+                "senseRefs": ["add-noun"],
+                "senses": [],
+            }
+            verb = {
+                **noun,
+                "sourceEntryRef": "add#verb#increase",
+                "headword": "add",
+                "partOfSpeech": "verb",
+                "definitions": ["put something together with something else"],
+                "examples": ["Please add your name to the list."],
+                "senseRefs": ["add-verb"],
+            }
+            (input_dir / "oewn.jsonl").write_text(
+                json.dumps(noun) + "\n" + json.dumps(verb) + "\n",
+                encoding="utf-8",
+            )
+            (input_dir / "cefr-j.jsonl").write_text(
+                json.dumps(
+                    {
+                        **verb,
+                        "sourceID": "cefr-j",
+                        "sourceEntryRef": "add#verb#A1",
+                        "cefr": "A1",
+                        "definitions": [],
+                        "examples": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (input_dir / "grundwortschatz.jsonl").write_text(
+                json.dumps(
+                    {
+                        **noun,
+                        "sourceID": "grundwortschatz",
+                        "sourceEntryRef": "add#noun#A1",
+                        "cefr": "A1",
+                        "definitions": [
+                            "an attention-related condition",
+                            "put something together with something else",
+                        ],
+                        "examples": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+            current = root / "current.json"
+            current.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "put together",
+                            "upgradedExpression": "add",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "queue.jsonl"
+
+            vocabulary_sources.prepare_enrichment(
+                input_dir,
+                existing,
+                {"basic": 0, "intermediate": 0, "advanced": 0},
+                output,
+                current_seed_path=current,
+                approved_source_ids={"oewn", "cefr-j", "grundwortschatz"},
+            )
+
+            packet = json.loads(output.read_text())
+            self.assertEqual(packet["partOfSpeech"], "v")
+            self.assertEqual(
+                packet["definition"], "put something together with something else"
+            )
+
+    def test_prepare_enrichment_prefers_translation_aligned_parallel_usage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+
+            def record(source_id, reference, headword, **values):
+                return {
+                    "sourceID": source_id,
+                    "sourceEntryRef": reference,
+                    "headword": headword,
+                    "partOfSpeech": values.get("partOfSpeech"),
+                    "cefr": values.get("cefr"),
+                    "definitions": values.get("definitions", []),
+                    "examples": values.get("examples", []),
+                    "relatedTerms": values.get("relatedTerms", []),
+                    "translations": values.get("translations", {}),
+                    "pronunciations": [],
+                    "forms": [],
+                    "senseRefs": values.get("senseRefs", []),
+                    "iliRefs": values.get("iliRefs", []),
+                    "senses": [],
+                    **(
+                        {"senseRank": values["senseRank"]}
+                        if "senseRank" in values
+                        else {}
+                    ),
+                }
+
+            sources = [
+                record(
+                    "oewn",
+                    "address#n#computer",
+                    "address",
+                    partOfSpeech="noun",
+                    definitions=["a computer code that identifies stored data"],
+                    iliRefs=["i-computer"],
+                    senseRefs=["computer"],
+                    senseRank=0,
+                ),
+                record(
+                    "oewn",
+                    "address#n#postal",
+                    "address",
+                    partOfSpeech="noun",
+                    definitions=["the place where a person can be contacted"],
+                    iliRefs=["i-postal"],
+                    senseRefs=["postal"],
+                    senseRank=1,
+                ),
+                record(
+                    "cefr-j",
+                    "address#noun#A1",
+                    "address",
+                    partOfSpeech="noun",
+                    cefr="A1",
+                ),
+                record(
+                    "omw-ili-map",
+                    "postal-map",
+                    "postal-map",
+                    senseRefs=["pwn-postal"],
+                    iliRefs=["i-postal"],
+                ),
+                record(
+                    "omw-ili-map",
+                    "computer-map",
+                    "computer-map",
+                    senseRefs=["pwn-computer"],
+                    iliRefs=["i-computer"],
+                ),
+                record(
+                    "cow-0.9",
+                    "pwn-postal:地址",
+                    "地址",
+                    senseRefs=["pwn-postal"],
+                ),
+                record(
+                    "cow-0.9",
+                    "pwn-computer:尋址",
+                    "尋址",
+                    senseRefs=["pwn-computer"],
+                ),
+                record(
+                    "cc-cedict",
+                    "address:地址",
+                    "address",
+                    definitions=["address", "location"],
+                    translations={"zh-Hant": ["地址"]},
+                ),
+                record(
+                    "cc-cedict",
+                    "address:尋址",
+                    "address",
+                    definitions=["address", "locate data in memory"],
+                    translations={"zh-Hant": ["尋址"]},
+                ),
+                record(
+                    "tatoeba",
+                    "sentence-1",
+                    "What is your address?",
+                    examples=["What is your address?"],
+                    translations={"zh-Hant": ["你的地址是什麼？"]},
+                ),
+                record(
+                    "tatoeba",
+                    "sentence-2",
+                    "address",
+                    examples=["Please write down your address."],
+                    translations={"zh-Hant": ["請寫下你的地址。"]},
+                ),
+                record(
+                    "tatoeba",
+                    "sentence-3",
+                    "address",
+                    examples=["The computer address identifies the stored data."],
+                    translations={"zh-Hant": ["軟體使用記憶體尋址。"]},
+                ),
+            ]
+            for index, item in enumerate(sources):
+                (input_dir / f"source-{index}.jsonl").write_text(
+                    json.dumps(item, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+            current = root / "current.json"
+            current.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "contact location",
+                            "upgradedExpression": "address",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "queue.jsonl"
+
+            vocabulary_sources.prepare_enrichment(
+                input_dir,
+                existing,
+                {"basic": 0, "intermediate": 0, "advanced": 0},
+                output,
+                current_seed_path=current,
+                approved_source_ids={item["sourceID"] for item in sources},
+            )
+
+            packet = json.loads(output.read_text())
+            self.assertEqual(
+                packet["definition"], "the place where a person can be contacted"
+            )
+            self.assertEqual(packet["example"], "What is your address?")
+            self.assertEqual(packet["exampleTranslationDraft"], "你的地址是什麼？")
+
+    def test_prepare_enrichment_prefers_common_oewn_sense_when_translation_is_same(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+
+            def record(source_id, reference, headword, **values):
+                return {
+                    "sourceID": source_id,
+                    "sourceEntryRef": reference,
+                    "headword": headword,
+                    "partOfSpeech": values.get("partOfSpeech"),
+                    "cefr": values.get("cefr"),
+                    "definitions": values.get("definitions", []),
+                    "examples": values.get("examples", []),
+                    "relatedTerms": values.get("relatedTerms", []),
+                    "translations": values.get("translations", {}),
+                    "pronunciations": [],
+                    "forms": [],
+                    "senseRefs": values.get("senseRefs", []),
+                    "iliRefs": values.get("iliRefs", []),
+                    "senses": [],
+                    **(
+                        {"senseRank": values["senseRank"]}
+                        if "senseRank" in values
+                        else {}
+                    ),
+                }
+
+            sources = [
+                record(
+                    "oewn",
+                    "back#n#body",
+                    "back",
+                    partOfSpeech="noun",
+                    definitions=[
+                        "(of people and animals) the rear part of the body from the neck to the waist"
+                    ],
+                    examples=["His back hurt after the long flight."],
+                    senseRefs=["body"],
+                    senseRank=0,
+                ),
+                record(
+                    "oewn",
+                    "back#n#garment",
+                    "back",
+                    partOfSpeech="noun",
+                    definitions=["the part of a garment that covers the back of the body"],
+                    examples=["They pinned a sign on the back of his shirt."],
+                    senseRefs=["garment"],
+                    iliRefs=["i-garment"],
+                    senseRank=6,
+                ),
+                record(
+                    "oewn",
+                    "back#v#backward",
+                    "back",
+                    partOfSpeech="verb",
+                    definitions=["travel backward"],
+                    examples=["Please move back."],
+                    senseRefs=["backward"],
+                    iliRefs=["i-backward"],
+                    senseRank=0,
+                ),
+                record(
+                    "cefr-j",
+                    "back#noun#A1",
+                    "back",
+                    partOfSpeech="noun",
+                    cefr="A1",
+                ),
+                record(
+                    "cefr-j",
+                    "back#verb#A1",
+                    "back",
+                    partOfSpeech="verb",
+                    cefr="A1",
+                ),
+                record(
+                    "omw-ili-map",
+                    "garment-map",
+                    "garment-map",
+                    senseRefs=["pwn-garment"],
+                    iliRefs=["i-garment"],
+                ),
+                record(
+                    "omw-ili-map",
+                    "backward-map",
+                    "backward-map",
+                    senseRefs=["pwn-backward"],
+                    iliRefs=["i-backward"],
+                ),
+                record(
+                    "cow-0.9",
+                    "pwn-garment:背",
+                    "背",
+                    senseRefs=["pwn-garment"],
+                ),
+                record(
+                    "cow-0.9",
+                    "pwn-backward:後退",
+                    "後退",
+                    senseRefs=["pwn-backward"],
+                ),
+                record(
+                    "cc-cedict",
+                    "back:背",
+                    "back",
+                    definitions=["back", "rear part of the body"],
+                    translations={"zh-Hant": ["背"]},
+                ),
+                record(
+                    "tatoeba",
+                    "sentence-1",
+                    "My back itches.",
+                    examples=["My back itches."],
+                    translations={"zh-Hant": ["我的背很癢。"]},
+                ),
+                record(
+                    "tatoeba",
+                    "sentence-2",
+                    "Please move back.",
+                    examples=["Please move back."],
+                    translations={"zh-Hant": ["請往後退。"]},
+                ),
+            ]
+            for index, item in enumerate(sources):
+                (input_dir / f"source-{index}.jsonl").write_text(
+                    json.dumps(item, ensure_ascii=False) + "\n", encoding="utf-8"
+                )
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+            current = root / "current.json"
+            current.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "rear body part",
+                            "upgradedExpression": "back",
+                            "senses": [{"partOfSpeech": "noun"}],
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "queue.jsonl"
+
+            vocabulary_sources.prepare_enrichment(
+                input_dir,
+                existing,
+                {"basic": 0, "intermediate": 0, "advanced": 0},
+                output,
+                current_seed_path=current,
+                approved_source_ids={item["sourceID"] for item in sources},
+            )
+
+            packet = json.loads(output.read_text())
+            self.assertEqual(
+                packet["definition"],
+                "(of people and animals) the rear part of the body from the neck to the waist",
+            )
+
+    def test_prepare_enrichment_prefers_sense_matching_cefr_definition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+            lexical = [
+                {
+                    "sourceID": "grundwortschatz",
+                    "sourceEntryRef": "bench#noun#rare",
+                    "headword": "bench",
+                    "partOfSpeech": "noun",
+                    "cefr": None,
+                    "definitions": ["a lifted weight used by people at a gym"],
+                    "examples": ["His bench increased after a month of training."],
+                    "relatedTerms": [],
+                    "translations": {},
+                    "pronunciations": [],
+                    "forms": [],
+                    "senseRefs": ["bench-rare"],
+                    "senses": [],
+                },
+                {
+                    "sourceID": "grundwortschatz",
+                    "sourceEntryRef": "bench#noun#common",
+                    "headword": "bench",
+                    "partOfSpeech": "noun",
+                    "cefr": None,
+                    "definitions": ["a long seat for several people"],
+                    "examples": ["We sat together on a park bench."],
+                    "relatedTerms": [],
+                    "translations": {},
+                    "pronunciations": [],
+                    "forms": [],
+                    "senseRefs": ["bench-common"],
+                    "senses": [],
+                },
+            ]
+            (input_dir / "grundwortschatz.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in lexical),
+                encoding="utf-8",
+            )
+            (input_dir / "cefr.jsonl").write_text(
+                json.dumps(
+                    {
+                        **lexical[1],
+                        "sourceID": "cefr",
+                        "sourceEntryRef": "bench#noun#A2",
+                        "cefr": "A2",
+                        "definitions": [
+                            "a long seat for several people",
+                            (
+                                "a lifted weight used by people at a gym; people lift "
+                                "the weight while seated at a bench"
+                            ),
+                        ],
+                        "examples": [],
+                        "senseRefs": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+            current = root / "current.json"
+            current.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "long seat",
+                            "upgradedExpression": "bench",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "queue.jsonl"
+
+            vocabulary_sources.prepare_enrichment(
+                input_dir,
+                existing,
+                {"basic": 0, "intermediate": 0, "advanced": 0},
+                output,
+                current_seed_path=current,
+                approved_source_ids={"grundwortschatz", "cefr"},
+            )
+
+            packet = json.loads(output.read_text())
+            self.assertEqual(packet["definition"], "a long seat for several people")
+            self.assertEqual(packet["example"], "We sat together on a park bench.")
+
+    def test_prepare_enrichment_prefers_first_oewn_sense_without_source_example(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+            common = {
+                "sourceID": "oewn",
+                "sourceEntryRef": "actor#noun#common",
+                "headword": "actor",
+                "partOfSpeech": "noun",
+                "cefr": None,
+                "definitions": ["a person who performs in a play or film"],
+                "examples": [],
+                "relatedTerms": ["performer"],
+                "translations": {},
+                "pronunciations": [],
+                "forms": [],
+                "senseRefs": ["actor-common"],
+                "senses": [],
+            }
+            uncommon = {
+                **common,
+                "sourceEntryRef": "actor#noun#uncommon",
+                "definitions": ["a doer"],
+                "examples": ["He was the main actor in the dispute."],
+                "relatedTerms": ["doer"],
+                "senseRefs": ["actor-uncommon"],
+            }
+            (input_dir / "oewn.jsonl").write_text(
+                json.dumps(common) + "\n" + json.dumps(uncommon) + "\n",
+                encoding="utf-8",
+            )
+            (input_dir / "cefr.jsonl").write_text(
+                json.dumps(
+                    {
+                        **common,
+                        "sourceID": "cefr",
+                        "sourceEntryRef": "actor#noun#A1",
+                        "cefr": "A1",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            existing = root / "existing.json"
+            existing.write_text("[]", encoding="utf-8")
+            current = root / "current.json"
+            current.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "bank-basic-0001",
+                            "level": "basic",
+                            "sortOrder": 1,
+                            "plainExpression": "performer",
+                            "upgradedExpression": "actor",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "queue.jsonl"
+
+            vocabulary_sources.prepare_enrichment(
+                input_dir,
+                existing,
+                {"basic": 0, "intermediate": 0, "advanced": 0},
+                output,
+                current_seed_path=current,
+                approved_source_ids={"oewn", "cefr"},
+            )
+
+            packet = json.loads(output.read_text())
+            self.assertEqual(
+                packet["definition"], "a person who performs in a play or film"
+            )
+            self.assertEqual(packet["example"], "")
+
     def test_prepare_enrichment_all_available_preserves_and_appends(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -3268,6 +4107,42 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(
                 json.loads(output.read_text())["translationDraft"], "優秀品質"
             )
+
+    def test_prepare_enrichment_requires_context_for_unaligned_parallel_translation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            tatoeba_path = input_dir / "tatoeba.jsonl"
+            tatoeba = json.loads(tatoeba_path.read_text())
+            tatoeba["headword"] = "That was excellent."
+            tatoeba["examples"] = ["That was excellent."]
+            tatoeba["translations"] = {"zh-Hant": ["那真優秀。"]}
+            tatoeba_path.write_text(
+                json.dumps(tatoeba, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            output = root / "draft.jsonl"
+
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            packet = json.loads(output.read_text())
+            self.assertEqual(packet["example"], "She shared an excellent idea.")
+            self.assertIsNone(packet["exampleTranslationDraft"])
 
     def test_prepare_enrichment_keeps_english_candidate_when_translation_is_unmatched(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -3583,7 +4458,7 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["translationDraft"], "卓越")
 
-    def test_prepare_enrichment_requires_the_target_in_the_source_example(self):
+    def test_prepare_enrichment_omits_a_source_example_without_the_target(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             input_dir, existing_seed = self.make_enrichment_sources(root)
@@ -3592,6 +4467,38 @@ class VocabularySourcesTests(unittest.TestCase):
             lexical["examples"] = ["She shared a superb idea."]
             lexical_path.write_text(json.dumps(lexical) + "\n", encoding="utf-8")
             (input_dir / "tatoeba.jsonl").unlink()
+
+            output = root / "draft.jsonl"
+            result = self.run_cli(
+                root,
+                "prepare-enrichment",
+                "--input-dir",
+                str(input_dir),
+                "--existing-seed",
+                str(existing_seed),
+                "--basic",
+                "1",
+                "--intermediate",
+                "0",
+                "--advanced",
+                "0",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(output.read_text())["example"], "")
+
+    def test_prepare_enrichment_omits_a_fragmentary_source_example(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir, existing_seed = self.make_enrichment_sources(root)
+            lexical_path = input_dir / "oewn-2025.jsonl"
+            lexical = json.loads(lexical_path.read_text())
+            lexical["examples"] = ["Excellent service"]
+            lexical_path.write_text(json.dumps(lexical) + "\n", encoding="utf-8")
+            (input_dir / "tatoeba.jsonl").unlink()
+            output = root / "draft.jsonl"
 
             result = self.run_cli(
                 root,
@@ -3607,11 +4514,11 @@ class VocabularySourcesTests(unittest.TestCase):
                 "--advanced",
                 "0",
                 "--output",
-                str(root / "draft.jsonl"),
+                str(output),
             )
 
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("not enough basic candidates", result.stderr)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(output.read_text())["example"], "")
 
     def test_prepare_enrichment_fails_when_a_level_quota_is_unavailable(self):
         with tempfile.TemporaryDirectory() as directory:

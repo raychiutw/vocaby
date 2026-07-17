@@ -1229,13 +1229,14 @@ def parse_oewn(path: Path, source_id: str) -> Iterable[dict]:
                     pronunciations = [
                         item["value"] for item in data.get("pronunciation", []) if item.get("value")
                     ]
-                    for sense in data.get("sense", []):
+                    for sense_rank, sense in enumerate(data.get("sense", [])):
                         synset_id = sense.get("synset")
                         if not synset_id:
                             continue
                         reference = f"{normalized(headword)}#{part_of_speech}#{synset_id}"
                         record = empty_record(source_id, reference, headword)
                         record["partOfSpeech"] = part_of_speech
+                        record["senseRank"] = sense_rank
                         record["pronunciations"] = pronunciations
                         record["senseRefs"] = [synset_id]
                         synset = synsets.get(synset_id, {})
@@ -1776,22 +1777,30 @@ def review_senses(packet: dict) -> list[dict]:
         ),
         None,
     )
-    if distance_candidate is not None:
-        exact = (
-            distance_candidate
-            if distance_candidate["reviewDistance"] <= 1.10
-            else None
-        )
-    else:
-        exact = next(
-            (
-                sense
-                for sense in candidates
-                if target_definition
-                in {normalized(gloss) for gloss in sense.get("glosses", [])}
-            ),
-            None,
-        )
+    exact = next(
+        (
+            sense
+            for sense in candidates
+            if target_definition
+            in {normalized(gloss) for gloss in sense.get("glosses", [])}
+        ),
+        None,
+    )
+    packet_source_keys = {
+        (ref.get("sourceID"), ref.get("sourceEntryRef"))
+        for ref in packet.get("sourceRefs", [])
+        if isinstance(ref, dict)
+    }
+    exact_source = exact.get("sourceRef", {}) if exact is not None else {}
+    exact_is_anchored = (
+        exact_source.get("sourceID"), exact_source.get("sourceEntryRef")
+    ) in packet_source_keys
+    if (
+        not exact_is_anchored
+        and distance_candidate is not None
+        and distance_candidate["reviewDistance"] <= 1.10
+    ):
+        exact = distance_candidate
     if exact:
         candidates.remove(exact)
         primary = exact
@@ -1819,7 +1828,14 @@ def review_senses(packet: dict) -> list[dict]:
         ]
 
     def specific_gloss(sense: dict) -> str:
-        return sense["glosses"][-1]
+        return next(
+            (
+                gloss
+                for gloss in sense["glosses"]
+                if normalized(gloss) == target_definition
+            ),
+            sense["glosses"][-1],
+        )
 
     used_meanings = {normalized(specific_gloss(selected[0]))}
     used_parts = {canonical_part_of_speech(selected[0].get("partOfSpeech"))}
@@ -1828,6 +1844,11 @@ def review_senses(packet: dict) -> list[dict]:
             sense
             for sense in candidates
             if sense.get("sourceRef", {}).get("sourceID", "").startswith("oewn")
+            and (
+                "trustedCEFRParts" not in packet
+                or canonical_part_of_speech(sense.get("partOfSpeech"))
+                in packet["trustedCEFRParts"]
+            )
         ),
         key=lambda sense: (
             0 if canonical_part_of_speech(sense.get("partOfSpeech")) not in used_parts else 1,
@@ -1864,7 +1885,14 @@ def review_senses(packet: dict) -> list[dict]:
         )
         if direct:
             return direct
-        base_words = meaning_words([specific_gloss(sense)])
+        target_words = {
+            word
+            for form in target_forms(packet["target"])
+            for word in SENTENCE_WORD.findall(form)
+        }
+        base_words = meaning_words([specific_gloss(sense)]) - target_words
+        if not base_words:
+            return ""
         aligned = []
         for candidate in candidates:
             if (
@@ -1872,7 +1900,10 @@ def review_senses(packet: dict) -> list[dict]:
                 != canonical_part_of_speech(sense.get("partOfSpeech"))
             ):
                 continue
-            overlap = len(base_words & meaning_words([specific_gloss(candidate)]))
+            overlap = len(
+                base_words
+                & (meaning_words([specific_gloss(candidate)]) - target_words)
+            )
             if overlap < (1 if len(base_words) <= 2 else 2):
                 continue
             example = next(
@@ -2304,6 +2335,17 @@ def looks_like_source_sentence(target: str, value: str) -> bool:
         flags=re.I,
     ):
         return True
+    if (
+        words[0].casefold() in target_forms(target)
+        and len(words) > 1
+        and words[1].casefold()
+        in {
+            "a", "an", "her", "him", "his", "it", "me", "my", "our",
+            "the", "their", "them", "these", "this", "those", "us",
+            "your",
+        }
+    ):
+        return True
     if re.search(
         r"\b(am|is|are|was|were|be|been|being|has|have|had|does|did|can|could|will|would|shall|should|may|might|must|it's|he's|she's|they're|we're)\b",
         value,
@@ -2413,7 +2455,10 @@ def lexical_variants(record: dict) -> list[dict]:
     if variants:
         return variants
     if (
-        record.get("sourceID", "").startswith(("oewn", "grundwortschatz"))
+        record.get("sourceID", "").startswith("oewn")
+        and record.get("definitions")
+    ) or (
+        record.get("sourceID", "").startswith("grundwortschatz")
         and record.get("definitions")
         and record.get("examples")
     ):
@@ -2439,6 +2484,15 @@ def prepare_enrichment(
         if current_seed is not None
         else None
     )
+    current_primary_parts = {
+        normalized(item["upgradedExpression"]): canonical_part_of_speech(
+            item["senses"][0].get("partOfSpeech")
+        )
+        for item in current_seed or []
+        if isinstance(item.get("senses"), list)
+        and item["senses"]
+        and isinstance(item["senses"][0], dict)
+    }
     excluded = (
         set()
         if current_seed is not None
@@ -2524,6 +2578,8 @@ def prepare_enrichment(
     parallel_records: list[tuple[dict, str, str]] = []
     cefr_exact: dict[tuple[str, str], tuple[str, dict]] = {}
     cefr_any: dict[str, tuple[str, dict]] = {}
+    cefr_meanings_exact: dict[tuple[str, str], list[set[str]]] = {}
+    trusted_cefr_parts: dict[str, set[str]] = {}
 
     def cefr_evidence_key(value: tuple[str, dict]) -> tuple:
         cefr, reference = value
@@ -2535,6 +2591,7 @@ def prepare_enrichment(
         )
 
     lexical: list[dict] = []
+    lexical_source_ranks: dict[tuple[str, str, str], int] = {}
     for record in records:
         key = normalized(record.get("headword", ""))
         if not key:
@@ -2557,13 +2614,33 @@ def prepare_enrichment(
         if record.get("cefr") in CEFR_LEVEL:
             value = (record["cefr"], source_reference(record))
             exact_key = (key, part_of_speech_code(record.get("partOfSpeech")))
+            if record["sourceID"].startswith("cefr-j"):
+                trusted_cefr_parts.setdefault(key, set()).add(exact_key[1])
+            cefr_meanings_exact.setdefault(exact_key, []).extend(
+                words
+                for definition in record.get("definitions", [])
+                if (words := meaning_words([definition]))
+            )
             cefr_exact[exact_key] = min(
                 cefr_exact.get(exact_key, value), value, key=cefr_evidence_key
             )
             cefr_any[key] = min(
                 cefr_any.get(key, value), value, key=cefr_evidence_key
             )
-        lexical.extend(lexical_variants(record))
+        for variant in lexical_variants(record):
+            rank_key = (
+                record["sourceID"],
+                key,
+                part_of_speech_code(variant.get("partOfSpeech")),
+            )
+            source_sense_rank = record.get("senseRank")
+            if not isinstance(source_sense_rank, int) or source_sense_rank < 0:
+                source_sense_rank = lexical_source_ranks.get(rank_key, 0)
+            variant["_sourceSenseRank"] = source_sense_rank
+            lexical_source_ranks[rank_key] = max(
+                lexical_source_ranks.get(rank_key, 0), source_sense_rank + 1
+            )
+            lexical.append(variant)
 
     converted_word_values = traditionalize([value for _, value in word_translation_records])
     translations: dict[str, list[dict]] = {}
@@ -2706,7 +2783,7 @@ def prepare_enrichment(
                 for value in record.get("examples", [])
                 if isinstance(value, str)
                 and value.strip()
-                and contains_target_form(target, value)
+                and looks_like_source_sentence(target, value)
                 and len(value.strip()) <= 160
             },
             key=lambda value: (
@@ -2715,7 +2792,7 @@ def prepare_enrichment(
                 normalized(value),
             ),
         )
-        if not definitions or not examples or len(definitions[0]) > 220:
+        if not definitions or len(definitions[0]) > 220:
             continue
 
         pos = part_of_speech_code(record.get("partOfSpeech"))
@@ -2839,7 +2916,31 @@ def prepare_enrichment(
                 }
             ]
 
-        cefr_entry = cefr_exact.get((key, pos)) or cefr_any.get(key)
+        exact_cefr_entry = cefr_exact.get((key, pos))
+        cefr_entry = exact_cefr_entry or cefr_any.get(key)
+        cefr_evidence_priority = (
+            0 if exact_cefr_entry else (1 if cefr_entry else 2)
+        )
+        trusted_cefr_evidence_priority = (
+            0
+            if exact_cefr_entry
+            and exact_cefr_entry[1]["sourceID"].startswith("cefr-j")
+            else (1 if exact_cefr_entry else 2)
+        )
+        definition_words = meaning_words(definitions[:1])
+        cefr_definition_similarity = max(
+            (
+                (
+                    len(definition_words & evidence_words)
+                    / len(definition_words | evidence_words)
+                    / (evidence_index + 1)
+                )
+                for evidence_index, evidence_words in enumerate(
+                    cefr_meanings_exact.get((key, pos), [])
+                )
+            ),
+            default=0.0,
+        )
         cefr = cefr_entry[0] if cefr_entry else "C1"
         level = CEFR_LEVEL[cefr]
         cefr_rank = {"A1": 0, "A2": 1, "B1": 2, "B2": 3, "C1": 4, "C2": 5}
@@ -2887,10 +2988,12 @@ def prepare_enrichment(
                 sense_words
                 & (meaning_words([pair["sentence"]]) - target_terms)
             )
-            if context_match == 0:
-                continue
             for option_rank, option in enumerate(translation_options[:40]):
-                if option["value"] and option["value"] in pair["translation"]:
+                if (
+                    option["value"]
+                    and option["value"] in pair["translation"]
+                    and (context_match > 0 or option.get("mappingReference"))
+                ):
                     parallel_matches.append(
                         (
                             0 if 12 <= len(pair["sentence"]) <= 90 else 1,
@@ -2907,6 +3010,12 @@ def prepare_enrichment(
                         )
                     )
 
+        parallel_match_count = len(
+            {
+                match[-1]["reference"]["sourceEntryRef"]
+                for match in parallel_matches
+            }
+        )
         if parallel_matches:
             *_, translation_entry, parallel = min(parallel_matches)
             example = parallel["sentence"]
@@ -2915,7 +3024,7 @@ def prepare_enrichment(
         else:
             translation_entry = translation_options[0]
             parallel = None
-            example = examples[0]
+            example = examples[0] if examples else ""
             example_translation = None
             example_translation_mode = "usage-note"
 
@@ -2931,7 +3040,7 @@ def prepare_enrichment(
             translation_entry = {**translation_entry, "value": override}
             if example_translation and override not in example_translation:
                 parallel = None
-                example = examples[0]
+                example = examples[0] if examples else ""
                 example_translation = None
                 example_translation_mode = "usage-note"
 
@@ -2964,9 +3073,30 @@ def prepare_enrichment(
             "level": level,
             "sourceRefs": [unique_refs[value] for value in sorted(unique_refs)],
         }
+        lexical_source_priority = (
+            0
+            if record["sourceID"].startswith("oewn")
+            else (1 if "wiktextract" in record["sourceID"] else 2)
+        )
+        source_sense_rank = record.get("_sourceSenseRank", 0)
+        specialized_sense = re.match(
+            r"^\((?:american football|anatomy|biology|chemistry|computer science|computing|football|law|mathematics|medicine|military|physics|programming)\b",
+            normalized(definitions[0]),
+        ) is not None
         score = (
-            0 if cefr_entry else 1,
+            cefr_evidence_priority,
+            trusted_cefr_evidence_priority,
+            0
+            if key not in current_primary_parts
+            or canonical_part_of_speech(pos) == current_primary_parts[key]
+            else 1,
+            1 if specialized_sense else 0,
+            lexical_source_priority,
             0 if parallel else 1,
+            -parallel_match_count,
+            source_sense_rank if lexical_source_priority == 0 else 0,
+            -cefr_definition_similarity,
+            source_sense_rank,
             translation_entry.get("semanticDistance", 2.0),
             -translation_entry["definitionMatch"],
             -translation_entry["synonymMatch"],
@@ -2977,8 +3107,37 @@ def prepare_enrichment(
             normalized(target),
             record["sourceEntryRef"],
         )
+        candidate["_specializedSense"] = specialized_sense
+        candidate["_sourceSenseRank"] = source_sense_rank
         previous = candidates.get(key)
-        if previous is None or score < previous["_score"]:
+        candidate_translation = normalized(candidate["translationDraft"])
+        previous_translation = (
+            normalized(previous["translationDraft"]) if previous is not None else ""
+        )
+        common_sense_oewn = (
+            previous is not None
+            and record["sourceID"].startswith("oewn")
+            and any(
+                ref["sourceID"].startswith("oewn")
+                for ref in previous.get("sourceRefs", [])
+            )
+            and candidate["partOfSpeech"] == previous["partOfSpeech"]
+            and not specialized_sense
+            and not previous["_specializedSense"]
+            and (
+                not candidate_translation
+                or not previous_translation
+                or candidate_translation in previous_translation
+                or previous_translation in candidate_translation
+            )
+        )
+        prefer_candidate = previous is None or (
+            (source_sense_rank, score)
+            < (previous["_sourceSenseRank"], previous["_score"])
+            if common_sense_oewn
+            else score < previous["_score"]
+        )
+        if prefer_candidate:
             candidate["_score"] = score
             candidates[key] = candidate
 
@@ -3024,7 +3183,9 @@ def prepare_enrichment(
                 }
                 issues.append("missing-aligned-lexical-candidate")
             packet = {
-                key: value for key, value in candidate.items() if key != "_score"
+                key: value
+                for key, value in candidate.items()
+                if not key.startswith("_")
             }
             packet["target"] = current["upgradedExpression"]
             packet["id"] = current["id"]
@@ -3033,6 +3194,7 @@ def prepare_enrichment(
             packet["level"] = current["level"]
             packet["sortOrder"] = current["sortOrder"]
             packet["candidateSenses"] = merged_list(senses_by_headword.get(key, []))
+            packet["trustedCEFRParts"] = sorted(trusted_cefr_parts.get(key, set()))
             packet["candidatePronunciations"] = merged_list(
                 pronunciations_by_headword.get(key, [])
             )
@@ -3080,7 +3242,7 @@ def prepare_enrichment(
                     item = {
                         key: value
                         for key, value in candidate.items()
-                        if key != "_score"
+                        if not key.startswith("_")
                     }
                     next_sort_order += 1
                     next_id_number += 1
@@ -3104,8 +3266,13 @@ def prepare_enrichment(
                     f"not enough {level} candidates: need {needed}, found {len(available)}"
                 )
             for item in available[:needed]:
-                item.pop("_score")
-                selected.append(item)
+                selected.append(
+                    {
+                        key: value
+                        for key, value in item.items()
+                        if not key.startswith("_")
+                    }
+                )
     selected.sort(
         key=lambda item: (LEVEL_ORDER[item["level"]], normalized(item["target"]))
     )
@@ -3118,6 +3285,7 @@ def prepare_enrichment(
             item["id"] = f"bank-{level}-{positions[level]:04d}"
             item["sortOrder"] = positions[level]
         item["candidateSenses"] = merged_list(senses_by_headword.get(key, []))
+        item["trustedCEFRParts"] = sorted(trusted_cefr_parts.get(key, set()))
         item["candidatePronunciations"] = merged_list(
             pronunciations_by_headword.get(key, [])
         )

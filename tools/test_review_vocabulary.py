@@ -264,6 +264,63 @@ class ReviewVocabularyTests(unittest.TestCase):
             self.assertEqual(result["completed"], 1)
             self.assertEqual(calls, 2)
 
+    def test_run_local_enrichment_retries_invalid_generated_example_without_repair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch = {
+                "batchID": "0000",
+                "items": [
+                    {
+                        "id": "above::1",
+                        "target": "above",
+                        "partOfSpeech": "adverb",
+                        "meaning": "in or to a higher place",
+                        "plainCandidates": [],
+                        "exampleCandidate": "",
+                    }
+                ],
+            }
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            calls = 0
+
+            def helper(_executable, _mode, payload):
+                nonlocal calls
+                calls += 1
+                request = json.loads(payload)
+                example = (
+                    "She finished her homework early."
+                    if calls == 1
+                    else "The shelf above is difficult to reach."
+                )
+                return json.dumps(
+                    {
+                        "batchID": request["batchID"],
+                        "items": [
+                            {
+                                "id": "above::1",
+                                "plainExpression": "higher",
+                                "example": example,
+                            }
+                        ],
+                    }
+                ) + "\n"
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
+                )
+
+            self.assertEqual(result["completed"], 1)
+            self.assertEqual(calls, 2)
+
     def test_run_local_enrichment_fails_closed_when_invalid_singleton_fallback_is_invalid(
         self,
     ):
@@ -363,6 +420,34 @@ class ReviewVocabularyTests(unittest.TestCase):
                 output.exists() and review_vocabulary.sources.read_jsonl(output)
             )
 
+    def test_deterministic_enrichment_repairs_skip_missing_source_examples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            draft = {
+                "packet": {
+                    "id": "bank-basic-0003",
+                    "target": "above",
+                    "plain": "higher than",
+                    "definition": "in or to a higher place",
+                    "candidatePlainExpressions": ["higher than"],
+                },
+                "senses": [
+                    {
+                        "id": "sense-1",
+                        "meaning": "in or to a higher place",
+                        "partOfSpeech": "adverb",
+                        "exampleCandidate": "",
+                    }
+                ],
+            }
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+
+            repairs = review_vocabulary.deterministic_enrichment_repairs(work)
+
+            self.assertEqual(repairs, {})
+
     def test_enrichment_repair_keeps_a_valid_model_plain_when_fallback_plain_is_invalid(self):
         expected = {
             "batchID": "0003",
@@ -397,6 +482,41 @@ class ReviewVocabularyTests(unittest.TestCase):
         self.assertEqual(
             result["items"][0]["example"],
             "The aged teacher shared her story.",
+        )
+
+    def test_enrichment_repair_preserves_a_valid_generated_example(self):
+        expected = {
+            "batchID": "0003",
+            "items": [{"id": "aged-1", "target": "aged"}],
+        }
+        batch = {
+            "batchID": "0003",
+            "items": [
+                {
+                    "id": "aged-1",
+                    "plainExpression": "older",
+                    "example": "The aged professor still teaches every morning.",
+                }
+            ],
+        }
+        repairs = {
+            "aged-1": {
+                "id": "aged-1",
+                "plainExpression": "elderly",
+                "example": "The aged teacher shared her story.",
+            }
+        }
+
+        result = review_vocabulary.validate_enrichment_batch(
+            batch,
+            expected,
+            repairs,
+            repair_invalid=True,
+        )
+
+        self.assertEqual(
+            result["items"][0]["example"],
+            "The aged professor still teaches every morning.",
         )
 
     def test_run_local_enrichment_propagates_unrelated_generation_error_without_retry(
@@ -1538,6 +1658,66 @@ class ReviewVocabularyTests(unittest.TestCase):
                 requests,
             )
 
+    def test_seed_source_translations_drops_stale_changed_requests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            content_id = "item-1::sense-1"
+            old_request = {"id": f"{content_id}::meaning", "text": "Old meaning."}
+            new_request = {"id": f"{content_id}::meaning", "text": "New meaning."}
+            swift_source = Path(review_vocabulary.__file__).with_name(
+                "apple_language_services.swift"
+            )
+            (work / "enriched.jsonl").write_text(
+                json.dumps(
+                    {
+                        "packet": {
+                            "id": "item-1",
+                            "target": "menu",
+                            "example": "The server handed us the menu.",
+                            "exampleTranslationDraft": None,
+                        },
+                        "senses": [{"id": "sense-1"}],
+                        "enrichment": {
+                            "sense-1": {"example": "We checked the menu online."}
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (work / "translation-input.jsonl").write_text(
+                json.dumps(new_request) + "\n", encoding="utf-8"
+            )
+            (work / "translation-input.snapshot.jsonl").write_text(
+                json.dumps(old_request) + "\n", encoding="utf-8"
+            )
+            (work / "translation-output.jsonl").write_text(
+                json.dumps({"id": old_request["id"], "text": "舊翻譯。"}) + "\n",
+                encoding="utf-8",
+            )
+            (work / "translation-output.fingerprint.json").write_text(
+                json.dumps(
+                    {
+                        "inputSHA256": "old-input",
+                        "swiftSourceSHA256": review_vocabulary.sources.sha256(
+                            swift_source
+                        ),
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            count = review_vocabulary.seed_source_translations(work)
+
+            self.assertEqual(count, 0)
+            self.assertEqual(
+                review_vocabulary.sources.read_jsonl(
+                    work / "translation-output.jsonl"
+                ),
+                [],
+            )
+
     def test_validate_enrichment_requires_the_target_in_a_full_sentence(self):
         item = {
             "id": "bank-basic-0001::sense-1",
@@ -1549,6 +1729,16 @@ class ReviewVocabularyTests(unittest.TestCase):
             review_vocabulary.sources.SourceError, "must use target"
         ):
             review_vocabulary.validate_enrichment(item, "excellent")
+
+    def test_foundation_model_prompt_forbids_target_in_plain_expression(self):
+        source = Path(review_vocabulary.__file__).with_name(
+            "apple_language_services.swift"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "plainExpression must never contain target or any inflected target form",
+            source,
+        )
 
     def test_validate_enrichment_rejects_generic_examples(self):
         with self.assertRaisesRegex(
@@ -1716,6 +1906,69 @@ class ReviewVocabularyTests(unittest.TestCase):
             self.assertEqual(accepted_queue["id"], "bank-basic-0001")
             batch = json.loads((work / "enrichment-input.jsonl").read_text())
             self.assertEqual(batch["items"][0]["id"], "bank-basic-0001::bank-basic-0001-sense-1")
+
+    def test_prepare_review_sends_missing_source_example_for_local_generation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            queue = root / "queue.jsonl"
+            cmu = root / "cmu.jsonl"
+            work = root / "work"
+            source_ref = {
+                "sourceID": "oewn-2025",
+                "sourceEntryRef": "actor#n#common",
+            }
+            queue.write_text(
+                json.dumps(
+                    {
+                        "id": "bank-basic-0001",
+                        "level": "basic",
+                        "sortOrder": 1,
+                        "target": "actor",
+                        "plain": "performer",
+                        "definition": "a person who performs in a play or film",
+                        "example": "",
+                        "translationDraft": "演員",
+                        "exampleTranslationDraft": None,
+                        "exampleTranslationMode": "usage-note",
+                        "partOfSpeech": "n",
+                        "cefr": "A1",
+                        "sourceRefs": [source_ref],
+                        "validationSourceIDs": ["oewn-2025"],
+                        "candidatePlainExpressions": ["performer"],
+                        "candidatePronunciations": [
+                            {
+                                "notation": "ipa",
+                                "value": "ˈæktɚ",
+                                "speechLocale": "en-US",
+                                "region": "US",
+                                "sourceRef": source_ref,
+                            }
+                        ],
+                        "candidateSenses": [
+                            {
+                                "id": "actor-common",
+                                "partOfSpeech": "noun",
+                                "glosses": [
+                                    "a person who performs in a play or film"
+                                ],
+                                "examples": [],
+                                "tags": [],
+                                "sourceRef": source_ref,
+                            }
+                        ],
+                        "issues": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            cmu.write_text("", encoding="utf-8")
+
+            result = review_vocabulary.prepare_review(queue, cmu, work)
+
+            self.assertEqual(result, {"accepted": 1, "rejected": 0, "senses": 1})
+            batch = json.loads((work / "enrichment-input.jsonl").read_text())
+            self.assertEqual(batch["items"][0]["exampleCandidate"], "")
 
     def test_prepare_review_emits_every_selected_sense(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1948,6 +2201,121 @@ class ReviewVocabularyTests(unittest.TestCase):
                 reviewed["senses"][0]["meaning"]["zh-Hant"],
                 "品質非常好。",
             )
+
+    def test_build_reviewed_applies_reproducible_manual_review_overrides(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            old_ref = {
+                "sourceID": "oewn-2025",
+                "sourceEntryRef": "actually#r#old",
+            }
+            new_ref = {
+                "sourceID": "oewn-2025",
+                "sourceEntryRef": "actually#r#00150568-r",
+                "senseRefs": ["00150568-r"],
+            }
+            draft = {
+                "packet": {
+                    "id": "bank-basic-0001",
+                    "level": "basic",
+                    "sortOrder": 1,
+                    "target": "actually",
+                    "cefr": "A2",
+                    "sourceRefs": [old_ref],
+                    "validationSourceIDs": ["oewn-2025"],
+                },
+                "pronunciations": [],
+                "pronunciationSourceRefs": [],
+                "senses": [
+                    {
+                        "id": "old-sense",
+                        "partOfSpeech": "adverb",
+                        "meaning": "surprisingly",
+                        "sourceRef": old_ref,
+                    }
+                ],
+                "enrichment": {
+                    "old-sense": {
+                        "plainExpression": "surprisingly",
+                        "example": "It actually worked.",
+                    }
+                },
+            }
+            (work / "enriched.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+            (work / "translation-output.jsonl").write_text(
+                "".join(
+                    json.dumps(item) + "\n"
+                    for item in (
+                        {
+                            "id": "bank-basic-0001::old-sense::meaning",
+                            "text": "令人意外地。",
+                        },
+                        {
+                            "id": "bank-basic-0001::old-sense::example",
+                            "text": "它真的成功了。",
+                        },
+                    )
+                ),
+                encoding="utf-8",
+            )
+            (work / "review-overrides.jsonl").write_text(
+                json.dumps(
+                    {
+                        "target": "actually",
+                        "plainExpression": "in fact",
+                        "primarySense": {
+                            "id": "actually#r#00150568-r",
+                            "partOfSpeech": "adverb",
+                            "meaning": {
+                                "en": "In actual fact.",
+                                "zh-Hant": "事實上。",
+                            },
+                            "example": {
+                                "text": "The room is actually larger than it looks.",
+                                "translation": {
+                                    "zh-Hant": "這個房間其實比看起來更大。"
+                                },
+                            },
+                            "sourceRef": new_ref,
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (work / "rejections.jsonl").write_text("", encoding="utf-8")
+            output = root / "reviewed.jsonl"
+
+            with mock.patch.object(
+                review_vocabulary.sources,
+                "traditionalize",
+                side_effect=lambda values: values,
+            ), mock.patch.object(
+                review_vocabulary.sources,
+                "audit_reviewed",
+                return_value={"items": 1},
+            ):
+                review_vocabulary.build_reviewed(
+                    work, output, root / "rejections.md"
+                )
+
+            reviewed = json.loads(output.read_text())
+            self.assertEqual(reviewed["plainExpression"], "in fact")
+            self.assertEqual(reviewed["primarySenseID"], "actually#r#00150568-r")
+            self.assertEqual(reviewed["senses"][0]["meaning"]["zh-Hant"], "事實上。")
+            self.assertEqual(
+                reviewed["senses"][0]["example"]["text"],
+                "The room is actually larger than it looks.",
+            )
+            self.assertEqual(
+                reviewed["quiz"]["prompt"]["en"],
+                "Which expression best matches ‘in fact’?",
+            )
+            self.assertIn(new_ref, reviewed["sourceRefs"])
 
     def test_finish_enrichment_reconciles_every_sense_id(self):
         with tempfile.TemporaryDirectory() as directory:

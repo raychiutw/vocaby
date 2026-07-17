@@ -84,8 +84,12 @@ def prepare_review(
         senses = reviewable_senses(packet, sources.review_senses(packet))
         if (
             not senses
-            or not sources.looks_like_source_sentence(
-                packet["target"], senses[0].get("exampleCandidate", "")
+            or (
+                isinstance(packet.get("example"), str)
+                and packet["example"].strip()
+                and not sources.looks_like_source_sentence(
+                    packet["target"], senses[0].get("exampleCandidate", "")
+                )
             )
         ):
             rejections.append(
@@ -395,6 +399,68 @@ def applicable_pronunciation_ids(draft: dict, sense: dict) -> list[str]:
     return selected or [value["id"] for value in draft["pronunciations"]]
 
 
+def apply_review_overrides(reviewed: list[dict], path: Path) -> None:
+    if not path.is_file():
+        return
+    by_target = {item["upgradedExpression"]: item for item in reviewed}
+    if len(by_target) != len(reviewed):
+        raise sources.SourceError("reviewed vocabulary contains duplicate targets")
+    seen = set()
+    for override in sources.read_jsonl(path):
+        target = override.get("target")
+        if not isinstance(target, str) or not target.strip():
+            raise sources.SourceError("review override has no target")
+        if target in seen:
+            raise sources.SourceError(f"duplicate review override target: {target}")
+        seen.add(target)
+        item = by_target.get(target)
+        if item is None:
+            raise sources.SourceError(f"unknown review override target: {target}")
+        if "plainExpression" in override:
+            item["plainExpression"] = override["plainExpression"].strip()
+        sense_override = override.get("primarySense")
+        if sense_override is not None:
+            if not isinstance(sense_override, dict) or not item["senses"]:
+                raise sources.SourceError(f"invalid primary sense override: {target}")
+            sense = item["senses"][0]
+            for key in ("id", "partOfSpeech"):
+                if key in sense_override:
+                    sense[key] = sense_override[key]
+            for key in ("meaning", "example"):
+                if key in sense_override:
+                    sense[key] = sense_override[key]
+            item["primarySenseID"] = sense["id"]
+            source_ref = sense_override.get("sourceRef")
+            if source_ref is not None:
+                if not source_ref.get("sourceID") or not source_ref.get(
+                    "sourceEntryRef"
+                ):
+                    raise sources.SourceError(
+                        f"invalid primary sense source reference: {target}"
+                    )
+                item["sourceRefs"] = sources.merged_list(
+                    [*item["sourceRefs"], source_ref]
+                )
+                item["validationSourceIDs"] = sorted(
+                    set(item["validationSourceIDs"]) | {source_ref["sourceID"]}
+                )
+        primary = item["senses"][0]
+        item["quiz"]["prompt"] = {
+            "en": f"Which expression best matches ‘{item['plainExpression']}’?",
+            "zh-Hant": (
+                f"哪個詞最符合「{primary['meaning']['zh-Hant'].rstrip('。')}」？"
+            ),
+        }
+        validate_enrichment(
+            {
+                "id": item["id"],
+                "plainExpression": item["plainExpression"],
+                "example": primary["example"]["text"],
+            },
+            target,
+        )
+
+
 def build_reviewed(
     work_dir: Path,
     output: Path,
@@ -524,6 +590,7 @@ def build_reviewed(
                 }
             )
 
+    apply_review_overrides(reviewed, work_dir / "review-overrides.jsonl")
     sources.atomic_write(output, jsonl(reviewed))
     rejections = sources.read_jsonl(work_dir / "rejections.jsonl")
     reason_counts = Counter(item["reason"] for item in rejections)
@@ -687,10 +754,14 @@ def deterministic_enrichment_repairs(work_dir: Path) -> dict[str, dict]:
         packet = draft["packet"]
         for sense in draft["senses"]:
             item_id = f"{packet['id']}::{sense['id']}"
+            try:
+                example = source_example(packet["target"], sense)
+            except sources.SourceError:
+                continue
             repairs[item_id] = {
                 "id": item_id,
                 "plainExpression": fallback_plain(packet, sense),
-                "example": source_example(packet["target"], sense),
+                "example": example,
             }
     return repairs
 
@@ -756,14 +827,13 @@ def validate_enrichment_batch(
         candidate = dict(item)
         if repair_invalid:
             repair = repairs.get(item["id"])
-            if repair is None:
-                try:
-                    validate_enrichment(candidate, target)
-                except sources.SourceError as error:
+            try:
+                validate_enrichment(candidate, target)
+            except sources.SourceError as error:
+                if repair is None:
                     raise sources.SourceError(
                         f"no deterministic enrichment repair for {item['id']}"
                     ) from error
-            else:
                 candidate["example"] = repair["example"]
                 try:
                     validate_enrichment(candidate, target)
@@ -890,7 +960,11 @@ def run_local_enrichment(
                         repair_invalid=True,
                     )
                 except sources.SourceError as error:
-                    if attempt == 2 or "invalid plain expression" not in str(error):
+                    retryable = (
+                        "invalid plain expression" in str(error)
+                        or "no deterministic enrichment repair" in str(error)
+                    )
+                    if attempt == 2 or not retryable:
                         raise
             raise AssertionError("unreachable")
 
@@ -1105,9 +1179,28 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
 def seed_source_translations(work_dir: Path) -> int:
     output = work_dir / "translation-output.jsonl"
     input_path = work_dir / "translation-input.jsonl"
+    fingerprint_path = work_dir / "translation-output.fingerprint.json"
+    input_snapshot_path = work_dir / "translation-input.snapshot.jsonl"
     swift_source = Path(__file__).with_name("apple_language_services.swift")
-    seeded = sources.read_jsonl(output) if output.is_file() else []
-    by_id = {item["id"]: item for item in seeded}
+    requests = sources.read_jsonl(input_path)
+    request_by_id = {item["id"]: item for item in requests}
+    try:
+        saved_fingerprint = json.loads(fingerprint_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        saved_fingerprint = None
+    previous_requests = (
+        {item["id"]: item for item in sources.read_jsonl(input_snapshot_path)}
+        if isinstance(saved_fingerprint, dict)
+        and saved_fingerprint.get("swiftSourceSHA256") == sources.sha256(swift_source)
+        and input_snapshot_path.is_file()
+        else {}
+    )
+    by_id = {
+        item["id"]: item
+        for item in (sources.read_jsonl(output) if output.is_file() else [])
+        if item.get("id") in request_by_id
+        and request_by_id[item["id"]] == previous_requests.get(item["id"])
+    }
     for draft in sources.read_jsonl(work_dir / "enriched.jsonl"):
         packet = draft["packet"]
         primary = draft["senses"][0]
@@ -1125,17 +1218,16 @@ def seed_source_translations(work_dir: Path) -> int:
             }
     completed = sorted(by_id.values(), key=lambda item: item["id"])
     sources.atomic_write(output, jsonl(completed))
-    requests = sources.read_jsonl(input_path)
     fingerprint = {
         "inputSHA256": sources.sha256(input_path),
         "swiftSourceSHA256": sources.sha256(swift_source),
     }
     sources.atomic_write(
-        work_dir / "translation-output.fingerprint.json",
+        fingerprint_path,
         json.dumps(fingerprint, sort_keys=True, separators=(",", ":")) + "\n",
     )
     sources.atomic_write(
-        work_dir / "translation-input.snapshot.jsonl",
+        input_snapshot_path,
         jsonl(requests),
     )
     return len(completed)
