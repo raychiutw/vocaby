@@ -1810,6 +1810,121 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(metadata["bytes"], output.stat().st_size)
             self.assertEqual(metadata["records"], 2)
 
+    def test_wiktextract_snapshot_can_write_deterministic_shards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.make_source(root)
+            source = root / "all.jsonl.gz"
+            with gzip.open(source, "wt", encoding="utf-8") as stream:
+                for word in ("charlie", "alpha", "bravo"):
+                    stream.write(
+                        json.dumps(
+                            {
+                                "word": word,
+                                "lang_code": "en",
+                                "pos": "noun",
+                                "senses": [{"glosses": [f"Meaning of {word}."]}],
+                            }
+                        )
+                        + "\n"
+                    )
+            seed = root / "seed.json"
+            seed.write_text(
+                json.dumps(
+                    [
+                        {"upgradedExpression": "alpha"},
+                        {"upgradedExpression": "bravo"},
+                        {"upgradedExpression": "charlie"},
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output = root / "targets.jsonl.gz"
+
+            result = vocabulary_sources.snapshot_wiktextract(
+                source.as_uri(), seed, output, records_per_shard=2
+            )
+
+            self.assertEqual(result["records"], 3)
+            self.assertEqual(len(result["shards"]), 2)
+            self.assertEqual(
+                [Path(item["path"]).name for item in result["shards"]],
+                ["targets-0001.jsonl.gz", "targets-0002.jsonl.gz"],
+            )
+            kept = []
+            for item in result["shards"]:
+                path = Path(item["path"])
+                self.assertEqual(item["sha256"], hashlib.sha256(path.read_bytes()).hexdigest())
+                with gzip.open(path, "rt", encoding="utf-8") as stream:
+                    kept.extend(json.loads(line)["word"] for line in stream)
+            self.assertEqual(kept, ["alpha", "bravo", "charlie"])
+
+    def test_wiktextract_adapter_imports_verified_raw_shards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            raw_dir = root / "Content/Sources/Raw/wiktextract"
+            raw_dir.mkdir(parents=True)
+            raw_files = []
+            for number, word in enumerate(("alpha", "bravo"), 1):
+                path = raw_dir / f"targets-{number:04d}.jsonl.gz"
+                with gzip.open(path, "wt", encoding="utf-8") as stream:
+                    stream.write(
+                        json.dumps(
+                            {
+                                "word": word,
+                                "lang_code": "en",
+                                "pos": "noun",
+                                "senses": [
+                                    {
+                                        "glosses": [f"Meaning of {word}."],
+                                        "examples": [
+                                            {"text": f"The word {word} appears here.", "type": "example"}
+                                        ],
+                                    }
+                                ],
+                            }
+                        )
+                        + "\n"
+                    )
+                raw_files.append(
+                    {
+                        "path": str(path.relative_to(root)),
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                        "bytes": path.stat().st_size,
+                    }
+                )
+            manifest = {
+                "schemaVersion": 1,
+                "sources": [
+                    {
+                        "id": "wiktextract-test",
+                        "adapter": "wiktextract_jsonl_gz",
+                        "rawFiles": raw_files,
+                        "licenseEvidence": [],
+                        "repositoryRedistribution": "allowed",
+                        "appUse": "approved",
+                    }
+                ],
+            }
+            manifest_path = root / "Content/Sources/source-manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            output = root / "wiktextract.jsonl"
+
+            result = self.run_cli(
+                root,
+                "import-source",
+                "wiktextract-test",
+                "--output",
+                str(output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                [json.loads(line)["headword"] for line in output.read_text().splitlines()],
+                ["alpha", "bravo"],
+            )
+
     def test_wiktextract_adapter_preserves_pos_senses_and_ipa(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

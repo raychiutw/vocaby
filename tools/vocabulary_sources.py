@@ -1955,7 +1955,30 @@ def parse_wiktextract(path: Path, source_id: str) -> Iterable[dict]:
             yield record
 
 
-def snapshot_wiktextract(source_url: str, seed_path: Path, output: Path) -> dict:
+def _write_gzip_lines(path: Path, lines: list[bytes]) -> dict:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("wb", dir=path.parent, delete=False) as destination:
+        temporary = Path(destination.name)
+        with gzip.GzipFile(fileobj=destination, mode="wb", mtime=0) as compressed:
+            compressed.writelines(lines)
+    os.replace(temporary, path)
+    return {
+        "path": str(path),
+        "sha256": sha256(path),
+        "bytes": path.stat().st_size,
+        "records": len(lines),
+    }
+
+
+def snapshot_wiktextract(
+    source_url: str,
+    seed_path: Path,
+    output: Path,
+    *,
+    records_per_shard: int | None = None,
+) -> dict:
+    if records_per_shard is not None and records_per_shard < 1:
+        raise SourceError("Wiktextract records per shard must be positive")
     targets = {
         normalized(item["upgradedExpression"])
         for item in load_json(seed_path, list)
@@ -1992,18 +2015,20 @@ def snapshot_wiktextract(source_url: str, seed_path: Path, output: Path) -> dict
     except (OSError, urllib.error.URLError) as error:
         raise SourceError(f"cannot read Wiktextract source {source_url}: {error}") from error
     kept.sort()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("wb", dir=output.parent, delete=False) as destination:
-        temporary = Path(destination.name)
-        with gzip.GzipFile(fileobj=destination, mode="wb", mtime=0) as compressed:
-            compressed.writelines(kept)
-    os.replace(temporary, output)
-    return {
-        "path": str(output),
-        "sha256": sha256(output),
-        "bytes": output.stat().st_size,
-        "records": len(kept),
-    }
+    if records_per_shard is None:
+        return _write_gzip_lines(output, kept)
+
+    name = output.name
+    suffix = ".jsonl.gz"
+    base = name[: -len(suffix)] if name.endswith(suffix) else output.stem
+    shards = [
+        _write_gzip_lines(
+            output.with_name(f"{base}-{index:04d}.jsonl.gz"),
+            kept[start : start + records_per_shard],
+        )
+        for index, start in enumerate(range(0, len(kept), records_per_shard), 1)
+    ]
+    return {"records": len(kept), "shards": shards}
 
 
 PARSERS = {
@@ -2088,6 +2113,12 @@ def import_source(root: Path, source: dict, output: Path) -> int:
         if not isinstance(path, list):
             raise SourceError(f"{source['id']}: Tatoeba adapter requires rawFiles")
         parsed = parser(path, source["id"])
+    elif source.get("adapter") == "wiktextract_jsonl_gz" and isinstance(path, list):
+        parsed = (
+            record
+            for raw_path in path
+            for record in parser(raw_path, source["id"])
+        )
     elif isinstance(path, list):
         raise SourceError(f"{source['id']}: adapter accepts only one raw file")
     elif source.get("adapter") == "lemma_csv":
@@ -3665,6 +3696,7 @@ def main(argv: list[str] | None = None) -> int:
     snapshot_parser.add_argument("--source-url", required=True)
     snapshot_parser.add_argument("--seed", type=Path, required=True)
     snapshot_parser.add_argument("--output", type=Path, required=True)
+    snapshot_parser.add_argument("--records-per-shard", type=int)
     prepare_parser = commands.add_parser("prepare-enrichment")
     prepare_parser.add_argument("--input-dir", type=Path, required=True)
     prepare_parser.add_argument("--existing-seed", type=Path, required=True)
@@ -3719,7 +3751,12 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "snapshot-wiktextract":
         print(
             json.dumps(
-                snapshot_wiktextract(args.source_url, args.seed, args.output),
+                snapshot_wiktextract(
+                    args.source_url,
+                    args.seed,
+                    args.output,
+                    records_per_shard=args.records_per_shard,
+                ),
                 ensure_ascii=False,
                 sort_keys=True,
             )
