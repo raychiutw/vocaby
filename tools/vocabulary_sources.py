@@ -3170,10 +3170,14 @@ def validate_reviewed_item(item: dict) -> None:
         raise SourceError(f"review item {item['id']} has missing source evidence")
 
 
-def audit_reviewed(path: Path) -> dict:
+def audit_reviewed(path: Path, *, minimum_items: int = 5_000) -> dict:
     items = read_jsonl(path)
-    if len(items) < 5_000:
-        raise SourceError("reviewed bank must contain at least 5000 items")
+    if minimum_items < 1:
+        raise SourceError("reviewed minimum must be positive")
+    if len(items) < minimum_items:
+        raise SourceError(
+            f"reviewed bank must contain at least {minimum_items} items"
+        )
     ids: set[str] = set()
     expressions: set[str] = set()
     levels = {level: 0 for level in LEVEL_ORDER}
@@ -3192,6 +3196,106 @@ def audit_reviewed(path: Path) -> dict:
         levels[item["level"]] += 1
         approved += item["reviewStatus"] == "approved"
     return {"items": len(items), "levels": levels, "approved": approved}
+
+
+REVIEW_INDEX_KEYS = {"schemaVersion", "shards"}
+REVIEW_SHARD_KEYS = {
+    "path",
+    "items",
+    "sha256",
+    "firstID",
+    "lastID",
+    "cumulativeItems",
+    "status",
+    "final",
+}
+
+
+def load_review_index(index_path: Path, expected_count: int) -> list[dict]:
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise SourceError(f"cannot read review index {index_path}: {error}") from error
+    if (
+        not isinstance(index, dict)
+        or set(index) != REVIEW_INDEX_KEYS
+        or index.get("schemaVersion") != 1
+        or not isinstance(index.get("shards"), list)
+    ):
+        raise SourceError("review index has unknown or missing keys")
+    if expected_count < 0:
+        raise SourceError("expected review count cannot be negative")
+
+    all_items = []
+    ids = set()
+    expressions = set()
+    cumulative = 0
+    checkpoint_number = 0
+    baseline_seen = False
+    for position, shard in enumerate(index["shards"]):
+        if not isinstance(shard, dict) or set(shard) != REVIEW_SHARD_KEYS:
+            raise SourceError("review shard index has unknown or missing keys")
+        name = shard.get("path")
+        if (
+            not isinstance(name, str)
+            or Path(name).name != name
+            or Path(name).is_absolute()
+        ):
+            raise SourceError("review shard path must be a safe relative filename")
+        checkpoint_match = re.fullmatch(r"checkpoint-(\d{4})\.jsonl", name)
+        baseline_match = re.fullmatch(r"baseline-(\d+)\.jsonl", name)
+        if checkpoint_match:
+            checkpoint_number += 1
+            if int(checkpoint_match.group(1)) != checkpoint_number:
+                raise SourceError("review shard order does not match checkpoint numbers")
+        elif baseline_match and position == 0 and not baseline_seen:
+            baseline_seen = True
+            if int(baseline_match.group(1)) != shard.get("items"):
+                raise SourceError("baseline shard count does not match its path")
+        else:
+            raise SourceError("review shard path or order is invalid")
+        if shard.get("status") != "approved" or not isinstance(shard.get("final"), bool):
+            raise SourceError("review shard is not approved")
+        if shard["final"] and position != len(index["shards"]) - 1:
+            raise SourceError("final review shard must be last in order")
+        item_count = shard.get("items")
+        if (
+            not isinstance(item_count, int)
+            or item_count < 1
+            or (
+                checkpoint_match
+                and not shard["final"]
+                and item_count != 200
+            )
+            or (shard["final"] and item_count > 200)
+        ):
+            raise SourceError("non-final review checkpoints must contain exactly 200 items")
+        shard_path = index_path.parent / name
+        if not shard_path.is_file():
+            raise SourceError(f"missing review shard: {name}")
+        if sha256(shard_path) != shard.get("sha256"):
+            raise SourceError(f"review shard hash mismatch: {name}")
+        items = read_jsonl(shard_path)
+        if len(items) != item_count:
+            raise SourceError(f"review shard item count mismatch: {name}")
+        if items[0].get("id") != shard.get("firstID") or items[-1].get("id") != shard.get("lastID"):
+            raise SourceError(f"review shard first/last order mismatch: {name}")
+        cumulative += len(items)
+        if shard.get("cumulativeItems") != cumulative:
+            raise SourceError(f"review shard cumulative count mismatch: {name}")
+        for item in items:
+            validate_reviewed_item(item)
+            expression = normalized(item["upgradedExpression"])
+            if item["id"] in ids or expression in expressions:
+                raise SourceError("duplicate review ID or expression across shards")
+            ids.add(item["id"])
+            expressions.add(expression)
+        all_items.extend(items)
+    if cumulative != expected_count:
+        raise SourceError(
+            f"review index contains {cumulative} items, expected {expected_count}"
+        )
+    return all_items
 
 
 def promote(
@@ -3296,6 +3400,9 @@ def main(argv: list[str] | None = None) -> int:
     report_parser.add_argument("--input-dir", type=Path)
     audit_parser = commands.add_parser("audit-reviewed")
     audit_parser.add_argument("--input", type=Path, required=True)
+    audit_index_parser = commands.add_parser("audit-review-index")
+    audit_index_parser.add_argument("--index", type=Path, required=True)
+    audit_index_parser.add_argument("--expected-count", type=int, required=True)
     snapshot_parser = commands.add_parser("snapshot-wiktextract")
     snapshot_parser.add_argument("--source-url", required=True)
     snapshot_parser.add_argument("--seed", type=Path, required=True)
@@ -3335,6 +3442,14 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(
                 audit_reviewed(args.input),
                 ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+    elif args.command == "audit-review-index":
+        items = load_review_index(args.index, args.expected_count)
+        print(
+            json.dumps(
+                {"items": len(items), "approved": len(items)},
                 sort_keys=True,
             )
         )

@@ -10,6 +10,68 @@ from tools import review_vocabulary
 
 
 class ReviewVocabularyTests(unittest.TestCase):
+    def _reviewed_items(self, count: int) -> list[dict]:
+        items = []
+        for index in range(count):
+            target = f"checkpoint-target-{index:04d}"
+            items.append(
+                {
+                    "id": f"checkpoint-{index:04d}",
+                    "level": "basic",
+                    "sortOrder": index + 1,
+                    "contentLanguageCode": "en",
+                    "supportLanguageCodes": ["zh-Hant"],
+                    "plainExpression": f"plain-{index:04d}",
+                    "upgradedExpression": target,
+                    "primarySenseID": f"sense-{index:04d}",
+                    "pronunciations": [
+                        {
+                            "id": f"pronunciation-us-{index:04d}",
+                            "ipa": "tɛst",
+                            "speechLocale": "en-US",
+                            "region": "US",
+                        }
+                    ],
+                    "senses": [
+                        {
+                            "id": f"sense-{index:04d}",
+                            "partOfSpeech": "noun",
+                            "meaning": {
+                                "en": f"Meaning {index}.",
+                                "zh-Hant": f"意思 {index}。",
+                            },
+                            "example": {
+                                "text": f"This {target} works.",
+                                "translation": {"zh-Hant": f"這個詞 {index} 可以使用。"},
+                            },
+                            "pronunciationIDs": [f"pronunciation-us-{index:04d}"],
+                        }
+                    ],
+                    "quiz": {
+                        "prompt": {
+                            "en": "Which expression is correct?",
+                            "zh-Hant": "哪個詞正確？",
+                        },
+                        "options": [
+                            target,
+                            f"wrong-a-{index:04d}",
+                            f"wrong-b-{index:04d}",
+                            f"wrong-c-{index:04d}",
+                        ],
+                        "correctOptionIndex": 0,
+                    },
+                    "sourceRefs": [
+                        {"sourceID": "source", "sourceEntryRef": target}
+                    ],
+                    "validationSourceIDs": ["source"],
+                    "cefr": "A2",
+                    "reviewStatus": "approved",
+                    "englishReviewer": "reviewer",
+                    "zhHantReviewer": "reviewer",
+                }
+            )
+        return items
+
     def _write_enrichment_fixture(self, work: Path) -> tuple[dict, dict]:
         item = {
             "id": "bank-basic-0001::sense-1",
@@ -582,6 +644,103 @@ class ReviewVocabularyTests(unittest.TestCase):
                 ["batch-2"],
             )
 
+    def test_run_local_services_stops_after_twenty_pending_batches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batches = [
+                {"batchID": f"{index:04d}", "items": []}
+                for index in range(25)
+            ]
+            (work / "enrichment-input.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in batches),
+                encoding="utf-8",
+            )
+
+            def helper(_executable, _mode, payload):
+                batch = json.loads(payload)
+                return json.dumps({"batchID": batch["batchID"], "items": []}) + "\n"
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ), mock.patch.object(
+                review_vocabulary,
+                "finish_enrichment",
+                return_value={"items": 200, "translations": 400},
+            ) as finish, mock.patch.object(
+                review_vocabulary, "run_local_translation", return_value=400
+            ) as translate:
+                result = review_vocabulary.run_local_services(
+                    work,
+                    root / "helper.swift",
+                    workers=2,
+                    batch_limit=20,
+                )
+
+            self.assertEqual(result["completedBatches"], 20)
+            self.assertEqual(result["remainingBatches"], 5)
+            self.assertEqual(result["items"], 200)
+            finish.assert_called_once_with(work, allow_partial=True)
+            translate.assert_called_once_with(work, root / "helper.swift", 2)
+
+    def test_write_review_checkpoint_writes_hashed_200_and_final_64_shards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            review_dir = root / "reviews"
+            work.mkdir()
+            items = self._reviewed_items(264)
+            reviewed_path = work / "reviewed.jsonl"
+
+            def build_first(_work, output, _report, **_kwargs):
+                output.write_text(
+                    "".join(json.dumps(item) + "\n" for item in items[:200]),
+                    encoding="utf-8",
+                )
+                return {"items": 200}
+
+            with mock.patch.object(
+                review_vocabulary, "build_reviewed", side_effect=build_first
+            ):
+                first = review_vocabulary.write_review_checkpoint(
+                    work, review_dir, checkpoint=1
+                )
+
+            self.assertEqual(first["items"], 200)
+            self.assertEqual(first["cumulativeItems"], 200)
+            self.assertEqual(
+                first["sha256"],
+                review_vocabulary.sources.sha256(review_dir / first["path"]),
+            )
+
+            def build_all(_work, output, _report, **_kwargs):
+                output.write_text(
+                    "".join(json.dumps(item) + "\n" for item in items),
+                    encoding="utf-8",
+                )
+                return {"items": 264}
+
+            with mock.patch.object(
+                review_vocabulary, "build_reviewed", side_effect=build_all
+            ):
+                final = review_vocabulary.write_review_checkpoint(
+                    work, review_dir, checkpoint=2, final=True
+                )
+
+            self.assertEqual(final["items"], 64)
+            self.assertEqual(final["cumulativeItems"], 264)
+            self.assertEqual(
+                len(
+                    review_vocabulary.sources.load_review_index(
+                        review_dir / "index.json", 264
+                    )
+                ),
+                264,
+            )
+
     def test_run_local_services_chunks_enrichment_helper_input(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -995,6 +1154,56 @@ class ReviewVocabularyTests(unittest.TestCase):
                 },
             )
 
+    def test_run_local_translation_reuses_unchanged_rows_when_queue_grows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            swift_source = root / "helper.swift"
+            swift_source.write_text("// helper v1\n", encoding="utf-8")
+            input_path = work / "translation-input.jsonl"
+            input_path.write_text(
+                json.dumps({"id": "segment-001", "text": "first"}) + "\n",
+                encoding="utf-8",
+            )
+
+            def helper(_executable, _mode, payload):
+                requests = [json.loads(line) for line in payload.splitlines()]
+                return "".join(
+                    json.dumps({"id": item["id"], "text": f"zh:{item['text']}"})
+                    + "\n"
+                    for item in requests
+                )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ) as first_helper:
+                review_vocabulary.run_local_translation(work, swift_source, 2)
+            self.assertEqual(first_helper.call_count, 1)
+
+            input_path.write_text(
+                "".join(
+                    json.dumps(item) + "\n"
+                    for item in (
+                        {"id": "segment-001", "text": "first"},
+                        {"id": "segment-002", "text": "second"},
+                    )
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ) as second_helper:
+                review_vocabulary.run_local_translation(work, swift_source, 2)
+
+            payload = second_helper.call_args.args[2]
+            self.assertIn("segment-002", payload)
+            self.assertNotIn("segment-001", payload)
+
     def test_run_local_translation_recomputes_when_swift_helper_changes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1321,6 +1530,68 @@ class ReviewVocabularyTests(unittest.TestCase):
                 ["bank-basic-0001::sense-1", "bank-basic-0001::sense-2"],
             )
 
+    def test_prepare_review_batches_ten_lessons_even_with_multiple_senses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            queue = root / "queue.jsonl"
+            cmu = root / "cmu.jsonl"
+            work = root / "work"
+            packets = []
+            for index in range(11):
+                target = f"target-{index}"
+                source_ref = {
+                    "sourceID": "oewn-test",
+                    "sourceEntryRef": target,
+                }
+                packets.append(
+                    {
+                        "id": f"item-{index}",
+                        "level": "basic",
+                        "sortOrder": index + 1,
+                        "target": target,
+                        "plain": f"plain {index}",
+                        "definition": f"meaning {index}",
+                        "example": f"The {target} works.",
+                        "partOfSpeech": "noun",
+                        "cefr": "A2",
+                        "sourceRefs": [source_ref],
+                        "validationSourceIDs": ["oewn-test"],
+                        "candidatePlainExpressions": [f"plain {index}"],
+                        "candidatePronunciations": [
+                            {
+                                "notation": "ipa",
+                                "value": "tɛst",
+                                "speechLocale": "en-US",
+                                "region": "US",
+                                "sourceRef": source_ref,
+                            }
+                        ],
+                        "candidateSenses": [
+                            {
+                                "id": f"sense-{sense}",
+                                "partOfSpeech": "noun" if sense == 0 else "verb",
+                                "glosses": [f"meaning {index} sense {sense}"],
+                                "examples": [f"The {target} works."],
+                                "tags": [],
+                                "sourceRef": source_ref,
+                            }
+                            for sense in range(2)
+                        ],
+                    }
+                )
+            queue.write_text(
+                "".join(json.dumps(item) + "\n" for item in packets),
+                encoding="utf-8",
+            )
+            cmu.write_text("", encoding="utf-8")
+
+            review_vocabulary.prepare_review(queue, cmu, work, batch_size=10)
+
+            batches = review_vocabulary.sources.read_jsonl(
+                work / "enrichment-input.jsonl"
+            )
+            self.assertEqual([len(batch["items"]) for batch in batches], [20, 2])
+
     def test_build_reviewed_preserves_packet_cefr(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1455,6 +1726,54 @@ class ReviewVocabularyTests(unittest.TestCase):
             self.assertEqual(
                 sorted(enriched["enrichment"]), ["sense-1", "sense-2"]
             )
+
+    def test_finish_enrichment_accepts_only_complete_partial_lessons(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            drafts = [
+                {
+                    "packet": {"id": f"item-{index}", "target": f"target-{index}"},
+                    "senses": [
+                        {
+                            "id": "sense-1",
+                            "meaning": f"meaning {index}",
+                            "partOfSpeech": "noun",
+                            "exampleCandidate": f"The target-{index} works.",
+                        }
+                    ],
+                }
+                for index in range(2)
+            ]
+            (work / "draft.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in drafts),
+                encoding="utf-8",
+            )
+            (work / "enrichment-output.jsonl").write_text(
+                json.dumps(
+                    {
+                        "batchID": "0000",
+                        "items": [
+                            {
+                                "id": "item-0::sense-1",
+                                "plainExpression": "plain zero",
+                                "example": "The target-0 works.",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = review_vocabulary.finish_enrichment(
+                work, allow_partial=True
+            )
+
+            self.assertEqual(result, {"items": 1, "translations": 2})
+            enriched = review_vocabulary.sources.read_jsonl(
+                work / "enriched.jsonl"
+            )
+            self.assertEqual(enriched[0]["packet"]["id"], "item-0")
 
     def test_build_reviewed_reconciles_rejection_report(self):
         with tempfile.TemporaryDirectory() as directory:

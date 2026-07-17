@@ -665,8 +665,144 @@ class VocabularySourcesTests(unittest.TestCase):
             "zhHantReviewer": "codex-content-review-2026-07-11",
         }
 
+    def indexed_review_items(self, count: int, *, start: int = 0) -> list[dict]:
+        items = []
+        for index in range(start, start + count):
+            item = json.loads(json.dumps(self.rich_review_record()))
+            target = f"reviewed-{index:06d}"
+            item["id"] = f"bank-{index:06d}"
+            item["sortOrder"] = index + 1
+            item["upgradedExpression"] = target
+            item["quiz"]["options"] = [
+                target,
+                f"option-a-{index:06d}",
+                f"option-b-{index:06d}",
+                f"option-c-{index:06d}",
+            ]
+            items.append(item)
+        return items
+
+    def write_review_index_shard(
+        self,
+        review_dir: Path,
+        number: int,
+        items: list[dict],
+        cumulative: int,
+        *,
+        final: bool = False,
+    ) -> dict:
+        path = review_dir / f"checkpoint-{number:04d}.jsonl"
+        path.write_text(
+            "".join(json.dumps(item, sort_keys=True) + "\n" for item in items),
+            encoding="utf-8",
+        )
+        return {
+            "path": path.name,
+            "items": len(items),
+            "sha256": vocabulary_sources.sha256(path),
+            "firstID": items[0]["id"],
+            "lastID": items[-1]["id"],
+            "cumulativeItems": cumulative,
+            "status": "approved",
+            "final": final,
+        }
+
     def test_rich_review_accepts_complete_record(self):
         vocabulary_sources.validate_reviewed_item(self.rich_review_record())
+
+    def test_load_review_index_accepts_complete_and_final_shards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            review_dir = Path(directory)
+            first = self.indexed_review_items(200)
+            final = self.indexed_review_items(64, start=200)
+            shards = [
+                self.write_review_index_shard(review_dir, 1, first, 200),
+                self.write_review_index_shard(
+                    review_dir, 2, final, 264, final=True
+                ),
+            ]
+            index = review_dir / "index.json"
+            index.write_text(
+                json.dumps({"schemaVersion": 1, "shards": shards}),
+                encoding="utf-8",
+            )
+
+            loaded = vocabulary_sources.load_review_index(index, 264)
+
+            self.assertEqual(len(loaded), 264)
+            self.assertEqual(loaded[0]["id"], "bank-000000")
+            self.assertEqual(loaded[-1]["id"], "bank-000263")
+
+    def test_load_review_index_rejects_a_tampered_hash(self):
+        with tempfile.TemporaryDirectory() as directory:
+            review_dir = Path(directory)
+            items = self.indexed_review_items(1)
+            shard = self.write_review_index_shard(
+                review_dir, 1, items, 1, final=True
+            )
+            index = review_dir / "index.json"
+            index.write_text(
+                json.dumps({"schemaVersion": 1, "shards": [shard]}),
+                encoding="utf-8",
+            )
+            (review_dir / shard["path"]).write_text("tampered\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(vocabulary_sources.SourceError, "hash"):
+                vocabulary_sources.load_review_index(index, 1)
+
+    def test_load_review_index_rejects_reordered_shards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            review_dir = Path(directory)
+            first = self.indexed_review_items(200)
+            final = self.indexed_review_items(1, start=200)
+            shards = [
+                self.write_review_index_shard(review_dir, 1, first, 200),
+                self.write_review_index_shard(
+                    review_dir, 2, final, 201, final=True
+                ),
+            ]
+            index = review_dir / "index.json"
+            index.write_text(
+                json.dumps({"schemaVersion": 1, "shards": list(reversed(shards))}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(vocabulary_sources.SourceError, "order"):
+                vocabulary_sources.load_review_index(index, 201)
+
+    def test_load_review_index_rejects_duplicate_id_across_shards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            review_dir = Path(directory)
+            first = self.indexed_review_items(200)
+            duplicate = [json.loads(json.dumps(first[0]))]
+            shards = [
+                self.write_review_index_shard(review_dir, 1, first, 200),
+                self.write_review_index_shard(
+                    review_dir, 2, duplicate, 201, final=True
+                ),
+            ]
+            index = review_dir / "index.json"
+            index.write_text(
+                json.dumps({"schemaVersion": 1, "shards": shards}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(vocabulary_sources.SourceError, "duplicate"):
+                vocabulary_sources.load_review_index(index, 201)
+
+    def test_load_review_index_rejects_incomplete_non_final_shard(self):
+        with tempfile.TemporaryDirectory() as directory:
+            review_dir = Path(directory)
+            items = self.indexed_review_items(64)
+            shard = self.write_review_index_shard(review_dir, 1, items, 64)
+            index = review_dir / "index.json"
+            index.write_text(
+                json.dumps({"schemaVersion": 1, "shards": [shard]}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(vocabulary_sources.SourceError, "200"):
+                vocabulary_sources.load_review_index(index, 64)
 
     def test_rich_review_rejects_dangling_pronunciation_reference(self):
         item = self.rich_review_record()
@@ -995,6 +1131,21 @@ class VocabularySourcesTests(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("at least 5000", result.stderr)
+
+    def test_audit_reviewed_accepts_a_checkpoint_minimum(self):
+        with tempfile.TemporaryDirectory() as directory:
+            reviewed = Path(directory) / "checkpoint.jsonl"
+            reviewed.write_text(
+                json.dumps(self.rich_review_record()) + "\n",
+                encoding="utf-8",
+            )
+
+            result = vocabulary_sources.audit_reviewed(
+                reviewed, minimum_items=1
+            )
+
+            self.assertEqual(result["items"], 1)
+            self.assertEqual(result["approved"], 1)
 
     def make_enrichment_sources(self, root: Path) -> tuple[Path, Path]:
         input_dir = root / "Content/Sources/Imported"

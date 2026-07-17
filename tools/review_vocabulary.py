@@ -54,7 +54,7 @@ def prepare_review(
     work_dir.mkdir(parents=True, exist_ok=True)
     cmudict = cmudict_index(cmudict_path)
     drafts = []
-    enrichment_items = []
+    enrichment_groups = []
     rejections = []
     sense_count = 0
     for packet in sources.read_jsonl(queue_path):
@@ -108,8 +108,9 @@ def prepare_review(
                 "senses": senses,
             }
         )
+        lesson_items = []
         for sense in senses:
-            enrichment_items.append(
+            lesson_items.append(
                 {
                     "id": f"{packet['id']}::{sense['id']}",
                     "target": packet["target"],
@@ -119,10 +120,18 @@ def prepare_review(
                     "exampleCandidate": "",
                 }
             )
+        enrichment_groups.append(lesson_items)
 
     batches = [
-        {"batchID": f"{start // batch_size:04d}", "items": enrichment_items[start : start + batch_size]}
-        for start in range(0, len(enrichment_items), batch_size)
+        {
+            "batchID": f"{start // batch_size:04d}",
+            "items": [
+                item
+                for group in enrichment_groups[start : start + batch_size]
+                for item in group
+            ],
+        }
+        for start in range(0, len(enrichment_groups), batch_size)
     ]
     sources.atomic_write(work_dir / "draft.jsonl", jsonl(drafts))
     sources.atomic_write(work_dir / "rejections.jsonl", jsonl(rejections))
@@ -244,28 +253,48 @@ def draft_source_enrichment(work_dir: Path) -> int:
     return len(outputs)
 
 
-def finish_enrichment(work_dir: Path) -> dict[str, int]:
+def finish_enrichment(
+    work_dir: Path, *, allow_partial: bool = False
+) -> dict[str, int]:
     drafts = sources.read_jsonl(work_dir / "draft.jsonl")
-    expected = {
-        f"{draft['packet']['id']}::{sense['id']}": (
-            draft,
-            sense,
-        )
-        for draft in drafts
-        for sense in draft["senses"]
-    }
+    expected = {}
+    expected_by_draft = {}
+    for draft in drafts:
+        ids = {
+            f"{draft['packet']['id']}::{sense['id']}"
+            for sense in draft["senses"]
+        }
+        expected_by_draft[draft["packet"]["id"]] = ids
+        for sense in draft["senses"]:
+            expected[f"{draft['packet']['id']}::{sense['id']}"] = (draft, sense)
     actual = {}
     for batch in sources.read_jsonl(work_dir / "enrichment-output.jsonl"):
         for item in batch.get("items", []):
             if item.get("id") in actual:
                 raise sources.SourceError(f"duplicate enrichment ID: {item.get('id')}")
             actual[item.get("id")] = item
-    if set(actual) != set(expected):
+    if not allow_partial and set(actual) != set(expected):
         missing = sorted(set(expected) - set(actual))
         extra = sorted(set(actual) - set(expected))
         raise sources.SourceError(
             f"enrichment ID mismatch: missing={len(missing)} extra={len(extra)}"
         )
+    if allow_partial:
+        extra = sorted(set(actual) - set(expected))
+        incomplete = [
+            draft_id
+            for draft_id, ids in expected_by_draft.items()
+            if ids & set(actual) and not ids <= set(actual)
+        ]
+        if extra or incomplete:
+            raise sources.SourceError(
+                f"partial enrichment mismatch: incomplete={len(incomplete)} extra={len(extra)}"
+            )
+        drafts = [
+            draft
+            for draft in drafts
+            if expected_by_draft[draft["packet"]["id"]] <= set(actual)
+        ]
 
     errors = []
     for item_id, item in actual.items():
@@ -356,7 +385,13 @@ def applicable_pronunciation_ids(draft: dict, sense: dict) -> list[str]:
     return selected or [value["id"] for value in draft["pronunciations"]]
 
 
-def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict[str, object]:
+def build_reviewed(
+    work_dir: Path,
+    output: Path,
+    rejection_report: Path,
+    *,
+    minimum_items: int = 5_000,
+) -> dict[str, object]:
     enriched = sources.read_jsonl(work_dir / "enriched.jsonl")
     translation_items = sources.read_jsonl(work_dir / "translation-output.jsonl")
     traditional = sources.traditionalize([item["text"] for item in translation_items])
@@ -376,15 +411,28 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
     for values in levels.values():
         values.sort(key=lambda draft: (draft["packet"]["sortOrder"], draft["packet"]["id"]))
 
-    targets = {
-        level: [draft["packet"]["target"] for draft in values]
-        for level, values in levels.items()
-    }
+    targets = {}
+    for level, values in levels.items():
+        for draft in values:
+            packet = draft["packet"]
+            selection_rank = packet.get("selectionRank")
+            block = (
+                (selection_rank - 1) // 200
+                if isinstance(selection_rank, int) and selection_rank > 0
+                else 0
+            )
+            targets.setdefault(block, []).append(packet["target"])
     reviewed = []
     for level, drafts in levels.items():
-        options_for_level = targets[level]
-        for sort_order, draft in enumerate(drafts, 1):
+        for draft in drafts:
             packet = draft["packet"]
+            selection_rank = packet.get("selectionRank")
+            block = (
+                (selection_rank - 1) // 200
+                if isinstance(selection_rank, int) and selection_rank > 0
+                else 0
+            )
+            options_for_level = targets[block]
             senses = []
             for sense in draft["senses"]:
                 content_id = f"{packet['id']}::{sense['id']}"
@@ -406,7 +454,7 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
                         "pronunciationIDs": applicable_pronunciation_ids(draft, sense),
                     }
                 )
-            target_index = sort_order - 1
+            target_index = options_for_level.index(packet["target"])
             distractors = [
                 options_for_level[(target_index + offset) % len(options_for_level)]
                 for offset in range(1, 4)
@@ -433,7 +481,7 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
                 {
                     "id": packet["id"],
                     "level": level,
-                    "sortOrder": sort_order,
+                    "sortOrder": packet["sortOrder"],
                     "contentLanguageCode": "en",
                     "supportLanguageCodes": ["zh-Hant"],
                     "plainExpression": draft["enrichment"][primary["id"]]["plainExpression"].strip(),
@@ -493,7 +541,96 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
         "",
     ]
     sources.atomic_write(rejection_report, "\n".join(report))
-    return sources.audit_reviewed(output)
+    return sources.audit_reviewed(output, minimum_items=minimum_items)
+
+
+def write_review_checkpoint(
+    work_dir: Path,
+    review_dir: Path,
+    checkpoint: int,
+    final: bool = False,
+) -> dict:
+    if checkpoint < 1:
+        raise sources.SourceError("checkpoint number must be positive")
+    review_dir.mkdir(parents=True, exist_ok=True)
+    index_path = review_dir / "index.json"
+    if index_path.is_file():
+        try:
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise sources.SourceError(f"cannot read review index: {error}") from error
+        shards = index.get("shards", []) if isinstance(index, dict) else []
+        if not isinstance(shards, list):
+            raise sources.SourceError("review index shards must be a list")
+        previous_count = shards[-1].get("cumulativeItems", 0) if shards else 0
+        previous = sources.load_review_index(index_path, previous_count)
+    else:
+        index = {"schemaVersion": 1, "shards": []}
+        shards = index["shards"]
+        previous = []
+        previous_count = 0
+    expected_checkpoint = 1 + sum(
+        isinstance(item, dict)
+        and isinstance(item.get("path"), str)
+        and item["path"].startswith("checkpoint-")
+        for item in shards
+    )
+    if checkpoint != expected_checkpoint:
+        raise sources.SourceError(
+            f"checkpoint {checkpoint:04d} is out of order; expected {expected_checkpoint:04d}"
+        )
+    if shards and shards[-1].get("final"):
+        raise sources.SourceError("cannot append after the final review checkpoint")
+
+    reviewed_path = work_dir / "reviewed.jsonl"
+    build_reviewed(
+        work_dir,
+        reviewed_path,
+        work_dir / "review-rejections.md",
+        minimum_items=1,
+    )
+    reviewed = sources.read_jsonl(reviewed_path)
+    reviewed_by_id = {item.get("id"): item for item in reviewed}
+    if len(reviewed_by_id) != len(reviewed):
+        raise sources.SourceError("reviewed checkpoint input contains duplicate IDs")
+    for item in previous:
+        current = reviewed_by_id.get(item["id"])
+        if current is not None and current != item:
+            raise sources.SourceError(
+                f"reviewed checkpoint changed an indexed item: {item['id']}"
+            )
+    previous_ids = {item["id"] for item in previous}
+    new_items = [item for item in reviewed if item.get("id") not in previous_ids]
+    expected_items = range(1, 201) if final else {200}
+    if len(new_items) not in expected_items:
+        requirement = "1 to 200" if final else "exactly 200"
+        raise sources.SourceError(
+            f"review checkpoint must contain {requirement} new items; got {len(new_items)}"
+        )
+    for item in new_items:
+        sources.validate_reviewed_item(item)
+
+    shard_path = review_dir / f"checkpoint-{checkpoint:04d}.jsonl"
+    if shard_path.exists():
+        raise sources.SourceError(f"review checkpoint already exists: {shard_path.name}")
+    sources.atomic_write(shard_path, jsonl(new_items))
+    metadata = {
+        "path": shard_path.name,
+        "items": len(new_items),
+        "sha256": sources.sha256(shard_path),
+        "firstID": new_items[0]["id"],
+        "lastID": new_items[-1]["id"],
+        "cumulativeItems": previous_count + len(new_items),
+        "status": "approved",
+        "final": final,
+    }
+    index["shards"].append(metadata)
+    sources.atomic_write(
+        index_path,
+        json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+    )
+    sources.load_review_index(index_path, metadata["cumulativeItems"])
+    return metadata
 
 
 def compile_apple_helper(swift_source: Path, output: Path) -> None:
@@ -770,21 +907,47 @@ def run_local_enrichment(
     }
 
 
-def run_local_services(work_dir: Path, swift_source: Path, workers: int) -> dict[str, int]:
-    enrichment = run_local_enrichment(work_dir, swift_source, workers)
-    finish = finish_enrichment(work_dir)
+def run_local_services(
+    work_dir: Path,
+    swift_source: Path,
+    workers: int,
+    *,
+    batch_limit: int | None = None,
+) -> dict[str, int]:
+    enrichment = run_local_enrichment(
+        work_dir,
+        swift_source,
+        workers,
+        max_batches=batch_limit,
+    )
+    remaining = enrichment["batches"] - enrichment["completed"]
+    finish = (
+        finish_enrichment(work_dir)
+        if batch_limit is None
+        else finish_enrichment(work_dir, allow_partial=True)
+    )
     translated = run_local_translation(work_dir, swift_source, workers)
-    return {
+    result = {
         "batches": enrichment["batches"],
         "items": finish["items"],
         "translations": translated,
     }
+    if batch_limit is not None:
+        result.update(
+            {
+                "completedBatches": enrichment["completed"],
+                "remainingBatches": remaining,
+                "processedBatches": enrichment["processed"],
+            }
+        )
+    return result
 
 
 def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> int:
     output = work_dir / "translation-output.jsonl"
     input_path = work_dir / "translation-input.jsonl"
     fingerprint_path = work_dir / "translation-output.fingerprint.json"
+    input_snapshot_path = work_dir / "translation-input.snapshot.jsonl"
     if not swift_source.is_file():
         raise sources.SourceError(f"missing Swift helper source: {swift_source}")
     fingerprint = {
@@ -799,14 +962,31 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
             pass
     requests = sources.read_jsonl(input_path)
     request_ids = {item["id"] for item in requests}
+    reusable_ids = set()
+    if (
+        isinstance(saved_fingerprint, dict)
+        and saved_fingerprint.get("swiftSourceSHA256")
+        == fingerprint["swiftSourceSHA256"]
+        and input_snapshot_path.is_file()
+    ):
+        previous_requests = {
+            item["id"]: item for item in sources.read_jsonl(input_snapshot_path)
+        }
+        reusable_ids = {
+            item["id"]
+            for item in requests
+            if previous_requests.get(item["id"]) == item
+        }
     completed_by_id = {
         item["id"]: item
         for item in (
             sources.read_jsonl(output)
-            if output.is_file() and saved_fingerprint == fingerprint
+            if output.is_file()
+            and (saved_fingerprint == fingerprint or reusable_ids)
             else []
         )
         if item.get("id") in request_ids
+        and (saved_fingerprint == fingerprint or item.get("id") in reusable_ids)
     }
     completed = list(completed_by_id.values())
 
@@ -817,6 +997,7 @@ def run_local_translation(work_dir: Path, swift_source: Path, workers: int) -> i
             fingerprint_path,
             json.dumps(fingerprint, sort_keys=True, separators=(",", ":")) + "\n",
         )
+        sources.atomic_write(input_snapshot_path, jsonl(requests))
 
     completed_ids = {item["id"] for item in completed}
     remaining = [item for item in requests if item["id"] not in completed_ids]
@@ -970,6 +1151,11 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--work-dir", type=Path, required=True)
     build.add_argument("--output", type=Path, required=True)
     build.add_argument("--rejection-report", type=Path, required=True)
+    checkpoint = commands.add_parser("write-checkpoint")
+    checkpoint.add_argument("--work-dir", type=Path, required=True)
+    checkpoint.add_argument("--review-dir", type=Path, required=True)
+    checkpoint.add_argument("--checkpoint", type=int, required=True)
+    checkpoint.add_argument("--final", action="store_true")
     local = commands.add_parser("run-local")
     local.add_argument("--work-dir", type=Path, required=True)
     local.add_argument(
@@ -978,6 +1164,7 @@ def main(argv: list[str] | None = None) -> int:
         default=Path(__file__).with_name("apple_language_services.swift"),
     )
     local.add_argument("--workers", type=int, default=2)
+    local.add_argument("--batch-limit", type=int)
     enrich_local = commands.add_parser("enrich-local")
     enrich_local.add_argument("--work-dir", type=Path, required=True)
     enrich_local.add_argument(
@@ -1012,10 +1199,24 @@ def main(argv: list[str] | None = None) -> int:
         result = finish_enrichment(args.work_dir)
     elif args.command == "build-reviewed":
         result = build_reviewed(args.work_dir, args.output, args.rejection_report)
+    elif args.command == "write-checkpoint":
+        result = write_review_checkpoint(
+            args.work_dir,
+            args.review_dir,
+            args.checkpoint,
+            final=args.final,
+        )
     elif args.command == "run-local":
         if args.workers < 1:
             raise sources.SourceError("workers must be positive")
-        result = run_local_services(args.work_dir, args.swift_source, args.workers)
+        if args.batch_limit is not None and args.batch_limit < 1:
+            raise sources.SourceError("batch limit must be positive")
+        result = run_local_services(
+            args.work_dir,
+            args.swift_source,
+            args.workers,
+            batch_limit=args.batch_limit,
+        )
     elif args.command == "enrich-local":
         if args.workers < 1:
             raise sources.SourceError("workers must be positive")
