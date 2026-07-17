@@ -1860,7 +1860,7 @@ class VocabularySourcesTests(unittest.TestCase):
             [
                 {
                     "id": "impermanent-general-1",
-                    "ipa": "ɪmˈpɝɹmənənt",
+                    "ipa": "ɪmˈpɝmənənt",
                     "speechLocale": "en-US",
                     "region": "General",
                 }
@@ -1868,7 +1868,37 @@ class VocabularySourcesTests(unittest.TestCase):
         )
         self.assertEqual(references, [source_ref])
 
-    def test_review_pronunciations_adds_cmudict_us_when_other_ipa_is_unmarked(self):
+    def test_review_pronunciations_preserves_phrase_word_boundaries(self):
+        pronunciations, _ = vocabulary_sources.review_pronunciations(
+            "work shift",
+            [
+                {
+                    "notation": "ipa",
+                    "value": "wɝk ʃɪft",
+                    "region": "General",
+                }
+            ],
+            {},
+        )
+
+        self.assertEqual(pronunciations[0]["ipa"], "wɝk ʃɪft")
+
+    def test_review_pronunciations_collapses_duplicate_rhotic_transcription(self):
+        pronunciations, _ = vocabulary_sources.review_pronunciations(
+            "spadework",
+            [
+                {
+                    "notation": "ipa",
+                    "value": "ˈspeɪdˌwɝɹk",
+                    "region": "General",
+                }
+            ],
+            {},
+        )
+
+        self.assertEqual(pronunciations[0]["ipa"], "ˈspeɪdˌwɝk")
+
+    def test_review_pronunciations_does_not_add_cmudict_when_verified_ipa_exists(self):
         pronunciations, references = vocabulary_sources.review_pronunciations(
             "leverage",
             [
@@ -1888,10 +1918,11 @@ class VocabularySourcesTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual([item["region"] for item in pronunciations], ["US", "General", "General"])
-        self.assertEqual(pronunciations[0]["id"], "leverage-us-1")
-        self.assertEqual(pronunciations[1]["id"], "leverage-general-2")
-        self.assertIn(
+        self.assertEqual(
+            [item["region"] for item in pronunciations], ["General", "General"]
+        )
+        self.assertEqual(pronunciations[0]["id"], "leverage-general-1")
+        self.assertNotIn(
             {"sourceID": "cmudict-7479086", "sourceEntryRef": "leverage"},
             references,
         )

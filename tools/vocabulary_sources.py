@@ -1556,8 +1556,11 @@ def expression_slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", normalized(value)).strip("-") or "expression"
 
 
-def review_ipa(value: str) -> str:
-    value = re.sub(r"[\s()]", "", bare_ipa(value))
+def review_ipa(value: str, *, preserve_spaces: bool = False) -> str:
+    value = re.sub(r"[()]", "", bare_ipa(value))
+    value = re.sub(r"\s+", " " if preserve_spaces else "", value).strip()
+    value = re.sub(r"([ɚɝ])ɹ", r"\1", value)
+    value = re.sub(r"ɹ{2,}", "ɹ", value)
     if value.startswith(("-", "–", "—")) or value.endswith(("-", "–", "—")):
         return ""
     return value
@@ -1581,23 +1584,25 @@ def review_pronunciations(
     priority = {"US": 0, "UK": 1, "General": 2}
     selected: list[tuple[str, str, str, dict]] = []
     seen: set[tuple[str, str]] = set()
+    words = re.findall(r"[a-z]+(?:'[a-z]+)?", normalized(expression))
+    preserve_spaces = len(words) > 1
     candidates = sorted(
         (
             item
             for item in candidates
             if item.get("notation") == "ipa"
             and reviewed_region(item) is not None
-            and review_ipa(item.get("value", ""))
+            and review_ipa(item.get("value", ""), preserve_spaces=preserve_spaces)
         ),
         key=lambda item: (
             priority[reviewed_region(item)],
-            review_ipa(item["value"]),
+            review_ipa(item["value"], preserve_spaces=preserve_spaces),
             item.get("sourceRef", {}).get("sourceEntryRef", ""),
         ),
     )
 
     def select(candidate: dict) -> None:
-        ipa = review_ipa(candidate["value"])
+        ipa = review_ipa(candidate["value"], preserve_spaces=preserve_spaces)
         region = reviewed_region(candidate)
         if (region, ipa) in seen:
             return
@@ -1616,17 +1621,6 @@ def review_pronunciations(
         if len(selected) == 3:
             break
         select(candidate)
-
-    words = re.findall(r"[a-z]+(?:'[a-z]+)?", normalized(expression))
-    if len(words) == 1 and not any(region == "US" for _, _, region, _ in selected):
-        values = cmudict.get(words[0], [])
-        if values:
-            value = values[0]
-            ipa = arpabet_to_ipa(value["value"])
-            if ("US", ipa) not in seen:
-                selected.append((ipa, "en-US", "US", value.get("sourceRef", {})))
-                selected.sort(key=lambda item: (priority[item[2]], item[0]))
-                selected = selected[:3]
 
     if not selected:
         arpabet = next(
