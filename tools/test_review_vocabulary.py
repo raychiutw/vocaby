@@ -10,6 +10,93 @@ from tools import review_vocabulary
 
 
 class ReviewVocabularyTests(unittest.TestCase):
+    def test_applicable_pronunciation_ids_matches_wiktextract_pos_abbreviation(self):
+        draft = {
+            "packet": {
+                "candidatePronunciations": [
+                    {
+                        "notation": "ipa",
+                        "value": "kɑpiˈkæt",
+                        "sourceRef": {"sourceEntryRef": "copycat#verb#594"},
+                    },
+                    {
+                        "notation": "ipa",
+                        "value": "ˈkɑpiˌkæt",
+                        "sourceRef": {"sourceEntryRef": "copycat#adj#595"},
+                    },
+                ]
+            },
+            "pronunciations": [
+                {"id": "copycat-verb", "ipa": "kɑpiˈkæt"},
+                {"id": "copycat-adjective", "ipa": "ˈkɑpiˌkæt"},
+            ],
+        }
+
+        self.assertEqual(
+            review_vocabulary.applicable_pronunciation_ids(
+                draft, {"partOfSpeech": "adjective"}
+            ),
+            ["copycat-adjective"],
+        )
+
+    def test_applicable_pronunciation_ids_keeps_untagged_generic_source(self):
+        draft = {
+            "packet": {
+                "candidatePronunciations": [
+                    {
+                        "notation": "ipa",
+                        "value": "ˈfɔɹˌɡɹaʊnd",
+                        "sourceRef": {"sourceEntryRef": "foreground"},
+                    },
+                    {
+                        "notation": "ipa",
+                        "value": "fɔɹˈɡɹaʊnd",
+                        "sourceRef": {"sourceEntryRef": "foreground#verb#10500"},
+                    },
+                ]
+            },
+            "pronunciations": [
+                {"id": "foreground-generic", "ipa": "ˈfɔɹˌɡɹaʊnd"},
+                {"id": "foreground-verb", "ipa": "fɔɹˈɡɹaʊnd"},
+            ],
+        }
+
+        self.assertEqual(
+            review_vocabulary.applicable_pronunciation_ids(
+                draft, {"partOfSpeech": "noun"}
+            ),
+            ["foreground-generic"],
+        )
+
+    def test_applicable_pronunciation_ids_matches_slash_pos_suffix(self):
+        draft = {
+            "packet": {
+                "candidatePronunciations": [
+                    {
+                        "notation": "ipa",
+                        "value": "səbˈkɑntɹækt",
+                        "sourceRef": {"sourceEntryRef": "subcontract/n"},
+                    },
+                    {
+                        "notation": "ipa",
+                        "value": "ˌsəbkənˈtɹækt",
+                        "sourceRef": {"sourceEntryRef": "subcontract/v"},
+                    },
+                ]
+            },
+            "pronunciations": [
+                {"id": "subcontract-noun", "ipa": "səbˈkɑntɹækt"},
+                {"id": "subcontract-verb", "ipa": "ˌsəbkənˈtɹækt"},
+            ],
+        }
+
+        self.assertEqual(
+            review_vocabulary.applicable_pronunciation_ids(
+                draft, {"partOfSpeech": "noun"}
+            ),
+            ["subcontract-noun"],
+        )
+
     def _reviewed_items(self, count: int) -> list[dict]:
         items = []
         for index in range(count):

@@ -453,7 +453,36 @@ def sentence_key(value: str) -> str:
 def applicable_pronunciation_ids(draft: dict, sense: dict) -> list[str]:
     candidates = draft["packet"].get("candidatePronunciations", [])
     selected = []
-    pos_code = sources.part_of_speech_code(sense["partOfSpeech"])
+    part_of_speech = sources.normalized(sense["partOfSpeech"])
+    pos_codes = {
+        "noun": {"n", "noun"},
+        "verb": {"v", "verb"},
+        "adjective": {"a", "adj", "adjective", "s"},
+        "adverb": {"r", "adv", "adverb"},
+    }.get(
+        part_of_speech,
+        {sources.part_of_speech_code(part_of_speech), part_of_speech},
+    )
+    all_pos_codes = {
+        "n",
+        "noun",
+        "v",
+        "verb",
+        "a",
+        "adj",
+        "adjective",
+        "s",
+        "r",
+        "adv",
+        "adverb",
+    }
+
+    def has_pos(reference: str, codes: set[str]) -> bool:
+        return any(
+            f"#{code}#" in reference or reference.endswith(f"/{code}")
+            for code in codes
+        )
+
     for pronunciation in draft["pronunciations"]:
         matches = [
             candidate
@@ -462,9 +491,14 @@ def applicable_pronunciation_ids(draft: dict, sense: dict) -> list[str]:
             and sources.bare_ipa(candidate.get("value", "")) == pronunciation["ipa"]
         ]
         if not matches or any(
-            f"#{pos_code}#" in candidate.get("sourceRef", {}).get("sourceEntryRef", "")
-            or f"#{sense['partOfSpeech']}#"
-            in candidate.get("sourceRef", {}).get("sourceEntryRef", "")
+            not has_pos(
+                candidate.get("sourceRef", {}).get("sourceEntryRef", ""),
+                all_pos_codes,
+            )
+            or has_pos(
+                candidate.get("sourceRef", {}).get("sourceEntryRef", ""),
+                pos_codes,
+            )
             for candidate in matches
         ):
             selected.append(pronunciation["id"])
