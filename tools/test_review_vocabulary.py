@@ -1127,6 +1127,18 @@ class ReviewVocabularyTests(unittest.TestCase):
         ):
             review_vocabulary.validate_enrichment(item, "excellent")
 
+    def test_validate_enrichment_rejects_generic_examples(self):
+        with self.assertRaisesRegex(
+            review_vocabulary.sources.SourceError, "generic example"
+        ):
+            review_vocabulary.validate_enrichment(
+                {
+                    "plainExpression": "very good",
+                    "example": "This example uses excellent in context.",
+                },
+                "excellent",
+            )
+
     def test_fallback_plain_expression_is_concise_and_not_the_target(self):
         packet = {
             "target": "about",
@@ -1321,7 +1333,7 @@ class ReviewVocabularyTests(unittest.TestCase):
             draft = {
                 "packet": {
                     "id": "bank-basic-0001",
-                    "level": "basic",
+                    "level": "advanced",
                     "sortOrder": 1,
                     "target": "excellent",
                     "cefr": "A1",
@@ -1390,6 +1402,59 @@ class ReviewVocabularyTests(unittest.TestCase):
             reviewed = json.loads(output.read_text())
             self.assertEqual(reviewed["cefr"], "A1")
             self.assertEqual(reviewed["level"], "basic")
+
+    def test_finish_enrichment_reconciles_every_sense_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            draft = {
+                "packet": {"id": "bank-basic-0001", "target": "excellent"},
+                "senses": [
+                    {
+                        "id": "sense-1",
+                        "meaning": "of very high quality",
+                        "partOfSpeech": "adjective",
+                        "exampleCandidate": "She shared an excellent idea.",
+                    },
+                    {
+                        "id": "sense-2",
+                        "meaning": "a person or thing of outstanding quality",
+                        "partOfSpeech": "noun",
+                        "exampleCandidate": "The excellent result surprised us.",
+                    },
+                ],
+            }
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+            (work / "enrichment-output.jsonl").write_text(
+                json.dumps(
+                    {
+                        "batchID": "0000",
+                        "items": [
+                            {
+                                "id": "bank-basic-0001::sense-1",
+                                "plainExpression": "very good",
+                                "example": "She shared an excellent idea.",
+                            },
+                            {
+                                "id": "bank-basic-0001::sense-2",
+                                "plainExpression": "outstanding example",
+                                "example": "The excellent result surprised us.",
+                            },
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = review_vocabulary.finish_enrichment(work)
+
+            self.assertEqual(result, {"items": 1, "translations": 4})
+            enriched = json.loads((work / "enriched.jsonl").read_text())
+            self.assertEqual(
+                sorted(enriched["enrichment"]), ["sense-1", "sense-2"]
+            )
 
     def test_build_reviewed_reconciles_rejection_report(self):
         with tempfile.TemporaryDirectory() as directory:

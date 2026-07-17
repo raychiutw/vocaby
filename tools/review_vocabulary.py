@@ -108,7 +108,7 @@ def prepare_review(
                 "senses": senses,
             }
         )
-        for sense in senses[:1]:
+        for sense in senses:
             enrichment_items.append(
                 {
                     "id": f"{packet['id']}::{sense['id']}",
@@ -150,6 +150,12 @@ def validate_enrichment(item: dict, target: str) -> None:
         or re.search(r'[.!?]["’”)]?$', example.strip()) is None
     ):
         raise sources.SourceError(f"enrichment {item.get('id')} must use target in a full sentence")
+    if re.fullmatch(
+        r"(?:This example uses .+ in context|Here is an example of .+)\.",
+        example.strip(),
+        re.IGNORECASE,
+    ):
+        raise sources.SourceError(f"generic example for {target}")
 
 
 def source_example(target: str, sense: dict) -> str:
@@ -221,16 +227,16 @@ def draft_source_enrichment(work_dir: Path) -> int:
     outputs = []
     for draft in sources.read_jsonl(work_dir / "draft.jsonl"):
         packet = draft["packet"]
-        primary = draft["senses"][0]
         outputs.append(
             {
                 "batchID": f"source-{len(outputs):04d}",
                 "items": [
                     {
-                        "id": f"{packet['id']}::{primary['id']}",
+                        "id": f"{packet['id']}::{sense['id']}",
                         "plainExpression": fallback_plain(packet),
-                        "example": source_example(packet["target"], primary),
+                        "example": source_example(packet["target"], sense),
                     }
+                    for sense in draft["senses"]
                 ],
             }
         )
@@ -241,11 +247,12 @@ def draft_source_enrichment(work_dir: Path) -> int:
 def finish_enrichment(work_dir: Path) -> dict[str, int]:
     drafts = sources.read_jsonl(work_dir / "draft.jsonl")
     expected = {
-        f"{draft['packet']['id']}::{draft['senses'][0]['id']}": (
+        f"{draft['packet']['id']}::{sense['id']}": (
             draft,
-            draft["senses"][0],
+            sense,
         )
         for draft in drafts
+        for sense in draft["senses"]
     }
     actual = {}
     for batch in sources.read_jsonl(work_dir / "enrichment-output.jsonl"):
@@ -278,20 +285,10 @@ def finish_enrichment(work_dir: Path) -> dict[str, int]:
     translation_requests = []
     enriched = []
     for draft in drafts:
-        primary = draft["senses"][0]
-        primary_item = actual[f"{draft['packet']['id']}::{primary['id']}"]
         enrichment = {}
         for sense in draft["senses"]:
             item_id = f"{draft['packet']['id']}::{sense['id']}"
-            item = (
-                primary_item
-                if sense is primary
-                else {
-                    "id": item_id,
-                    "plainExpression": primary_item["plainExpression"],
-                    "example": source_example(draft["packet"]["target"], sense),
-                }
-            )
+            item = actual[item_id]
             enrichment[sense["id"]] = item
             translation_requests.extend(
                 [
@@ -369,7 +366,13 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
     }
     levels: dict[str, list[dict]] = {level: [] for level in sources.LEVEL_ORDER}
     for draft in enriched:
-        levels[draft["packet"]["level"]].append(draft)
+        packet = draft["packet"]
+        level = sources.CEFR_LEVEL.get(packet.get("cefr"))
+        if level is None:
+            raise sources.SourceError(
+                f"invalid CEFR for {packet['id']}: {packet.get('cefr')}"
+            )
+        levels[level].append(draft)
     for values in levels.values():
         values.sort(key=lambda draft: (draft["packet"]["sortOrder"], draft["packet"]["id"]))
 
@@ -448,7 +451,7 @@ def build_reviewed(work_dir: Path, output: Path, rejection_report: Path) -> dict
                     },
                     "sourceRefs": refs,
                     "validationSourceIDs": validation_ids,
-                    "cefr": {"basic": "A2", "intermediate": "B2", "advanced": "C1"}[level],
+                    "cefr": packet["cefr"],
                     "reviewStatus": "approved",
                     "englishReviewer": "codex-content-review-2026-07-15",
                     "zhHantReviewer": "codex-content-review-2026-07-15",
