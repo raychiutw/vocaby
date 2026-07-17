@@ -1241,6 +1241,156 @@ class ReviewVocabularyTests(unittest.TestCase):
             batch = json.loads((work / "enrichment-input.jsonl").read_text())
             self.assertEqual(batch["items"][0]["id"], "bank-basic-0001::bank-basic-0001-sense-1")
 
+    def test_prepare_review_emits_every_selected_sense(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            queue = root / "queue.jsonl"
+            cmu = root / "cmu.jsonl"
+            work = root / "work"
+            source_ref = {
+                "sourceID": "oewn-2025",
+                "sourceEntryRef": "excellent#a#1",
+            }
+            packet = {
+                "id": "bank-basic-0001",
+                "level": "basic",
+                "sortOrder": 1,
+                "target": "excellent",
+                "plain": "very good",
+                "definition": "of very high quality",
+                "example": "She shared an excellent idea.",
+                "partOfSpeech": "adjective",
+                "cefr": "A2",
+                "sourceRefs": [source_ref],
+                "validationSourceIDs": ["oewn-2025"],
+                "candidatePlainExpressions": ["very good"],
+                "candidatePronunciations": [
+                    {
+                        "notation": "ipa",
+                        "value": "ˈɛksələnt",
+                        "speechLocale": "en-US",
+                        "region": "US",
+                        "sourceRef": source_ref,
+                    }
+                ],
+                "candidateSenses": [
+                    {
+                        "id": "sense-1",
+                        "partOfSpeech": "adjective",
+                        "glosses": ["of very high quality"],
+                        "examples": ["She shared an excellent idea."],
+                        "tags": [],
+                        "sourceRef": source_ref,
+                    },
+                    {
+                        "id": "sense-2",
+                        "partOfSpeech": "noun",
+                        "glosses": ["a person or thing of outstanding quality"],
+                        "examples": ["The award recognizes excellence."],
+                        "tags": [],
+                        "sourceRef": {
+                            "sourceID": "oewn-2025",
+                            "sourceEntryRef": "excellent#n#2",
+                        },
+                    },
+                ],
+                "issues": [],
+            }
+            queue.write_text(json.dumps(packet) + "\n", encoding="utf-8")
+            cmu.write_text("", encoding="utf-8")
+
+            review_vocabulary.prepare_review(queue, cmu, work)
+
+            requests = json.loads((work / "enrichment-input.jsonl").read_text())[
+                "items"
+            ]
+            self.assertEqual(
+                [item["id"] for item in requests],
+                ["bank-basic-0001::sense-1", "bank-basic-0001::sense-2"],
+            )
+
+    def test_build_reviewed_preserves_packet_cefr(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            source_ref = {
+                "sourceID": "oewn-2025",
+                "sourceEntryRef": "excellent#a#1",
+            }
+            draft = {
+                "packet": {
+                    "id": "bank-basic-0001",
+                    "level": "basic",
+                    "sortOrder": 1,
+                    "target": "excellent",
+                    "cefr": "A1",
+                    "sourceRefs": [source_ref],
+                    "validationSourceIDs": ["oewn-2025"],
+                },
+                "pronunciations": [
+                    {
+                        "id": "bank-basic-0001-pronunciation-us",
+                        "ipa": "ˈɛksələnt",
+                        "speechLocale": "en-US",
+                        "region": "US",
+                    }
+                ],
+                "pronunciationSourceRefs": [source_ref],
+                "senses": [
+                    {
+                        "id": "sense-1",
+                        "partOfSpeech": "adjective",
+                        "meaning": "of very high quality",
+                        "sourceRef": source_ref,
+                    }
+                ],
+                "enrichment": {
+                    "sense-1": {
+                        "plainExpression": "very good",
+                        "example": "She shared an excellent idea.",
+                    }
+                },
+            }
+            (work / "enriched.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+            (work / "translation-output.jsonl").write_text(
+                "".join(
+                    json.dumps(item) + "\n"
+                    for item in (
+                        {
+                            "id": "bank-basic-0001::sense-1::meaning",
+                            "text": "品質非常好。",
+                        },
+                        {
+                            "id": "bank-basic-0001::sense-1::example",
+                            "text": "她分享了一個很棒的想法。",
+                        },
+                    )
+                ),
+                encoding="utf-8",
+            )
+            (work / "rejections.jsonl").write_text("", encoding="utf-8")
+            output = root / "reviewed.jsonl"
+
+            with mock.patch.object(
+                review_vocabulary.sources,
+                "traditionalize",
+                side_effect=lambda values: values,
+            ), mock.patch.object(
+                review_vocabulary.sources,
+                "audit_reviewed",
+                return_value={"items": 1},
+            ):
+                review_vocabulary.build_reviewed(
+                    work, output, root / "rejections.md"
+                )
+
+            reviewed = json.loads(output.read_text())
+            self.assertEqual(reviewed["cefr"], "A1")
+            self.assertEqual(reviewed["level"], "basic")
+
     def test_build_reviewed_reconciles_rejection_report(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

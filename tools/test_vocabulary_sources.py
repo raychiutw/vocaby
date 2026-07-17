@@ -18,9 +18,35 @@ from tools import vocabulary_sources
 
 SCRIPT = Path(__file__).with_name("vocabulary_sources.py")
 SIMILARITY_SCRIPT = Path(__file__).with_name("definition_similarity.swift")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class VocabularySourcesTests(unittest.TestCase):
+    def test_frozen_100k_baseline_inputs(self):
+        expected_hashes = {
+            "Vocaby/Resources/VocabularySeed.json": "0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9",
+            "Content/VocabularyProvenance.json": "eacf3d158eec48fab86f437e74975f3feff55145427201d8a3d8bfc7aa45188f",
+            "Vocaby/Resources/ThirdPartyNotices.txt": "3f152459c424d7451fc08c3ea65f17e7d368d335bd78a93afda2307408e55d5c",
+            "Content/Sources/source-manifest.json": "033cca5fcd5d199ad34087e62ce21551ba48cbc4d9c1bc989d77e017897126cb",
+        }
+
+        for relative_path, expected_hash in expected_hashes.items():
+            self.assertEqual(
+                vocabulary_sources.sha256(ROOT / relative_path), expected_hash
+            )
+        self.assertEqual(
+            len(json.loads((ROOT / "Vocaby/Resources/VocabularySeed.json").read_text())),
+            14_064,
+        )
+        self.assertEqual(
+            len(
+                json.loads(
+                    (ROOT / "Content/Sources/source-manifest.json").read_text()
+                )["sources"]
+            ),
+            15,
+        )
+
     def test_validate_seed_record_rejects_pronunciation_region_id_mismatch(self):
         record = {
             "id": "basic-0001",
