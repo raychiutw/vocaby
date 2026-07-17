@@ -341,6 +341,8 @@ git push origin HEAD
 **Interfaces:**
 - Produces: `select_target_candidates(records: list[dict], retained: list[dict], target_count: int) -> list[dict]`.
 - Produces: `cefr_evidence(candidate: dict) -> dict` with `value`, `method`, `evidence`, and `confidence`.
+- Consumes reviewed `learnerUtility` values: `everyday`, `business`, `travel`,
+  `practical-life`, `general`, or `specialized`.
 - Produces CLI: `prepare-100k --input-dir PATH --retained PATH --output PATH --reserve-count 10000`.
 
 - [ ] **Step 1: Add deterministic selection tests**
@@ -364,7 +366,11 @@ def test_select_target_candidates_preserves_retained_and_replaces_rejections(sel
     )
 ```
 
-Add shuffled-input equality, proper-name/obsolete/duplicate rejection, exact-CEFR precedence, inferred-metadata completeness, and reserve-candidate tests.
+Add a test proving a common everyday candidate ranks ahead of an otherwise
+strong specialized candidate, and business/travel/practical-life candidates
+rank ahead of equally supported general candidates. Also add shuffled-input
+equality, proper-name/obsolete/duplicate rejection, exact-CEFR precedence,
+inferred-metadata completeness, and reserve-candidate tests.
 
 - [ ] **Step 2: Verify RED**
 
@@ -383,16 +389,23 @@ Use one tuple and no ranking framework:
 def candidate_score(candidate: dict) -> tuple:
     evidence = candidate["cefrEvidence"]
     return (
+        LEARNER_UTILITY_ORDER[candidate["learnerUtility"]],
+        candidate.get("approvedFrequencyRank", MAX_FREQUENCY_RANK),
+        -candidate.get("approvedCorpusOccurrences", 0),
         CEFR_ORDER[evidence["value"]],
         0 if evidence["method"] == "exact" else 1,
         -len(candidate["validationSourceIDs"]),
-        -candidate.get("approvedCorpusOccurrences", 0),
         normalized(candidate["target"]),
         candidate["sourceRefs"][0]["sourceEntryRef"],
     )
 ```
 
-Filter unsupported tags, missing sense/POS/pronunciation, expressions longer than eight tokens, and retained duplicates before sorting.
+Use the fixed order `everyday`, `business`, `travel`, `practical-life`,
+`general`, `specialized`. Filter unsupported tags, missing
+sense/POS/pronunciation, expressions longer than eight tokens, and retained
+duplicates before sorting. A missing utility value is invalid rather than
+silently treated as general. Domain priority changes order only; it does not
+create a quota or bypass any quality gate.
 
 - [ ] **Step 4: Implement reviewed inferred CEFR metadata**
 
@@ -409,6 +422,9 @@ Exact evidence returns `method: exact`. Otherwise require a review packet:
 ```
 
 Reject missing reviewer/evidence, confidence below the accepted threshold, or CEFR/App-level mismatch.
+Apply the same source-first, reviewed-fallback rule to `learnerUtility`; store
+the enum, evidence strings, method, confidence, and reviewer in the review
+packet.
 
 - [ ] **Step 5: Run the complete source suite and commit**
 

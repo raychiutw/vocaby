@@ -138,6 +138,9 @@ Form candidates from approved canonical imports only. A target is eligible when:
 - it is not a proper name, spelling error, raw inflection duplicate,
   abbreviation-only entry, obsolete/archaic-only sense, slur, or source-tagged
   non-lexical artifact;
+- it is either broadly useful or useful in everyday life, business, or travel;
+  specialist-only vocabulary remains in the reserve until higher-utility
+  candidates are exhausted;
 - its selected sense can be expressed with a concise English meaning and a
   complete example sentence;
 - all fields can be attributed either to an approved source or reviewed
@@ -146,12 +149,22 @@ Form candidates from approved canonical imports only. A target is eligible when:
 Order eligible candidates deterministically by:
 
 1. retained existing lesson order;
-2. exact CEFR evidence before inferred CEFR at the same band;
-3. CEFR band from A1 through C2;
-4. number and quality of independent approved lexical/translation/example/
+2. reviewed learner utility, prioritizing common everyday vocabulary followed
+   by business, travel, and practical-life vocabulary;
+3. approved frequency rank and corpus occurrence evidence, when available;
+4. exact CEFR evidence before inferred CEFR at the same band;
+5. CEFR band from A1 through C2;
+6. number and quality of independent approved lexical/translation/example/
    pronunciation references;
-5. approved-corpus occurrence evidence, when available;
-6. normalized expression and stable source entry reference.
+7. normalized expression and stable source entry reference.
+
+Learner utility is a reviewed enum, not a free-form model score:
+`everyday`, `business`, `travel`, `practical-life`, `general`, or
+`specialized`. Source labels, approved learner lists, and corpus evidence take
+precedence. A local model may only draft the enum when those signals are
+missing; the same reviewer and provenance requirements as inferred CEFR apply.
+There are no domain quotas. Utility changes ordering only and never weakens the
+rights, pronunciation, sense, example, CEFR, or review gates.
 
 The selector emits more than 84,664 candidates so rejected rows can be replaced
 without lowering gates. Selection stops only when 100,000 approved rows exist,
@@ -176,6 +189,8 @@ The proposal considers:
 - grammar and collocation complexity in the selected example;
 - approved-source usage labels and lexical relations;
 - approved-corpus occurrence evidence;
+- reviewed learner-utility classification, including everyday, business,
+  travel, practical-life, general, or specialized use;
 - relation to exact lower-level plain expressions and same-sense synonyms;
 - a local Foundation Models classification draft when available.
 
