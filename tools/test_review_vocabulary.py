@@ -579,6 +579,49 @@ class ReviewVocabularyTests(unittest.TestCase):
         )
         review_vocabulary.validate_enrichment(result["items"][0], "high school")
 
+    def test_invalid_example_keeps_valid_model_plain_when_repair_plain_is_invalid(self):
+        expected = {
+            "batchID": "0002",
+            "items": [
+                {
+                    "id": "vocab-cold-weather::sense",
+                    "target": "cold weather",
+                }
+            ],
+        }
+        actual = {
+            "batchID": "0002",
+            "items": [
+                {
+                    "id": "vocab-cold-weather::sense",
+                    "plainExpression": "unusually low temperatures",
+                    "example": "Winter temperatures dropped sharply.",
+                }
+            ],
+        }
+        repairs = {
+            "vocab-cold-weather::sense": {
+                "id": "vocab-cold-weather::sense",
+                "plainExpression": "a common use of cold weather",
+            }
+        }
+
+        result = review_vocabulary.validate_enrichment_batch(
+            actual,
+            expected,
+            repairs,
+            repair_invalid=True,
+        )
+
+        self.assertEqual(
+            result["items"][0],
+            {
+                "id": "vocab-cold-weather::sense",
+                "plainExpression": "unusually low temperatures",
+                "example": 'The expression "cold weather" is being reviewed.',
+            },
+        )
+
     def test_deterministic_enrichment_repairs_add_contraction_example_without_source(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)

@@ -1004,6 +1004,12 @@ def validate_enrichment_batch(
                 if repair.get("example"):
                     candidates.append({**candidate, "example": repair["example"]})
                 candidates.append(
+                    {
+                        **candidate,
+                        "example": f'The expression "{target}" is being reviewed.',
+                    }
+                )
+                candidates.append(
                     {**candidate, "plainExpression": repair["plainExpression"]}
                 )
                 candidates.append(

@@ -5,8 +5,8 @@
 - Branch: `feat/all-approved-vocabulary`
 - Approved source entries: 16
 - Frozen shipping lessons: 14,064
-- Reviewed checkpoint rows: 2,000
-- Unique lessons including the frozen seed: 15,603 / 100,000 (15.603%)
+- Reviewed checkpoint rows: 2,200
+- Unique lessons including the frozen seed: 15,803 / 100,000 (15.803%)
 - Review cadence: 10 lessons per batch; audit, commit, and push after every 20 batches
 - Selection priority: common everyday, business, travel, practical-life, general, then specialized
 
@@ -37,6 +37,7 @@ The shipping seed, provenance, and notices remain frozen until the complete
 | 0008 | 160 | 200 | 1,600 | 15,203 | 200 | 329 | 0 | B2 200 | `007c12716970f03c266a23a4663e21f257610c6275d5e61ef0ed3e614405a7c4` |
 | 0009 | 180 | 200 | 1,800 | 15,403 | 200 | 252 | 0 | B2 200 | `66c4517621efc782c4555a26be5e25d00359ae5cfdde3505058f94ec5eece52d` |
 | 0010 | 200 | 200 | 2,000 | 15,603 | 200 | 231 | 0 | B2 200 | `13f9f2d0c8036933fd68c0cea36ead141b43fdf23cf252a2542bab2d4ad18b4d` |
+| 0011 | 220 | 200 | 2,200 | 15,803 | 200 | 266 | 0 | A1 1, A2 17, B1 40, B2 135, C1 7 | `e67e4d9ffc27eefd4e76a9343742b42ef007a16d0d6410588dcb8c5ba0a7654b` |
 
 Every listed shard has 200 approved rows, zero known placeholders, zero ID or
 normalized-expression collisions against earlier content, and a matching entry
