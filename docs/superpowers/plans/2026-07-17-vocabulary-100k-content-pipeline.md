@@ -612,11 +612,19 @@ python3 -B tools/vocabulary_sources.py prepare-100k \
   --input-dir Content/Sources/Imported \
   --retained Content/Reviews/vocabulary-100k/baseline-15336.jsonl \
   --output /tmp/vocabulary-100k-targets.jsonl \
-  --reserve-count 10000
+  --reserve-count 10000 \
+  --snapshot-targets
 python3 -B tools/vocabulary_sources.py targets-to-seed \
   --input /tmp/vocabulary-100k-targets.jsonl \
+  --retained Content/Reviews/vocabulary-100k/baseline-15336.jsonl \
   --output /tmp/vocabulary-100k-target-seed.json
 ```
+
+`--snapshot-targets` permits a lexical candidate whose pronunciation is still
+pending only for this upstream target-snapshot pass. After the expanded
+Wiktextract import, rerun `prepare-100k` without that flag; the final target and
+reserve queue still requires verified pronunciation and every normal quality
+gate.
 
 - [ ] **Step 3: Stream and verify the expanded snapshot**
 

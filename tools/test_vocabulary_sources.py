@@ -144,6 +144,126 @@ class VocabularySourcesTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual([item["target"] for item in first], ["alpha"])
 
+    def test_snapshot_target_selection_allows_pending_pronunciation_only(self):
+        candidate = self.target_candidate("itinerary", utility="travel")
+        candidate["candidatePronunciations"] = []
+
+        with self.assertRaisesRegex(
+            vocabulary_sources.SourceError, "only 0 eligible candidates"
+        ):
+            vocabulary_sources.select_target_candidates(
+                [candidate], [], target_count=1
+            )
+
+        selected = vocabulary_sources.select_target_candidates(
+            [candidate], [], target_count=1, require_pronunciation=False
+        )
+
+        self.assertEqual([item["target"] for item in selected], ["itinerary"])
+
+    def test_lexical_variants_split_wiktextract_senses(self):
+        record = {
+            "sourceID": "wiktextract-en-2026-07-09",
+            "sourceEntryRef": "book#noun#1",
+            "headword": "book",
+            "partOfSpeech": "noun",
+            "cefr": "A1",
+            "definitions": ["A written work.", "To reserve."],
+            "examples": ["I read a book.", "Please book a room."],
+            "relatedTerms": ["volume", "reserve"],
+            "iliRefs": [],
+            "senses": [
+                {
+                    "id": "book-noun",
+                    "partOfSpeech": "noun",
+                    "glosses": ["A written work."],
+                    "examples": ["I read a book."],
+                    "translations": {},
+                    "tags": [],
+                },
+                {
+                    "id": "book-verb",
+                    "partOfSpeech": "verb",
+                    "glosses": ["To reserve."],
+                    "examples": ["Please book a room."],
+                    "translations": {},
+                    "tags": [],
+                },
+            ],
+        }
+
+        variants = vocabulary_sources.lexical_variants(record)
+
+        self.assertEqual(
+            [
+                (
+                    item["partOfSpeech"],
+                    item["definitions"],
+                    item["examples"],
+                    item["senseRefs"],
+                )
+                for item in variants
+            ],
+            [
+                ("noun", ["A written work."], ["I read a book."], ["book-noun"]),
+                ("verb", ["To reserve."], ["Please book a room."], ["book-verb"]),
+            ],
+        )
+
+    def test_prepare_100k_snapshot_mode_keeps_lexical_target_pending_pronunciation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / "imported"
+            input_dir.mkdir()
+            (input_dir / "lex.jsonl").write_text(
+                json.dumps(
+                    {
+                        "sourceID": "lex",
+                        "sourceEntryRef": "itinerary#noun#1",
+                        "headword": "itinerary",
+                        "partOfSpeech": "noun",
+                        "cefr": None,
+                        "definitions": ["A planned route for a journey."],
+                        "examples": ["Our itinerary includes three cities."],
+                        "relatedTerms": [],
+                        "translations": {},
+                        "pronunciations": [],
+                        "forms": [],
+                        "senses": [],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            retained = root / "retained.json"
+            retained.write_text("[]", encoding="utf-8")
+            output = root / "targets.jsonl"
+
+            with self.assertRaisesRegex(
+                vocabulary_sources.SourceError, "only 0 eligible candidates"
+            ):
+                vocabulary_sources.prepare_100k(
+                    input_dir,
+                    retained,
+                    output,
+                    {"lex"},
+                    target_count=1,
+                    reserve_count=0,
+                )
+
+            result = vocabulary_sources.prepare_100k(
+                input_dir,
+                retained,
+                output,
+                {"lex"},
+                target_count=1,
+                reserve_count=0,
+                snapshot_targets=True,
+            )
+
+            self.assertEqual(result, {"retained": 0, "target": 1, "reserve": 0})
+            self.assertEqual(json.loads(output.read_text())["target"], "itinerary")
+
     def test_cefr_evidence_prefers_exact_and_requires_reviewed_inference(self):
         exact = self.target_candidate("exact", cefr="A2")
         inferred = self.target_candidate(
@@ -323,6 +443,34 @@ class VocabularySourcesTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(vocabulary_sources.SourceError, "duplicate"):
                 vocabulary_sources.targets_to_seed(second_input, second_output)
+
+    def test_targets_to_seed_includes_retained_snapshot_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            queue = root / "queue.jsonl"
+            queue.write_text(
+                json.dumps({"target": "itinerary"}) + "\n",
+                encoding="utf-8",
+            )
+            retained = root / "retained.json"
+            retained.write_text(
+                json.dumps([{"upgradedExpression": "breakfast"}]),
+                encoding="utf-8",
+            )
+            output = root / "targets.json"
+
+            count = vocabulary_sources.targets_to_seed(
+                queue, output, retained_path=retained
+            )
+
+            self.assertEqual(count, 2)
+            self.assertEqual(
+                json.loads(output.read_text()),
+                [
+                    {"upgradedExpression": "breakfast"},
+                    {"upgradedExpression": "itinerary"},
+                ],
+            )
 
     def test_frozen_100k_baseline_inputs(self):
         expected_hashes = {

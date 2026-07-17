@@ -224,7 +224,9 @@ def _candidate_score(candidate: dict) -> tuple:
     )
 
 
-def _eligible_target_candidate(candidate: object) -> bool:
+def _eligible_target_candidate(
+    candidate: object, *, require_pronunciation: bool = True
+) -> bool:
     if not isinstance(candidate, dict):
         return False
     target = candidate.get("target")
@@ -243,7 +245,7 @@ def _eligible_target_candidate(candidate: object) -> bool:
         not isinstance(senses, list)
         or not senses
         or not isinstance(pronunciations, list)
-        or not pronunciations
+        or (require_pronunciation and not pronunciations)
         or not isinstance(source_refs, list)
         or not source_refs
         or not isinstance(source_ids, list)
@@ -279,7 +281,11 @@ def _eligible_target_candidate(candidate: object) -> bool:
 
 
 def select_target_candidates(
-    records: Iterable[dict], retained: Iterable[dict], target_count: int
+    records: Iterable[dict],
+    retained: Iterable[dict],
+    target_count: int,
+    *,
+    require_pronunciation: bool = True,
 ) -> list[dict]:
     retained_items = []
     retained_keys = set()
@@ -299,7 +305,9 @@ def select_target_candidates(
 
     candidates_by_key: dict[str, dict] = {}
     for candidate in records:
-        if not _eligible_target_candidate(candidate):
+        if not _eligible_target_candidate(
+            candidate, require_pronunciation=require_pronunciation
+        ):
             continue
         key = normalized(candidate["target"])
         if key in retained_keys:
@@ -751,6 +759,7 @@ def prepare_100k(
     target_count: int = 100_000,
     reserve_count: int = 10_000,
     corpus_source_ids: set[str] | None = None,
+    snapshot_targets: bool = False,
 ) -> dict[str, int]:
     if target_count < 1 or reserve_count < 0:
         raise SourceError("target and reserve counts must be non-negative")
@@ -766,6 +775,7 @@ def prepare_100k(
         candidates,
         retained,
         target_count=target_count + reserve_count,
+        require_pronunciation=not snapshot_targets,
     )
     queue = selected[len(retained) :]
     required_new = target_count - len(retained)
@@ -797,9 +807,12 @@ def prepare_100k(
     }
 
 
-def targets_to_seed(input_path: Path, output: Path) -> int:
+def targets_to_seed(
+    input_path: Path, output: Path, retained_path: Path | None = None
+) -> int:
     targets = {}
-    for item in _iter_jsonl(input_path):
+
+    def add(item: dict) -> None:
         target = item.get("target") or item.get("upgradedExpression")
         if not isinstance(target, str) or not target.strip():
             raise SourceError("target queue row must contain a target")
@@ -807,6 +820,12 @@ def targets_to_seed(input_path: Path, output: Path) -> int:
         if key in targets:
             raise SourceError(f"duplicate target queue expression: {target}")
         targets[key] = target.strip()
+
+    if retained_path is not None:
+        for item in _retained_items(retained_path):
+            add(item)
+    for item in _iter_jsonl(input_path):
+        add(item)
     ordered = [
         {"upgradedExpression": targets[key]}
         for key in sorted(targets)
@@ -2258,6 +2277,48 @@ def similarity_key(record: dict, entry: dict) -> str:
     )
 
 
+def lexical_variants(record: dict) -> list[dict]:
+    """Return sense-aligned lexical records suitable for lesson selection."""
+    variants = []
+    for sense in record.get("senses", []):
+        if not isinstance(sense, dict):
+            continue
+        glosses = [
+            value.strip()
+            for value in sense.get("glosses", [])
+            if isinstance(value, str) and value.strip()
+        ]
+        examples = [
+            value.strip()
+            for value in sense.get("examples", [])
+            if isinstance(value, str) and value.strip()
+        ]
+        if not glosses or not examples:
+            continue
+        sense_id = str(sense.get("id") or "").strip()
+        variants.append(
+            {
+                **record,
+                "partOfSpeech": sense.get("partOfSpeech")
+                or record.get("partOfSpeech"),
+                "definitions": glosses,
+                "examples": examples,
+                "translations": sense.get("translations", {}),
+                "senseRefs": [sense_id] if sense_id else [],
+                "senses": [sense],
+            }
+        )
+    if variants:
+        return variants
+    if (
+        record.get("sourceID", "").startswith(("oewn", "grundwortschatz"))
+        and record.get("definitions")
+        and record.get("examples")
+    ):
+        return [record]
+    return []
+
+
 def prepare_enrichment(
     input_dir: Path,
     existing_seed_path: Path,
@@ -2400,12 +2461,7 @@ def prepare_enrichment(
             cefr_any[key] = min(
                 cefr_any.get(key, value), value, key=cefr_evidence_key
             )
-        if (
-            record.get("sourceID", "").startswith(("oewn", "grundwortschatz"))
-            and record.get("definitions")
-            and record.get("examples")
-        ):
-            lexical.append(record)
+        lexical.extend(lexical_variants(record))
 
     converted_word_values = traditionalize([value for _, value in word_translation_records])
     translations: dict[str, list[dict]] = {}
@@ -3624,9 +3680,11 @@ def main(argv: list[str] | None = None) -> int:
     prepare_100k_parser.add_argument("--output", type=Path, required=True)
     prepare_100k_parser.add_argument("--target-count", type=int, default=100_000)
     prepare_100k_parser.add_argument("--reserve-count", type=int, default=10_000)
+    prepare_100k_parser.add_argument("--snapshot-targets", action="store_true")
     targets_parser = commands.add_parser("targets-to-seed")
     targets_parser.add_argument("--input", type=Path, required=True)
     targets_parser.add_argument("--output", type=Path, required=True)
+    targets_parser.add_argument("--retained", type=Path)
     build_parser = commands.add_parser("build-reviewed")
     build_parser.add_argument("--input", type=Path, required=True)
     build_parser.add_argument("--existing-seed", type=Path, required=True)
@@ -3736,10 +3794,11 @@ def main(argv: list[str] | None = None) -> int:
             approved_source_ids,
             target_count=args.target_count,
             reserve_count=args.reserve_count,
+            snapshot_targets=args.snapshot_targets,
         )
         print(json.dumps(result, sort_keys=True))
     elif args.command == "targets-to-seed":
-        count = targets_to_seed(args.input, args.output)
+        count = targets_to_seed(args.input, args.output, args.retained)
         print(f"wrote {count} Wiktextract target(s) to {args.output}")
     elif args.command == "build-reviewed":
         count = build_reviewed(
