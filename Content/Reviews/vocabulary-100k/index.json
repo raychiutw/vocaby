@@ -40,6 +40,16 @@
       "path": "checkpoint-0004.jsonl",
       "sha256": "fe9476d5b921c092723b520d31356a847219cdc8f82f2a0e2575c21832927262",
       "status": "approved"
+    },
+    {
+      "cumulativeItems": 1000,
+      "final": false,
+      "firstID": "basic-015",
+      "items": 200,
+      "lastID": "bank-basic-1702",
+      "path": "checkpoint-0005.jsonl",
+      "sha256": "a8ab5ba1bcd40e2c2733239fe36a34d9bbe2b6c5cdb9dcfa4e982d8aee4aed01",
+      "status": "approved"
     }
   ]
 }
