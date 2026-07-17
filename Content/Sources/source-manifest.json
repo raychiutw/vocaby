@@ -436,53 +436,58 @@
       "rawFiles": [
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0001.jsonl.gz",
-          "sha256": "73f9da2a7e8083fdaf6892b99dae2a841d6851e4ea39959f060f1faf185c2499",
-          "bytes": 35283035
+          "sha256": "6aec708aacfb684ee46ac20d38ccc697c564863eb5a992a2042b69605d861fbe",
+          "bytes": 36164498
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0002.jsonl.gz",
-          "sha256": "b0ca72b6dd99ee8cd76993cb4cc93735cec2cb040b0f08bf5d5ef8b3c149afe4",
-          "bytes": 13375301
+          "sha256": "124f7945919ba0a6a25f208345e3a2023a3f1b23c3794dc17adcc5d9c48d651c",
+          "bytes": 15753630
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0003.jsonl.gz",
-          "sha256": "e4fa747096247382e0bada813cf69f28d8ffba9caf147f6cb34ff67f9bdd81e9",
-          "bytes": 14227180
+          "sha256": "f3eb7a5cda12a805d5cf80d86d62bd2cacc12e92b04de88cc62cf2ae3533dce1",
+          "bytes": 10437648
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0004.jsonl.gz",
-          "sha256": "aac603b25480cf5bf90838920dbc75991133e13a6d2ce8ac17c8a14154a25ddf",
-          "bytes": 25628739
+          "sha256": "a40ec24fdec712b657cbb2922fcea6e6c289a2ea35b03726d1e57845f8d19450",
+          "bytes": 23642304
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0005.jsonl.gz",
-          "sha256": "1fd8f582ece539283b33da3ec895dae4c1df1d07c746109ab6b1b8d174189128",
-          "bytes": 19827306
+          "sha256": "0bfed97a490ceb5504c3c66f600ff22e2bc7ccec532be01060172f781fc9b80e",
+          "bytes": 17548544
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0006.jsonl.gz",
-          "sha256": "c298cedba1abda17351ba0d5904d89d9572e15e470277faec8fac31453192064",
-          "bytes": 11897286
+          "sha256": "c4129a70b7777ab468855aefe06c28d53c89771e22359dd3982b8b371c2533cd",
+          "bytes": 21357351
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0007.jsonl.gz",
-          "sha256": "f154fce003e4446ff92dba81d27cb7b8c15e911b01e619125d8299bf1b9c0209",
-          "bytes": 11832974
+          "sha256": "ea78b427d9eda1179aa235a4c37318e46aba939feb7b779f293faff2c2193339",
+          "bytes": 11911677
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0008.jsonl.gz",
-          "sha256": "26d1aaae28e12de630ce062c5560fb3afae0f858d5402a8b03715591310222d7",
-          "bytes": 6284479
+          "sha256": "ac23a08816e6420cd2ea3df6ef32e38ada9b466afaa995dbab229c19369a8664",
+          "bytes": 12247256
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0009.jsonl.gz",
-          "sha256": "692450b4890b02dd8bdcb53a2c4e2d9503395d958c1293a2d627acb6bbaafe44",
-          "bytes": 4445118
+          "sha256": "554a32db9970dbaf1ae3b2a74606f304292226805ae40ff9214e12bcda4b4b38",
+          "bytes": 6542327
         },
         {
           "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0010.jsonl.gz",
-          "sha256": "dfdfff95677b6445e8fa110c074dabeb5908aaf95844e4db3c9c7e5806322e99",
-          "bytes": 1744145
+          "sha256": "c5b2dc797467525dfb46072918f381a462191232708cda72ead87612a1138f4e",
+          "bytes": 4406513
+        },
+        {
+          "path": "Content/Sources/Raw/wiktextract-en/english-targets-2026-07-09-0011.jsonl.gz",
+          "sha256": "f756553f5c9367abb24947a14646e941f0cd9472cfb9097ba28a2252e0f23c01",
+          "bytes": 2510119
         }
       ],
       "license": "CC BY-SA 4.0",

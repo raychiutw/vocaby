@@ -420,7 +420,7 @@ class ReviewVocabularyTests(unittest.TestCase):
                 output.exists() and review_vocabulary.sources.read_jsonl(output)
             )
 
-    def test_deterministic_enrichment_repairs_skip_missing_source_examples(self):
+    def test_deterministic_enrichment_repairs_keep_plain_without_source_example(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             draft = {
@@ -446,7 +446,162 @@ class ReviewVocabularyTests(unittest.TestCase):
 
             repairs = review_vocabulary.deterministic_enrichment_repairs(work)
 
-            self.assertEqual(repairs, {})
+            self.assertEqual(
+                repairs["bank-basic-0003::sense-1"]["plainExpression"],
+                "in or to a higher place",
+            )
+            self.assertNotIn("example", repairs["bank-basic-0003::sense-1"])
+
+    def test_deterministic_enrichment_repairs_add_contraction_example_without_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            draft = {
+                "packet": {
+                    "id": "vocab-she-is",
+                    "target": "she's",
+                    "plain": "",
+                    "candidatePlainExpressions": [],
+                },
+                "senses": [
+                    {
+                        "id": "she-is",
+                        "meaning": "Contraction of she + is.",
+                        "partOfSpeech": "phrase",
+                        "exampleCandidate": "",
+                    }
+                ],
+            }
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+
+            repairs = review_vocabulary.deterministic_enrichment_repairs(work)
+            repair = repairs["vocab-she-is::she-is"]
+
+            self.assertEqual(repair["example"], "She's ready to begin.")
+            review_vocabulary.validate_enrichment(repair, "she's")
+
+    def test_deterministic_enrichment_repairs_add_common_verb_example_without_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            draft = {
+                "packet": {
+                    "id": "vocab-has",
+                    "target": "has",
+                    "plain": "",
+                    "candidatePlainExpressions": [],
+                },
+                "senses": [
+                    {
+                        "id": "has-possession",
+                        "meaning": "To possess, own.",
+                        "partOfSpeech": "verb",
+                        "exampleCandidate": "",
+                    }
+                ],
+            }
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+
+            repairs = review_vocabulary.deterministic_enrichment_repairs(work)
+            repair = repairs["vocab-has::has-possession"]
+
+            self.assertEqual(repair["example"], "She has a meeting this afternoon.")
+            review_vocabulary.validate_enrichment(repair, "has")
+
+    def test_deterministic_examples_cover_common_auxiliary_forms(self):
+        self.assertEqual(
+            review_vocabulary.deterministic_example("are"),
+            "The tickets are checked before boarding.",
+        )
+        self.assertEqual(
+            review_vocabulary.deterministic_example("was"),
+            "The room was cleaned before we arrived.",
+        )
+        self.assertEqual(
+            review_vocabulary.deterministic_example("long time"),
+            "We waited a long time for the train.",
+        )
+
+    def test_deterministic_examples_cover_common_source_gaps(self):
+        expected = {
+            "your": "Your ticket is on the table.",
+            "three": "We need three tickets for the train.",
+            "found": "They found their theory on solid evidence.",
+            "see you": "See you at the station tomorrow.",
+            "having": "We're having lunch near the office.",
+            "very good": "Very good, I'll take care of it.",
+            "come to": "Please come to the front desk.",
+            "anymore": "I don't use that service anymore.",
+            "very well": "Very well, I'll approve the request.",
+            "each other": "We help each other at work.",
+            "exam": "She has an exam tomorrow morning.",
+            "wait for": "Please wait for the next train.",
+            "weekend": "We're traveling this weekend.",
+            "agree with": "Spicy food doesn't agree with me.",
+            "soccer": "The children play soccer after school.",
+            "have time": "Do you have time for a quick meeting?",
+            "think about": "Please think about the offer tonight.",
+            "come back": "Please come back before the store closes.",
+        }
+
+        for target, example in expected.items():
+            with self.subTest(target=target):
+                self.assertEqual(review_vocabulary.deterministic_example(target), example)
+
+    def test_fallback_plain_prefers_short_synonym_clause(self):
+        plain = review_vocabulary.fallback_plain(
+            {"target": "the same", "plain": "", "candidatePlainExpressions": []},
+            {
+                "meaning": "In the same manner; to the same extent, equally.",
+            },
+        )
+
+        self.assertEqual(plain, "equally")
+
+    def test_fallback_plain_uses_common_phrase_synonym(self):
+        plain = review_vocabulary.fallback_plain(
+            {"target": "see you", "plain": "", "candidatePlainExpressions": []},
+            {"meaning": "see you later."},
+        )
+
+        self.assertEqual(plain, "farewell")
+
+    def test_enrichment_repair_uses_plain_only_repair_with_valid_model_example(self):
+        expected = {
+            "batchID": "0007",
+            "items": [{"id": "i-will", "target": "i'll"}],
+        }
+        batch = {
+            "batchID": "0007",
+            "items": [
+                {
+                    "id": "i-will",
+                    "plainExpression": "i'll",
+                    "example": "I'll meet you at the station by six.",
+                }
+            ],
+        }
+        repairs = {
+            "i-will": {
+                "id": "i-will",
+                "plainExpression": "I shall",
+            }
+        }
+
+        result = review_vocabulary.validate_enrichment_batch(
+            batch,
+            expected,
+            repairs,
+            repair_invalid=True,
+        )
+
+        self.assertEqual(result["items"][0]["plainExpression"], "I shall")
+        self.assertEqual(
+            result["items"][0]["example"],
+            "I'll meet you at the station by six.",
+        )
 
     def test_enrichment_repair_keeps_a_valid_model_plain_when_fallback_plain_is_invalid(self):
         expected = {

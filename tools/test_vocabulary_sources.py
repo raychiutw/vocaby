@@ -343,6 +343,522 @@ class VocabularySourcesTests(unittest.TestCase):
             )
             self.assertEqual(candidate["candidateSenses"], [])
 
+    def test_assemble_target_candidates_prioritizes_trusted_cefr_part_before_truncating(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory)
+            rows = [
+                {
+                    "sourceID": "cefr-j-1.6",
+                    "sourceEntryRef": "at#preposition#A1",
+                    "headword": "at",
+                    "partOfSpeech": "preposition",
+                    "cefr": "A1",
+                    "definitions": [],
+                    "examples": [],
+                    "senses": [],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+                *[
+                    {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": f"at#noun#{index}",
+                        "headword": "at",
+                        "partOfSpeech": "noun",
+                        "cefr": None,
+                        "definitions": [f"unrelated noun sense {index}"],
+                        "examples": [],
+                        "senses": [],
+                        "pronunciations": [],
+                        "forms": [],
+                    }
+                    for index in range(3)
+                ],
+                {
+                    "sourceID": "wiktextract-en-2026-07-09",
+                    "sourceEntryRef": "at#prep#1",
+                    "headword": "at",
+                    "partOfSpeech": "preposition",
+                    "cefr": None,
+                    "definitions": ["In or near a particular place."],
+                    "examples": ["Meet me at the station."],
+                    "senses": [],
+                    "pronunciations": [
+                        {
+                            "notation": "ipa",
+                            "value": "æt",
+                            "speechLocale": "en-US",
+                            "region": "General",
+                            "tags": [],
+                        }
+                    ],
+                    "forms": [],
+                },
+            ]
+            (input_dir / "records.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+
+            candidate = vocabulary_sources.assemble_target_candidates(
+                input_dir,
+                {"cefr-j-1.6", "oewn-2025", "wiktextract-en-2026-07-09"},
+                set(),
+            )[0]
+
+            self.assertEqual(candidate["trustedCEFRParts"], ["preposition"])
+            self.assertEqual(
+                [sense["partOfSpeech"] for sense in candidate["candidateSenses"]],
+                ["preposition"],
+            )
+            self.assertEqual(
+                candidate["candidateSenses"][0]["glosses"],
+                ["In or near a particular place."],
+            )
+
+    def test_assemble_target_candidates_rejects_untrusted_inflection_side_sense(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory)
+            rows = [
+                {
+                    "sourceID": "wiktextract-en-2026-07-09",
+                    "sourceEntryRef": "asked#adj#1",
+                    "headword": "asked",
+                    "partOfSpeech": "adjective",
+                    "cefr": None,
+                    "definitions": ["Arsed; willing to make an effort."],
+                    "examples": [],
+                    "senses": [],
+                    "pronunciations": [
+                        {
+                            "notation": "ipa",
+                            "value": "æskt",
+                            "speechLocale": "en-US",
+                            "region": "General",
+                            "tags": [],
+                        }
+                    ],
+                    "forms": [],
+                },
+                {
+                    "sourceID": "wiktextract-en-2026-07-09",
+                    "sourceEntryRef": "asked#verb#1",
+                    "headword": "asked",
+                    "partOfSpeech": "verb",
+                    "cefr": None,
+                    "definitions": ["simple past of ask"],
+                    "examples": [],
+                    "senses": [
+                        {
+                            "id": "asked-form",
+                            "partOfSpeech": "verb",
+                            "glosses": ["simple past of ask"],
+                            "examples": [],
+                            "tags": ["form-of", "past"],
+                        }
+                    ],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+            ]
+            (input_dir / "records.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            candidates = vocabulary_sources.assemble_target_candidates(
+                input_dir,
+                {"wiktextract-en-2026-07-09"},
+                set(),
+            )
+
+            with self.assertRaisesRegex(
+                vocabulary_sources.SourceError,
+                "only 0 eligible candidates",
+            ):
+                vocabulary_sources.select_target_candidates(
+                    candidates,
+                    [],
+                    target_count=1,
+                )
+
+    def test_assemble_and_review_keep_inflection_with_trusted_cefr_part(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory)
+            rows = [
+                {
+                    "sourceID": "cefr-j-1.6",
+                    "sourceEntryRef": "did#do-verb#A1",
+                    "headword": "did",
+                    "partOfSpeech": "do-verb",
+                    "cefr": "A1",
+                    "definitions": [],
+                    "examples": [],
+                    "senses": [],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+                {
+                    "sourceID": "wiktextract-en-2026-07-09",
+                    "sourceEntryRef": "did#verb#1",
+                    "headword": "did",
+                    "partOfSpeech": "verb",
+                    "cefr": None,
+                    "definitions": ["simple past of do"],
+                    "examples": ["I did the work before lunch."],
+                    "senses": [
+                        {
+                            "id": "did-form",
+                            "partOfSpeech": "verb",
+                            "glosses": ["simple past of do"],
+                            "examples": ["I did the work before lunch."],
+                            "tags": ["form-of", "past"],
+                        }
+                    ],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+            ]
+            (input_dir / "records.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+
+            candidate = vocabulary_sources.assemble_target_candidates(
+                input_dir,
+                {"cefr-j-1.6", "wiktextract-en-2026-07-09"},
+                set(),
+            )[0]
+            candidate["partOfSpeech"] = "verb"
+
+            self.assertEqual(
+                [sense["id"] for sense in candidate["candidateSenses"]],
+                ["did-form"],
+            )
+            self.assertEqual(
+                [sense["id"] for sense in vocabulary_sources.review_senses(candidate)],
+                ["did-form"],
+            )
+            selected = vocabulary_sources.select_target_candidates(
+                [candidate],
+                [],
+                target_count=1,
+                require_pronunciation=False,
+            )
+            self.assertEqual(selected[0]["target"], "did")
+
+    def test_assemble_target_candidates_preserves_primary_source_sense_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory)
+            rows = [
+                {
+                    "sourceID": "cefr-j-1.6",
+                    "sourceEntryRef": "she#pronoun#A1",
+                    "headword": "she",
+                    "partOfSpeech": "pronoun",
+                    "cefr": "A1",
+                    "definitions": [],
+                    "examples": [],
+                    "senses": [],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+                {
+                    "sourceID": "wiktextract-en-2026-07-09",
+                    "sourceEntryRef": "she#pron#1",
+                    "headword": "she",
+                    "partOfSpeech": "pronoun",
+                    "cefr": None,
+                    "definitions": [],
+                    "examples": [],
+                    "senses": [
+                        {
+                            "id": "z-common",
+                            "partOfSpeech": "pronoun",
+                            "glosses": ["The female person previously mentioned."],
+                            "examples": ["She called this morning."],
+                            "tags": [],
+                        },
+                        {
+                            "id": "a-ship",
+                            "partOfSpeech": "pronoun",
+                            "glosses": ["A ship or boat."],
+                            "examples": [
+                                "She sailed at dawn.",
+                                "She entered the harbor before noon.",
+                            ],
+                            "tags": [],
+                        },
+                        {
+                            "id": "weather",
+                            "partOfSpeech": "pronoun",
+                            "glosses": ["A country or nation."],
+                            "examples": [],
+                            "tags": [],
+                        },
+                        {
+                            "id": "personified-object",
+                            "partOfSpeech": "pronoun",
+                            "glosses": ["A personified object."],
+                            "examples": [],
+                            "tags": [],
+                        },
+                    ],
+                    "pronunciations": [
+                        {
+                            "notation": "ipa",
+                            "value": "ʃiː",
+                            "speechLocale": "en-US",
+                            "region": "General",
+                            "tags": [],
+                        }
+                    ],
+                    "forms": [],
+                },
+            ]
+            (input_dir / "records.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+
+            candidate = vocabulary_sources.assemble_target_candidates(
+                input_dir,
+                {"cefr-j-1.6", "wiktextract-en-2026-07-09"},
+                set(),
+            )[0]
+
+            self.assertEqual(candidate["candidateSenses"][0]["id"], "z-common")
+            self.assertEqual(len(candidate["candidateSenses"]), 4)
+
+    def test_review_senses_uses_source_order_as_final_tiebreaker(self):
+        packet = {
+            "id": "vocab-she",
+            "target": "she",
+            "sourceRefs": [],
+            "candidateSenses": [
+                {
+                    "id": "z-common",
+                    "partOfSpeech": "pronoun",
+                    "glosses": ["The female person previously mentioned."],
+                    "examples": [],
+                    "tags": [],
+                    "sourceRef": {"sourceID": "wiktextract", "sourceEntryRef": "she"},
+                },
+                {
+                    "id": "a-ship",
+                    "partOfSpeech": "pronoun",
+                    "glosses": ["A ship or boat."],
+                    "examples": ["She sailed at dawn."],
+                    "tags": [],
+                    "sourceRef": {"sourceID": "wiktextract", "sourceEntryRef": "she"},
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "z-common")
+
+    def test_assemble_target_candidates_marks_pn_records_as_proper(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory)
+            rows = [
+                {
+                    "sourceID": "freedict-eng-zho-2025.11.23",
+                    "sourceEntryRef": "japan#place",
+                    "headword": "Japan",
+                    "partOfSpeech": "pn",
+                    "cefr": None,
+                    "definitions": ["A country in East Asia."],
+                    "examples": [],
+                    "senses": [],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+                {
+                    "sourceID": "wiktextract-en-2026-07-09",
+                    "sourceEntryRef": "japan#noun",
+                    "headword": "japan",
+                    "partOfSpeech": "noun",
+                    "cefr": None,
+                    "definitions": ["A glossy black lacquer."],
+                    "examples": [],
+                    "senses": [],
+                    "pronunciations": [
+                        {
+                            "notation": "ipa",
+                            "value": "dʒəpæn",
+                            "speechLocale": "en-US",
+                            "region": "General",
+                            "tags": [],
+                        }
+                    ],
+                    "forms": [],
+                },
+            ]
+            (input_dir / "records.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+
+            candidate = vocabulary_sources.assemble_target_candidates(
+                input_dir,
+                {"freedict-eng-zho-2025.11.23", "wiktextract-en-2026-07-09"},
+                set(),
+            )[0]
+
+            self.assertTrue(candidate["isProperName"])
+
+    def test_canonical_part_of_speech_maps_cefr_auxiliary_labels_to_verb(self):
+        self.assertEqual(
+            {
+                value: vocabulary_sources.canonical_part_of_speech(value)
+                for value in ("be-verb", "do-verb", "have-verb", "modal auxiliary")
+            },
+            {
+                "be-verb": "verb",
+                "do-verb": "verb",
+                "have-verb": "verb",
+                "modal auxiliary": "verb",
+            },
+        )
+
+    def test_assemble_target_candidates_prefers_richer_wiktextract_sense_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory)
+            rows = [
+                {
+                    "sourceID": "oewn-2025",
+                    "sourceEntryRef": "phone#n#earpiece",
+                    "headword": "phone",
+                    "partOfSpeech": "noun",
+                    "cefr": None,
+                    "definitions": ["An electro-acoustic earpiece."],
+                    "examples": ["The operator wore a phone."],
+                    "senses": [],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+                {
+                    "sourceID": "wiktextract-en-2026-07-09",
+                    "sourceEntryRef": "phone#noun#1",
+                    "headword": "phone",
+                    "partOfSpeech": "noun",
+                    "cefr": None,
+                    "definitions": ["A device used to speak with someone at a distance."],
+                    "examples": [
+                        "My phone rang.",
+                        "Please answer the phone.",
+                        "She called me on the phone.",
+                    ],
+                    "senses": [],
+                    "pronunciations": [
+                        {
+                            "notation": "ipa",
+                            "value": "foʊn",
+                            "speechLocale": "en-US",
+                            "region": "General",
+                            "tags": [],
+                        }
+                    ],
+                    "forms": [],
+                },
+            ]
+            (input_dir / "records.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+
+            candidate = vocabulary_sources.assemble_target_candidates(
+                input_dir,
+                {"oewn-2025", "wiktextract-en-2026-07-09"},
+                set(),
+            )[0]
+
+            self.assertEqual(
+                candidate["candidateSenses"][0]["sourceRef"]["sourceID"],
+                "wiktextract-en-2026-07-09",
+            )
+
+    def test_assemble_target_candidates_prefers_wiktextract_before_other_examples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory)
+            rows = [
+                {
+                    "sourceID": "grundwortschatz-voc-en-004977a",
+                    "sourceEntryRef": "glasses#weak",
+                    "headword": "glasses",
+                    "partOfSpeech": "noun",
+                    "cefr": "A2",
+                    "definitions": ["An amorphous solid."],
+                    "examples": ["Looking glasses were displayed."],
+                    "senses": [],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+                {
+                    "sourceID": "wiktextract-en-2026-07-09",
+                    "sourceEntryRef": "glasses#noun#1",
+                    "headword": "glasses",
+                    "partOfSpeech": "noun",
+                    "cefr": None,
+                    "definitions": ["Frames bearing two lenses worn in front of the eyes."],
+                    "examples": [],
+                    "senses": [],
+                    "pronunciations": [],
+                    "forms": [],
+                },
+            ]
+            (input_dir / "records.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+
+            candidate = vocabulary_sources.assemble_target_candidates(
+                input_dir,
+                {"grundwortschatz-voc-en-004977a", "wiktextract-en-2026-07-09"},
+                set(),
+            )[0]
+
+            self.assertEqual(
+                candidate["candidateSenses"][0]["sourceRef"]["sourceID"],
+                "wiktextract-en-2026-07-09",
+            )
+
+    def test_review_senses_keeps_pre_ranked_wiktextract_ahead_of_oewn(self):
+        packet = {
+            "id": "vocab-phone",
+            "target": "phone",
+            "sourceRefs": [],
+            "candidateSenses": [
+                {
+                    "id": "phone-common",
+                    "partOfSpeech": "noun",
+                    "glosses": ["A device used to speak with someone at a distance."],
+                    "examples": ["Please answer the phone."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "phone#noun#1",
+                    },
+                },
+                {
+                    "id": "phone-earpiece",
+                    "partOfSpeech": "noun",
+                    "glosses": ["An electro-acoustic earpiece."],
+                    "examples": ["The operator wore a phone."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "phone#n#earpiece",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "phone-common")
+
     def test_cefr_evidence_prefers_exact_and_requires_reviewed_inference(self):
         exact = self.target_candidate("exact", cefr="A2")
         inferred = self.target_candidate(
@@ -609,7 +1125,7 @@ class VocabularySourcesTests(unittest.TestCase):
             "Vocaby/Resources/VocabularySeed.json": "0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9",
             "Content/VocabularyProvenance.json": "eacf3d158eec48fab86f437e74975f3feff55145427201d8a3d8bfc7aa45188f",
             "Vocaby/Resources/ThirdPartyNotices.txt": "3f152459c424d7451fc08c3ea65f17e7d368d335bd78a93afda2307408e55d5c",
-            "Content/Sources/source-manifest.json": "4ae978b9a562231a18558c72607f0074ca20d1888f41c4396b86431ef052258e",
+            "Content/Sources/source-manifest.json": "6b31b1c9d0790dbe7335f43b8bd768f780d2d6211fd91d7fdb14ac10e7500ec3",
         }
 
         for relative_path, expected_hash in expected_hashes.items():
@@ -1412,6 +1928,210 @@ class VocabularySourcesTests(unittest.TestCase):
         self.assertEqual([sense["id"] for sense in senses], ["lead-verb-guide", "lead-noun-clue"])
         self.assertEqual(senses[0]["partOfSpeech"], "verb")
 
+    def test_review_senses_prefers_literal_sense_over_idiomatic_side_sense(self):
+        packet = {
+            "id": "long-time-1",
+            "target": "long time",
+            "definition": "",
+            "partOfSpeech": "phrase",
+            "candidateSenses": [
+                {
+                    "id": "greeting",
+                    "partOfSpeech": "phrase",
+                    "glosses": ["Used as part of a greeting."],
+                    "examples": ["Long time no see!"],
+                    "tags": ["idiomatic"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "long time#intj#1",
+                    },
+                },
+                {
+                    "id": "meta",
+                    "partOfSpeech": "phrase",
+                    "glosses": [
+                        "Used other than figuratively or idiomatically: see long, time."
+                    ],
+                    "examples": ["You've been away for a long time."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "long time#phrase#1",
+                    },
+                },
+                {
+                    "id": "regional-adult-sense",
+                    "partOfSpeech": "noun",
+                    "glosses": ["An overnight meeting with a sex worker."],
+                    "examples": [],
+                    "tags": ["indonesia", "thailand"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "long time#noun#1",
+                    },
+                },
+                {
+                    "id": "literal",
+                    "partOfSpeech": "noun",
+                    "glosses": ["A prolonged period of time."],
+                    "examples": [],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "long time#noun#1",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "literal")
+
+    def test_review_senses_keeps_common_idiom_ahead_of_secondary_literal_sense(self):
+        packet = {
+            "id": "as-well-1",
+            "target": "as well",
+            "definition": "",
+            "partOfSpeech": "phrase",
+            "candidateSenses": [
+                {
+                    "id": "also",
+                    "partOfSpeech": "adverb",
+                    "glosses": ["In addition; also."],
+                    "examples": ["Please bring an umbrella as well."],
+                    "tags": ["idiomatic"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "as well#adv#1",
+                    },
+                },
+                {
+                    "id": "same-effect",
+                    "partOfSpeech": "adverb",
+                    "glosses": ["To the same effect."],
+                    "examples": ["They might as well walk."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "as well#adv#2",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "also")
+
+    def test_review_senses_prefers_verb_for_negative_contraction(self):
+        packet = {
+            "id": "should-not-1",
+            "target": "shouldn't",
+            "definition": "",
+            "partOfSpeech": "phrase",
+            "candidateSenses": [
+                {
+                    "id": "noun",
+                    "partOfSpeech": "noun",
+                    "glosses": ["Something that should not be done."],
+                    "examples": [],
+                    "tags": ["informal"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "shouldn't#noun#1",
+                    },
+                },
+                {
+                    "id": "verb",
+                    "partOfSpeech": "verb",
+                    "glosses": ["Should not (negative auxiliary)."],
+                    "examples": [],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "shouldn't#verb#1",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "verb")
+
+    def test_review_senses_prefers_contraction_over_regional_apostrophe_sense(self):
+        packet = {
+            "id": "that-is-1",
+            "target": "that's",
+            "definition": "",
+            "partOfSpeech": "phrase",
+            "candidateSenses": [
+                {
+                    "id": "regional-determiner",
+                    "partOfSpeech": "determiner",
+                    "glosses": ["Whose, in some regional dialects."],
+                    "examples": ["The dog that's leg was hurt."],
+                    "tags": ["canada", "northern-ireland"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "that's#det#1",
+                    },
+                },
+                {
+                    "id": "that-is",
+                    "partOfSpeech": "phrase",
+                    "glosses": ["That is."],
+                    "examples": ["That's the book I need."],
+                    "tags": ["contraction"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "that's#contraction#1",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "that-is")
+
+    def test_review_senses_prefers_phrase_over_unrelated_noun_for_multiword_target(self):
+        packet = {
+            "id": "excuse-me-1",
+            "target": "excuse me",
+            "definition": "",
+            "partOfSpeech": "phrase",
+            "candidateSenses": [
+                {
+                    "id": "dance",
+                    "partOfSpeech": "noun",
+                    "glosses": ["An old-fashioned type of dance."],
+                    "examples": [],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "excuse me#noun#1",
+                    },
+                },
+                {
+                    "id": "polite-request",
+                    "partOfSpeech": "phrase",
+                    "glosses": ["Said as a polite request for attention."],
+                    "examples": [],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "excuse me#phrase#1",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "polite-request")
+
     def test_review_senses_drops_additional_part_without_trusted_cefr_evidence(self):
         packet = {
             "id": "bank-basic-0001",
@@ -1741,6 +2461,92 @@ class VocabularySourcesTests(unittest.TestCase):
             "Because of these trees, he can't see the forest.",
         )
 
+    def test_review_senses_uses_a_source_sense_when_new_target_has_no_lesson_definition(self):
+        packet = {
+            "id": "vocab-new",
+            "target": "i'll",
+            "cefr": "A2",
+            "sourceRefs": [],
+            "candidateSenses": [
+                {
+                    "id": "i-will",
+                    "partOfSpeech": "phrase",
+                    "glosses": ["I will."],
+                    "examples": [],
+                    "tags": ["alt-of", "contraction"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "i'll#contraction#1",
+                    },
+                }
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "i-will")
+        self.assertEqual(senses[0]["meaning"], "I will.")
+
+    def test_review_senses_rejects_new_target_with_only_alternative_form_senses(self):
+        packet = {
+            "id": "vocab-new",
+            "target": "told",
+            "cefr": "A2",
+            "sourceRefs": [],
+            "candidateSenses": [
+                {
+                    "id": "unrelated-acronym",
+                    "partOfSpeech": "noun",
+                    "glosses": ["Acronym of take-off and landing data."],
+                    "examples": [],
+                    "tags": ["abbreviation", "acronym", "alt-of"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "told#noun#1",
+                    },
+                }
+            ],
+        }
+
+        self.assertEqual(vocabulary_sources.review_senses(packet), [])
+
+    def test_review_senses_prefers_new_target_sense_with_a_source_example(self):
+        packet = {
+            "id": "vocab-new",
+            "target": "doing",
+            "cefr": "A1",
+            "sourceRefs": [],
+            "candidateSenses": [
+                {
+                    "id": "sound",
+                    "partOfSpeech": "phrase",
+                    "glosses": ["A sound made when an elastic object is struck."],
+                    "examples": [],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "doing#intj#1",
+                    },
+                },
+                {
+                    "id": "action",
+                    "partOfSpeech": "noun",
+                    "glosses": ["A deed or action."],
+                    "examples": ["This is his doing."],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "doing#noun#1",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "action")
+        self.assertEqual(senses[0]["exampleCandidate"], "This is his doing.")
+
     def test_review_senses_uses_the_specific_final_gloss(self):
         packet = {
             "id": "bank-basic-0181",
@@ -1798,6 +2604,11 @@ class VocabularySourcesTests(unittest.TestCase):
         self.assertTrue(
             vocabulary_sources.looks_like_source_sentence(
                 "bench", "Bench the poodles at the dog show."
+            )
+        )
+        self.assertTrue(
+            vocabulary_sources.looks_like_source_sentence(
+                "along", "John played the piano and everyone sang along."
             )
         )
 

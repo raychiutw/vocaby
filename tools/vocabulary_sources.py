@@ -236,6 +236,10 @@ def _eligible_target_candidate(
         or ENGLISH_TERM.fullmatch(target) is None
         or len(target.split()) > 8
         or candidate.get("isProperName") is True
+        or (
+            candidate.get("_hasInflectionSense") is True
+            and not candidate.get("trustedCEFRParts")
+        )
     ):
         return False
     senses = candidate.get("candidateSenses")
@@ -258,11 +262,14 @@ def _eligible_target_candidate(
             return False
         glosses = sense.get("glosses")
         tags = {normalized(tag) for tag in sense.get("tags", []) if isinstance(tag, str)}
+        blocked_tags = tags & BLOCKED_SENSE_TAGS
+        if packet_trusts_sense_part(candidate, sense):
+            blocked_tags.discard("form-of")
         if (
             sense.get("partOfSpeech") not in PARTS_OF_SPEECH
             or not isinstance(glosses, list)
             or not any(isinstance(gloss, str) and gloss.strip() for gloss in glosses)
-            or tags & BLOCKED_SENSE_TAGS
+            or blocked_tags
         ):
             return False
     if any(
@@ -326,6 +333,7 @@ def select_target_candidates(
     selected_items = retained_items
     for candidate in candidates[:needed]:
         selected = dict(candidate)
+        selected.pop("_hasInflectionSense", None)
         cefr = cefr_evidence(candidate)
         selected["cefr"] = cefr["value"]
         selected["level"] = CEFR_LEVEL[cefr["value"]]
@@ -469,6 +477,7 @@ def _candidate_senses(record: dict, source_ref: dict) -> list[dict]:
             result.append(
                 {
                     "id": str(sense.get("id") or f"{record['sourceEntryRef']}:{index}"),
+                    "sourceSenseRank": index - 1,
                     "partOfSpeech": canonical_part_of_speech(
                         sense.get("partOfSpeech") or record.get("partOfSpeech")
                     ),
@@ -508,6 +517,7 @@ def _candidate_senses(record: dict, source_ref: dict) -> list[dict]:
         result.append(
             {
                 "id": f"{record['sourceEntryRef']}:{index}",
+                "sourceSenseRank": index - 1,
                 "partOfSpeech": canonical_part_of_speech(record.get("partOfSpeech")),
                 "glosses": [definition.strip()],
                 "examples": examples[:1],
@@ -658,10 +668,12 @@ def assemble_target_candidates(
                     "candidateSenses": [],
                     "candidatePronunciations": [],
                     "candidatePlainExpressions": [],
+                    "trustedCEFRParts": [],
                     "validationSourceIDs": [],
                     "sourceRefs": [],
                     "exactCEFREvidence": [],
                     "isProperName": False,
+                    "_hasInflectionSense": False,
                 },
             )
             candidate["sourceRefs"].append(source_ref)
@@ -672,11 +684,15 @@ def assemble_target_candidates(
                 if isinstance(value, str) and value.strip()
             )
             if _supplies_english_lexical_senses(source_id):
-                candidate["candidateSenses"].extend(
-                    _candidate_senses(record, source_ref)
+                new_senses = _candidate_senses(record, source_ref)
+                candidate["candidateSenses"].extend(new_senses)
+                candidate["_hasInflectionSense"] |= any(
+                    "form-of" in sense.get("tags", []) for sense in new_senses
                 )
-            candidate["isProperName"] |= normalized(record.get("partOfSpeech") or "") in {
+            part = normalized(record.get("partOfSpeech") or "")
+            candidate["isProperName"] |= part in {
                 "name",
+                "pn",
                 "proper noun",
                 "proper-noun",
             }
@@ -694,6 +710,10 @@ def assemble_target_candidates(
                 candidate["exactCEFREvidence"].append(
                     {"value": record["cefr"], "sourceRef": source_ref}
                 )
+                if source_id.startswith("cefr-j"):
+                    candidate["trustedCEFRParts"].append(
+                        canonical_part_of_speech(record.get("partOfSpeech"))
+                    )
 
     corpus_counts = _corpus_occurrences(input_dir, corpus_source_ids, set(grouped))
     for key, candidate in grouped.items():
@@ -704,6 +724,10 @@ def assemble_target_candidates(
         candidate["candidatePlainExpressions"] = sorted(
             set(candidate["candidatePlainExpressions"]), key=normalized
         )[:8]
+        candidate["trustedCEFRParts"] = sorted(
+            set(candidate["trustedCEFRParts"])
+        )
+        trusted_parts = set(candidate["trustedCEFRParts"])
         senses = {
             (
                 sense["partOfSpeech"],
@@ -711,15 +735,30 @@ def assemble_target_candidates(
                 tuple(sense["tags"]),
             ): sense
             for sense in candidate["candidateSenses"]
-            if not set(sense["tags"]) & BLOCKED_SENSE_TAGS
+            if not (
+                set(sense["tags"]) & BLOCKED_SENSE_TAGS
+                - ({"form-of"} if trusted_parts else set())
+            )
+            and (
+                not trusted_parts
+                or canonical_part_of_speech(sense.get("partOfSpeech"))
+                in trusted_parts
+            )
         }
         candidate["candidateSenses"] = sorted(
             senses.values(),
             key=lambda sense: (
+                0
+                if sense.get("sourceRef", {}).get("sourceID", "").startswith(
+                    "wiktextract"
+                )
+                else 1,
+                sense.get("sourceSenseRank", sys.maxsize),
+                -len(sense.get("examples", [])),
                 json.dumps(sense["sourceRef"], sort_keys=True),
                 sense["id"],
             ),
-        )[:3]
+        )[:5]
         pronunciations = {
             (
                 item["notation"],
@@ -1644,6 +1683,10 @@ def canonical_part_of_speech(value: str | None) -> str:
         "noun": "noun",
         "v": "verb",
         "verb": "verb",
+        "be-verb": "verb",
+        "do-verb": "verb",
+        "have-verb": "verb",
+        "modal auxiliary": "verb",
         "a": "adjective",
         "s": "adjective",
         "adj": "adjective",
@@ -1664,13 +1707,33 @@ def canonical_part_of_speech(value: str | None) -> str:
     }.get(token, "phrase")
 
 
+def review_sense_is_blocked(sense: dict, *, allow_inflection: bool = False) -> bool:
+    tags = {normalized(tag) for tag in sense.get("tags", [])}
+    blocked = {
+        "alt-of", "archaic", "dated", "dialectal", "form-of", "historical",
+        "humorous", "obsolete", "rare", "uncommon",
+    } & tags
+    if "contraction" in tags:
+        blocked.discard("alt-of")
+    if allow_inflection:
+        blocked.discard("form-of")
+    meta_gloss = any(
+        normalized(gloss).startswith("used other than figuratively or idiomatically")
+        for gloss in sense.get("glosses", [])
+        if isinstance(gloss, str)
+    )
+    return bool(blocked) or meta_gloss
+
+
+def packet_trusts_sense_part(packet: dict, sense: dict) -> bool:
+    return canonical_part_of_speech(sense.get("partOfSpeech")) in set(
+        packet.get("trustedCEFRParts", [])
+    )
+
+
 def add_review_sense_distances(packets: list[dict]) -> int:
     queries: dict[str, tuple[str, str]] = {}
     candidates_by_query: dict[str, dict] = {}
-    blocked_tags = {
-        "archaic", "dated", "dialectal", "historical", "humorous", "obsolete",
-        "rare", "uncommon",
-    }
     for packet_index, packet in enumerate(packets):
         target_pos = canonical_part_of_speech(packet.get("partOfSpeech"))
         context_values = (
@@ -1693,8 +1756,10 @@ def add_review_sense_distances(packets: list[dict]) -> int:
             if (
                 not isinstance(sense, dict)
                 or canonical_part_of_speech(sense.get("partOfSpeech")) != target_pos
-                or blocked_tags
-                & {normalized(tag) for tag in sense.get("tags", [])}
+                or review_sense_is_blocked(
+                    sense,
+                    allow_inflection=packet_trusts_sense_part(packet, sense),
+                )
             ):
                 continue
             examples = [
@@ -1722,13 +1787,55 @@ def add_review_sense_distances(packets: list[dict]) -> int:
 def review_senses(packet: dict) -> list[dict]:
     target_definition = normalized(packet.get("definition", ""))
     target_pos = canonical_part_of_speech(packet.get("partOfSpeech"))
-    blocked_tags = {
-        "archaic", "dated", "dialectal", "historical", "humorous", "obsolete",
-        "rare", "uncommon",
-    }
+    target = normalized(packet.get("target", "")).replace("’", "'")
+
+    def contraction_part_priority(sense: dict) -> int:
+        if target.endswith("n't"):
+            return (
+                0
+                if canonical_part_of_speech(sense.get("partOfSpeech")) == "verb"
+                else 1
+            )
+        if "'" in target:
+            tags = {normalized(tag) for tag in sense.get("tags", [])}
+            return 0 if "contraction" in tags else 1
+        return 0
+
+    def multiword_phrase_priority(sense: dict) -> int:
+        if len(target.split()) > 1:
+            return (
+                0
+                if canonical_part_of_speech(sense.get("partOfSpeech")) == "phrase"
+                else 1
+            )
+        return 0
+
+    def single_word_phrase_priority(sense: dict) -> int:
+        if len(target.split()) == 1 and not packet.get("partOfSpeech"):
+            return (
+                1
+                if canonical_part_of_speech(sense.get("partOfSpeech")) == "phrase"
+                else 0
+            )
+        return 0
+
+    def functional_side_priority(sense: dict) -> int:
+        return (
+            1
+            if any(
+                normalized(gloss).startswith("used as part of")
+                for gloss in sense.get("glosses", [])
+                if isinstance(gloss, str)
+            )
+            else 0
+        )
+
     specialized_tags = {
-        "abstract", "anatomy", "biology", "chemistry", "computing", "law",
-        "mathematics", "medicine", "military", "physics", "programming",
+        "abstract", "anatomy", "australia", "biology", "canada", "chemistry",
+        "computing", "india", "indonesia", "ireland", "law", "mathematics",
+        "medicine", "military", "new-zealand", "northern-ireland",
+        "philippines", "physics", "programming", "scotland", "south-africa",
+        "southern-us", "thailand", "west-midlands",
     }
     candidates = [
         sense
@@ -1736,8 +1843,12 @@ def review_senses(packet: dict) -> list[dict]:
         if isinstance(sense, dict)
         and sense.get("id")
         and sense.get("glosses")
-        and not (blocked_tags & {normalized(tag) for tag in sense.get("tags", [])})
+        and not review_sense_is_blocked(
+            sense,
+            allow_inflection=packet_trusts_sense_part(packet, sense),
+        )
     ]
+    candidate_positions = {id(sense): index for index, sense in enumerate(candidates)}
     candidates.sort(
         key=lambda sense: (
             (
@@ -1755,18 +1866,24 @@ def review_senses(packet: dict) -> list[dict]:
             if target_definition
             in {normalized(gloss) for gloss in sense.get("glosses", [])}
             else 1,
-            0 if canonical_part_of_speech(sense.get("partOfSpeech")) == target_pos else 1,
+            0
+            if target_pos == "phrase"
+            or canonical_part_of_speech(sense.get("partOfSpeech")) == target_pos
+            else 1,
+            contraction_part_priority(sense),
             0
             if not (
                 specialized_tags
                 & {normalized(tag) for tag in sense.get("tags", [])}
             )
             else 1,
+            functional_side_priority(sense),
+            multiword_phrase_priority(sense),
             0
             if sense.get("sourceRef", {}).get("sourceID", "").startswith("oewn")
             else 1,
             0 if sense.get("examples") else 1,
-            sense["id"],
+            candidate_positions[id(sense)],
         )
     )
     distance_candidate = next(
@@ -1804,6 +1921,33 @@ def review_senses(packet: dict) -> list[dict]:
     if exact:
         candidates.remove(exact)
         primary = exact
+        selected = [primary]
+    elif not target_definition:
+        if not candidates:
+            return []
+        primary = min(
+            candidates,
+            key=lambda sense: (
+                0
+                if not packet.get("partOfSpeech")
+                or target_pos == "phrase"
+                or canonical_part_of_speech(sense.get("partOfSpeech")) == target_pos
+                else 1,
+                contraction_part_priority(sense),
+                0
+                if not (
+                    specialized_tags
+                    & {normalized(tag) for tag in sense.get("tags", [])}
+                )
+                else 1,
+                functional_side_priority(sense),
+                multiword_phrase_priority(sense),
+                single_word_phrase_priority(sense),
+                candidate_positions[id(sense)],
+                0 if sense.get("examples") else 1,
+            ),
+        )
+        candidates.remove(primary)
         selected = [primary]
     else:
         fallback_pos = target_pos
@@ -1856,7 +2000,7 @@ def review_senses(packet: dict) -> list[dict]:
             if sense.get("sourceRef", {}).get("sourceID", "").startswith("oewn")
             else 1,
             0 if sense.get("examples") else 1,
-            sense["id"],
+            candidate_positions[id(sense)],
         ),
     ):
         meaning = normalized(specific_gloss(candidate))
@@ -2357,6 +2501,14 @@ def looks_like_source_sentence(target: str, value: str) -> bool:
         "i", "you", "he", "she", "it", "we", "they", "this", "that", "these",
         "those",
     }
+    if (
+        words[0][0].isupper()
+        and not re.search(r"(ed|ing)$", words[0], flags=re.I)
+        and len(words) > 1
+        and re.search(r"(ed|es|s)$", words[1], flags=re.I)
+        and not words[1].casefold().endswith("ss")
+    ):
+        return True
     if words[0].casefold() not in subject_words:
         return False
     forms = target_forms(target)
