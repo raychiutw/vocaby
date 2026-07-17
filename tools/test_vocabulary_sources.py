@@ -27,7 +27,7 @@ class VocabularySourcesTests(unittest.TestCase):
             "Vocaby/Resources/VocabularySeed.json": "0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9",
             "Content/VocabularyProvenance.json": "eacf3d158eec48fab86f437e74975f3feff55145427201d8a3d8bfc7aa45188f",
             "Vocaby/Resources/ThirdPartyNotices.txt": "3f152459c424d7451fc08c3ea65f17e7d368d335bd78a93afda2307408e55d5c",
-            "Content/Sources/source-manifest.json": "033cca5fcd5d199ad34087e62ce21551ba48cbc4d9c1bc989d77e017897126cb",
+            "Content/Sources/source-manifest.json": "91302e0632d29d24f402bc67b7009cf180983a98f73c55e67191cd60616a3261",
         }
 
         for relative_path, expected_hash in expected_hashes.items():
@@ -44,8 +44,68 @@ class VocabularySourcesTests(unittest.TestCase):
                     (ROOT / "Content/Sources/source-manifest.json").read_text()
                 )["sources"]
             ),
-            15,
+            16,
         )
+
+    def test_moby_pronunciator_emits_verified_ipa_and_pos(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mpron.txt"
+            path.write_bytes(
+                b"test t/E/st\r\n"
+                b"word w/@/rd\r\n"
+                b"close/v kl/oU/z\r\n"
+                b"business_trip 'b/I/zn/@/s_tr/I/p\r\n"
+            )
+
+            records = list(
+                vocabulary_sources.parse_moby_pronunciator(path, "moby-test")
+            )
+
+            self.assertEqual(
+                [record["headword"] for record in records],
+                ["test", "word", "close", "business trip"],
+            )
+            self.assertEqual(records[2]["partOfSpeech"], "verb")
+            self.assertEqual(
+                [record["pronunciations"][0]["value"] for record in records],
+                ["tɛst", "wəɹd", "kloʊz", "ˈbɪznəs tɹɪp"],
+            )
+            self.assertTrue(
+                all(
+                    record["pronunciations"][0]["notation"] == "ipa"
+                    for record in records
+                )
+            )
+
+    def test_moby_pronunciator_rejects_unknown_notation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mpron.txt"
+            path.write_bytes(b"test t/?/st\r\n")
+
+            with self.assertRaisesRegex(
+                vocabulary_sources.SourceError, "unknown Moby"
+            ):
+                list(
+                    vocabulary_sources.parse_moby_pronunciator(
+                        path, "moby-test"
+                    )
+                )
+
+    def test_moby_pronunciator_skips_only_documented_source_anomalies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mpron.txt"
+            path.write_bytes(
+                b"antivivisectionist ,/&/nt/I/,v/I/v/@/'s/E/ksh(/@/)n/@/st\r\n"
+                b"test t/E/st\r\n"
+            )
+
+            records = list(
+                vocabulary_sources.parse_moby_pronunciator(
+                    path, "moby-pronunciator-ii-3205"
+                )
+            )
+
+            self.assertEqual([record["headword"] for record in records], ["test"])
 
     def test_validate_seed_record_rejects_pronunciation_region_id_mismatch(self):
         record = {

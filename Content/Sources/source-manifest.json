@@ -274,6 +274,37 @@
       "decision": "Frequency reference only; share-alike treatment is not approved for the shipping bank."
     },
     {
+      "id": "moby-pronunciator-ii-3205",
+      "name": "Moby Pronunciator II",
+      "version": "Project Gutenberg ebook 3205 files refreshed 2025-08-23",
+      "retrievedAt": "2026-07-17",
+      "canonicalURL": "https://www.gutenberg.org/ebooks/3205",
+      "adapter": "moby_pronunciator",
+      "rawFile": {
+        "path": "Content/Sources/Raw/moby-pronunciator-ii/mpron.txt",
+        "sha256": "55580c3b258873723fed33497fe3a438b26167370bbe016431b3fc65fea67f2d",
+        "bytes": 5493251
+      },
+      "license": "Public domain in the USA; public-domain grant from the author dated January 2001",
+      "licenseURL": "https://www.gutenberg.org/ebooks/3205",
+      "licenseEvidence": [
+        {
+          "path": "Content/Sources/Raw/moby-pronunciator-ii/source-page.html",
+          "sha256": "941a2d3d920fe66826586d7cdbbc834ddc630359e649b22c21073aa83b83e7a4",
+          "bytes": 23660
+        },
+        {
+          "path": "Content/Sources/Raw/moby-pronunciator-ii/documentation.txt",
+          "sha256": "e2d40bfb3f7476adf4ebdb897a5463cce7c4accc1122f8ee4366fd9c87013183",
+          "bytes": 7880
+        }
+      ],
+      "repositoryRedistribution": "allowed",
+      "appUse": "approved",
+      "requiredNotice": "Moby Pronunciator II is public-domain material by grant from the author, January 2001, distributed by Project Gutenberg.",
+      "decision": "Approved for verified IPA converted from the documented ASCII phone set. Fifteen malformed source rows with unknown notation are rejected and listed in the source README."
+    },
+    {
       "id": "omw-ili-map-e3b5ac1",
       "name": "Open Multilingual Wordnet ILI Map",
       "version": "git e3b5ac103f86b743a1c0e3079675aaf0ef2cbf88",

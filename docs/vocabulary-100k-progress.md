@@ -20,3 +20,15 @@
 
 The frozen hashes are updated only by an intentional reviewed checkpoint. Raw,
 imported, generated, or rejected drafts do not count toward the 100,000 target.
+
+## Source checkpoint — Moby Pronunciator II
+
+- Source ID: `moby-pronunciator-ii-3205`
+- Raw records: 177,267
+- Explicit malformed-row rejections: 15
+- Canonical merged pronunciation records: 175,195
+- Deterministic import SHA-256: `b34cf90693711b1144bb5ffd3c8cdc84fba845910e4c53fc25ee916760656afc`
+- Updated manifest SHA-256: `91302e0632d29d24f402bc67b7009cf180983a98f73c55e67191cd60616a3261`
+- Approved source entries after checkpoint: 16
+- Canonical records after checkpoint: 1,079,876
+- Unique normalized headwords after checkpoint: 670,996

@@ -229,6 +229,133 @@ def parse_cmudict(path: Path, source_id: str) -> Iterable[dict]:
             yield record
 
 
+MOBY_PHONE_IPA = {
+    "(@)": "ɛɹ",
+    "[@]": "ɝ",
+    "eI": "eɪ",
+    "aI": "aɪ",
+    "Oi": "ɔɪ",
+    "AU": "aʊ",
+    "oU": "oʊ",
+    "Ou": "oʊ",
+    "tS": "tʃ",
+    "dZ": "dʒ",
+    "hw": "ʍ",
+    "&": "æ",
+    "A": "ɑ",
+    "@": "ə",
+    "-": "ə",
+    "E": "ɛ",
+    "i": "i",
+    "I": "ɪ",
+    "O": "ɔ",
+    "u": "u",
+    "U": "ʊ",
+    "N": "ŋ",
+    "S": "ʃ",
+    "T": "θ",
+    "D": "ð",
+    "Z": "ʒ",
+    "R": "ʁ",
+    "Y": "y",
+    "y": "ø",
+    "W": "ʍ",
+    "V": "v",
+    "c": "c",
+    "x": "x",
+    "a": "a",
+    "e": "e",
+    "o": "o",
+    "r": "ɹ",
+    "'": "ˈ",
+    ",": "ˌ",
+    "_": " ",
+    " ": " ",
+    **{value: value for value in "bdfghjklmnpstvwz"},
+}
+MOBY_PHONE_TOKENS = sorted(MOBY_PHONE_IPA, key=len, reverse=True)
+MOBY_PARTS_OF_SPEECH = {
+    "n": "noun",
+    "v": "verb",
+    "av": "adverb",
+    "aj": "adjective",
+    "inj": "interjection",
+    "interj": "interjection",
+    "prp": "preposition",
+}
+MOBY_3205_REJECTED_ENTRIES = {
+    "antivivisectionist",
+    "eery",
+    "Eifel",
+    "Gyula_Alapi",
+    "Idria",
+    "mastoparietal",
+    "microcephalism",
+    "precancerous",
+    "preoperative",
+    "Rauschenbusch",
+    "respire",
+    "treble",
+    "turtle-dove",
+    "verdant",
+    "Xinhua",
+}
+
+
+def moby_to_ipa(notation: str) -> str:
+    ipa = []
+    index = 0
+    while index < len(notation):
+        if notation[index] == "/":
+            index += 1
+            continue
+        token = next(
+            (value for value in MOBY_PHONE_TOKENS if notation.startswith(value, index)),
+            None,
+        )
+        if token is None:
+            raise SourceError(
+                f"unknown Moby notation at {notation[index:]!r} in {notation!r}"
+            )
+        ipa.append(MOBY_PHONE_IPA[token])
+        index += len(token)
+    return " ".join("".join(ipa).split())
+
+
+def parse_moby_pronunciator(path: Path, source_id: str) -> Iterable[dict]:
+    with path.open(encoding="mac_roman", newline="") as stream:
+        for line_number, line in enumerate(stream, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry, notation = line.split(maxsplit=1)
+            except ValueError as error:
+                raise SourceError(
+                    f"invalid Moby record at line {line_number}: {line!r}"
+                ) from error
+            if (
+                source_id == "moby-pronunciator-ii-3205"
+                and entry in MOBY_3205_REJECTED_ENTRIES
+            ):
+                continue
+            headword_entry, separator, suffix = entry.rpartition("/")
+            part_of_speech = MOBY_PARTS_OF_SPEECH.get(suffix) if separator else None
+            headword = (headword_entry if part_of_speech else entry).replace("_", " ")
+            record = empty_record(source_id, entry, headword)
+            record["partOfSpeech"] = part_of_speech
+            record["pronunciations"] = [
+                {
+                    "notation": "ipa",
+                    "value": moby_to_ipa(notation),
+                    "speechLocale": "en-US",
+                    "region": "General",
+                    "tags": [],
+                }
+            ]
+            yield record
+
+
 def parse_grundwortschatz_sqlite_gzip(path: Path, source_id: str) -> Iterable[dict]:
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temporary:
         temporary_path = Path(temporary.name)
@@ -1021,6 +1148,7 @@ def snapshot_wiktextract(source_url: str, seed_path: Path, output: Path) -> dict
 PARSERS = {
     "lemma_csv": parse_lemma_csv,
     "cmudict": parse_cmudict,
+    "moby_pronunciator": parse_moby_pronunciator,
     "grundwortschatz_sqlite_gzip": parse_grundwortschatz_sqlite_gzip,
     "cow_tsv": parse_cow,
     "oewn_json_zip": parse_oewn,
