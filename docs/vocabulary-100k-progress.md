@@ -118,3 +118,17 @@ source pool.
 - Examples missing the target expression: 0
 - Shard: `Content/Reviews/vocabulary-100k/checkpoint-0005.jsonl`
 - Shard SHA-256: `a8ab5ba1bcd40e2c2733239fe36a34d9bbe2b6c5cdb9dcfa4e982d8aee4aed01`
+
+## Review checkpoint 0006
+
+- Completed batches: 120 / 1,534
+- Approved lessons: 1,200 / 15,336 baseline; 1,200 / 100,000 final target
+- Reviewed senses: 312
+- Pronunciations: 573
+- Multi-sense lessons: 112
+- CEFR: A1 90, A2 109, B2 1
+- Rejections: 0
+- Known generic examples: 0
+- Examples missing the target expression: 0
+- Shard: `Content/Reviews/vocabulary-100k/checkpoint-0006.jsonl`
+- Shard SHA-256: `04ea5bf70076b62cbe6b8f4d5dafaff13fa2d7baab30cc4bc7cbde24b52a4e79`
