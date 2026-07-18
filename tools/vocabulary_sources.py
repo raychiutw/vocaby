@@ -1701,7 +1701,12 @@ def canonical_part_of_speech(value: str | None) -> str:
     }.get(token, "phrase")
 
 
-def review_sense_is_blocked(sense: dict, *, allow_inflection: bool = False) -> bool:
+def review_sense_is_blocked(
+    sense: dict,
+    *,
+    allow_inflection: bool = False,
+    allow_humorous: bool = False,
+) -> bool:
     tags = {normalized(tag) for tag in sense.get("tags", [])}
     blocked = {
         "alt-of", "archaic", "dated", "dialectal", "form-of", "historical",
@@ -1711,6 +1716,8 @@ def review_sense_is_blocked(sense: dict, *, allow_inflection: bool = False) -> b
         blocked.discard("alt-of")
     if allow_inflection:
         blocked.discard("form-of")
+    if allow_humorous:
+        blocked.discard("humorous")
     meta_gloss = any(
         normalized(gloss).startswith("used other than figuratively or idiomatically")
         for gloss in sense.get("glosses", [])
@@ -1831,6 +1838,11 @@ def review_senses(packet: dict) -> list[dict]:
         "philippines", "physics", "programming", "scotland", "south-africa",
         "southern-us", "thailand", "west-midlands",
     }
+    packet_source_keys = {
+        (ref.get("sourceID"), ref.get("sourceEntryRef"))
+        for ref in packet.get("sourceRefs", [])
+        if isinstance(ref, dict)
+    }
     candidates = [
         sense
         for sense in packet.get("candidateSenses", [])
@@ -1840,6 +1852,22 @@ def review_senses(packet: dict) -> list[dict]:
         and not review_sense_is_blocked(
             sense,
             allow_inflection=packet_trusts_sense_part(packet, sense),
+            allow_humorous=(
+                packet.get("selectionStatus") == "target"
+                and len(packet.get("candidateSenses", [])) == 1
+                and bool(target_definition)
+                and target_definition
+                in {
+                    normalized(gloss)
+                    for gloss in sense.get("glosses", [])
+                    if isinstance(gloss, str)
+                }
+                and (
+                    sense.get("sourceRef", {}).get("sourceID"),
+                    sense.get("sourceRef", {}).get("sourceEntryRef"),
+                )
+                in packet_source_keys
+            ),
         )
     ]
     candidate_positions = {id(sense): index for index, sense in enumerate(candidates)}
@@ -1897,11 +1925,6 @@ def review_senses(packet: dict) -> list[dict]:
         ),
         None,
     )
-    packet_source_keys = {
-        (ref.get("sourceID"), ref.get("sourceEntryRef"))
-        for ref in packet.get("sourceRefs", [])
-        if isinstance(ref, dict)
-    }
     exact_source = exact.get("sourceRef", {}) if exact is not None else {}
     exact_is_anchored = (
         exact_source.get("sourceID"), exact_source.get("sourceEntryRef")

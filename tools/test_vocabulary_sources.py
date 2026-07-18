@@ -2075,6 +2075,168 @@ class VocabularySourcesTests(unittest.TestCase):
 
         self.assertEqual(senses[0]["id"], "also")
 
+    def test_review_senses_keeps_an_exact_humorous_register_sense(self):
+        source_ref = {
+            "sourceID": "wiktextract-en-2026-07-09",
+            "sourceEntryRef": "beauty sleep#noun#4452",
+        }
+        packet = {
+            "id": "vocab-61d057fafd1d088a",
+            "target": "beauty sleep",
+            "definition": "Extra sleep; also (generally), any sleep; (countable) an instance of this; an extra nap.",
+            "partOfSpeech": "noun",
+            "selectionStatus": "target",
+            "sourceRefs": [
+                {
+                    "sourceID": "oewn-2025",
+                    "sourceEntryRef": "beauty sleep#n#15298861-n",
+                },
+                source_ref,
+            ],
+            "candidateSenses": [
+                {
+                    "id": "3ee40b1d9a120694",
+                    "partOfSpeech": "noun",
+                    "glosses": [
+                        "Extra sleep; also (generally), any sleep; (countable) an instance of this; an extra nap."
+                    ],
+                    "examples": [],
+                    "tags": ["humorous", "idiomatic", "uncountable"],
+                    "sourceRef": source_ref,
+                }
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertEqual(senses[0]["id"], "3ee40b1d9a120694")
+        self.assertEqual(senses[0]["partOfSpeech"], "noun")
+        self.assertEqual(senses[0]["sourceRef"], source_ref)
+
+    def test_review_senses_does_not_promote_a_humorous_multi_candidate_target(self):
+        humorous_ref = {
+            "sourceID": "wiktextract-en-2026-07-09",
+            "sourceEntryRef": "wise guy#noun#humorous",
+        }
+        packet = {
+            "id": "wise-guy",
+            "target": "wise guy",
+            "definition": "A person who makes jokes at inappropriate times.",
+            "partOfSpeech": "noun",
+            "selectionStatus": "target",
+            "sourceRefs": [humorous_ref],
+            "candidateSenses": [
+                {
+                    "id": "humorous",
+                    "partOfSpeech": "noun",
+                    "glosses": ["A person who makes jokes at inappropriate times."],
+                    "examples": [],
+                    "tags": ["humorous"],
+                    "sourceRef": humorous_ref,
+                },
+                {
+                    "id": "neutral",
+                    "partOfSpeech": "noun",
+                    "glosses": ["A person regarded as clever or knowledgeable."],
+                    "examples": [],
+                    "tags": [],
+                    "sourceRef": {
+                        "sourceID": "oewn-2025",
+                        "sourceEntryRef": "wise guy#noun#neutral",
+                    },
+                },
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertNotEqual(senses[0]["id"], "humorous")
+
+    def test_review_senses_does_not_promote_an_unanchored_humorous_target(self):
+        packet = {
+            "id": "vocab-61d057fafd1d088a",
+            "target": "beauty sleep",
+            "definition": "Extra sleep.",
+            "partOfSpeech": "noun",
+            "selectionStatus": "target",
+            "sourceRefs": [
+                {
+                    "sourceID": "oewn-2025",
+                    "sourceEntryRef": "beauty sleep#n#15298861-n",
+                }
+            ],
+            "candidateSenses": [
+                {
+                    "id": "humorous",
+                    "partOfSpeech": "noun",
+                    "glosses": ["Extra sleep."],
+                    "examples": [],
+                    "tags": ["humorous"],
+                    "sourceRef": {
+                        "sourceID": "wiktextract-en-2026-07-09",
+                        "sourceEntryRef": "beauty sleep#noun#4452",
+                    },
+                }
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertNotEqual(senses[0]["id"], "humorous")
+
+    def test_review_senses_does_not_promote_a_definitionless_humorous_target(self):
+        source_ref = {
+            "sourceID": "wiktextract-en-2026-07-09",
+            "sourceEntryRef": "beauty sleep#noun#4452",
+        }
+        packet = {
+            "id": "vocab-61d057fafd1d088a",
+            "target": "beauty sleep",
+            "definition": "",
+            "partOfSpeech": "noun",
+            "selectionStatus": "target",
+            "sourceRefs": [source_ref],
+            "candidateSenses": [
+                {
+                    "id": "humorous",
+                    "partOfSpeech": "noun",
+                    "glosses": ["Extra sleep."],
+                    "examples": [],
+                    "tags": ["humorous"],
+                    "sourceRef": source_ref,
+                }
+            ],
+        }
+
+        self.assertEqual(vocabulary_sources.review_senses(packet), [])
+
+    def test_review_senses_does_not_promote_humorous_without_target_status(self):
+        source_ref = {
+            "sourceID": "wiktextract-en-2026-07-09",
+            "sourceEntryRef": "beauty sleep#noun#4452",
+        }
+        packet = {
+            "id": "vocab-61d057fafd1d088a",
+            "target": "beauty sleep",
+            "definition": "Extra sleep.",
+            "partOfSpeech": "noun",
+            "sourceRefs": [source_ref],
+            "candidateSenses": [
+                {
+                    "id": "humorous",
+                    "partOfSpeech": "noun",
+                    "glosses": ["Extra sleep."],
+                    "examples": [],
+                    "tags": ["humorous"],
+                    "sourceRef": source_ref,
+                }
+            ],
+        }
+
+        senses = vocabulary_sources.review_senses(packet)
+
+        self.assertNotEqual(senses[0]["id"], "humorous")
+
     def test_review_senses_prefers_verb_for_negative_contraction(self):
         packet = {
             "id": "should-not-1",
