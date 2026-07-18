@@ -120,6 +120,16 @@
       "path": "checkpoint-0012.jsonl",
       "sha256": "d23a62858ebc8088f197278b831d95a2934e7dea7b5f9d463b3c40313a2ecb3c",
       "status": "approved"
+    },
+    {
+      "cumulativeItems": 2600,
+      "final": false,
+      "firstID": "vocab-5fdb12440ac47517",
+      "items": 200,
+      "lastID": "vocab-140010ac6b8e0df3",
+      "path": "checkpoint-0013.jsonl",
+      "sha256": "c75cb1e0ef49348d1005ef2c95a06de25a4ca5cce2d0fab437c82377a9583db5",
+      "status": "approved"
     }
   ]
 }
