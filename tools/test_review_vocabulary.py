@@ -622,6 +622,37 @@ class ReviewVocabularyTests(unittest.TestCase):
             },
         )
 
+    def test_target_a_uses_an_article_free_generic_plain(self):
+        expected = {
+            "batchID": "0003",
+            "items": [{"id": "vocab-a::sense", "target": "a"}],
+        }
+        actual = {
+            "batchID": "0003",
+            "items": [
+                {
+                    "id": "vocab-a::sense",
+                    "plainExpression": "a",
+                    "example": "A ticket is required.",
+                }
+            ],
+        }
+        repairs = {
+            "vocab-a::sense": {
+                "id": "vocab-a::sense",
+                "plainExpression": "a common use of a",
+            }
+        }
+
+        result = review_vocabulary.validate_enrichment_batch(
+            actual,
+            expected,
+            repairs,
+            repair_invalid=True,
+        )
+
+        self.assertEqual(result["items"][0]["plainExpression"], "related concept")
+
     def test_deterministic_enrichment_repairs_add_contraction_example_without_source(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
@@ -925,6 +956,54 @@ class ReviewVocabularyTests(unittest.TestCase):
                 'The expression "cold weather" is being reviewed.',
             )
             self.assertEqual(output["plainExpression"], "a related idea")
+
+    def test_run_local_enrichment_safety_fallback_handles_target_a(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch, draft = self._write_enrichment_fixture(work)
+            batch["items"][0].update(
+                target="a",
+                meaning="A.",
+                plainCandidates=[],
+                exampleCandidate="A ticket is required.",
+            )
+            draft["packet"].update(
+                target="a",
+                plain="",
+                definition="A.",
+                candidatePlainExpressions=[],
+            )
+            draft["senses"][0].update(
+                meaning="A.",
+                exampleCandidate="A ticket is required.",
+            )
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary,
+                "run_helper",
+                side_effect=review_vocabulary.sources.SourceError(
+                    "Apple enrich failed: Detected content likely to be unsafe"
+                ),
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
+                )
+
+            self.assertEqual(result["completed"], 1)
+            output = review_vocabulary.sources.read_jsonl(
+                work / "enrichment-output.jsonl"
+            )[0]["items"][0]
+            self.assertEqual(output["plainExpression"], "related concept")
 
     def test_run_local_enrichment_uses_input_fallback_after_safety_gate(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -2205,6 +2284,69 @@ class ReviewVocabularyTests(unittest.TestCase):
             "imprecise but fairly close to correct",
         )
 
+    def test_run_local_enrichment_uses_safe_generic_after_three_invalid_plain_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "work"
+            work.mkdir()
+            batch, draft = self._write_enrichment_fixture(work)
+            batch["items"][0].update(
+                target="chief executive",
+                meaning="Chief executive officer.",
+                plainCandidates=[],
+                exampleCandidate="The chief executive approved the plan.",
+            )
+            draft["packet"].update(
+                target="chief executive",
+                plain="",
+                definition="Chief executive officer.",
+                candidatePlainExpressions=[],
+            )
+            draft["senses"][0].update(
+                meaning="Chief executive officer.",
+                exampleCandidate="The chief executive approved the plan.",
+            )
+            (work / "enrichment-input.jsonl").write_text(
+                json.dumps(batch) + "\n", encoding="utf-8"
+            )
+            (work / "draft.jsonl").write_text(
+                json.dumps(draft) + "\n", encoding="utf-8"
+            )
+            calls = 0
+
+            def helper(_executable, _mode, payload):
+                nonlocal calls
+                calls += 1
+                request = json.loads(payload)
+                return json.dumps(
+                    {
+                        "batchID": request["batchID"],
+                        "items": [
+                            {
+                                "id": batch["items"][0]["id"],
+                                "plainExpression": "chief executive",
+                                "example": "The chief executive approved the plan.",
+                            }
+                        ],
+                    }
+                ) + "\n"
+
+            with mock.patch.object(
+                review_vocabulary, "compile_apple_helper"
+            ), mock.patch.object(
+                review_vocabulary, "run_helper", side_effect=helper
+            ):
+                result = review_vocabulary.run_local_enrichment(
+                    work, root / "helper.swift", 1
+                )
+
+            self.assertEqual(result["completed"], 1)
+            self.assertEqual(calls, 3)
+            output = review_vocabulary.sources.read_jsonl(
+                work / "enrichment-output.jsonl"
+            )[0]["items"][0]
+            self.assertEqual(output["plainExpression"], "a related idea")
+
     def test_reviewable_senses_drops_an_additional_sense_without_a_safe_plain(self):
         packet = {
             "target": "advantage",
@@ -2707,6 +2849,12 @@ class ReviewVocabularyTests(unittest.TestCase):
                     {
                         "target": "actually",
                         "plainExpression": "in fact",
+                        "quizOptions": [
+                            "about",
+                            "again",
+                            "after",
+                            "actually",
+                        ],
                         "primarySense": {
                             "id": "actually#r#00150568-r",
                             "partOfSpeech": "adverb",
@@ -2755,7 +2903,42 @@ class ReviewVocabularyTests(unittest.TestCase):
                 reviewed["quiz"]["prompt"]["en"],
                 "Which expression best matches ‘in fact’?",
             )
+            self.assertEqual(
+                reviewed["quiz"]["options"],
+                ["about", "again", "after", "actually"],
+            )
+            self.assertEqual(reviewed["quiz"]["correctOptionIndex"], 3)
             self.assertIn(new_ref, reviewed["sourceRefs"])
+
+    def test_manual_review_override_rejects_invalid_quiz_options(self):
+        reviewed = [
+            {
+                "upgradedExpression": "cassette",
+                "quiz": {
+                    "options": ["book", "camera", "album", "cassette"],
+                    "correctOptionIndex": 3,
+                },
+            }
+        ]
+        invalid_options = (
+            ["book", "camera", "cassette"],
+            ["book", "book", "album", "cassette"],
+            ["book", "camera", "album", "record"],
+        )
+        for options in invalid_options:
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "review-overrides.jsonl"
+                path.write_text(
+                    json.dumps({"target": "cassette", "quizOptions": options})
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(
+                    review_vocabulary.sources.SourceError,
+                    "invalid quiz options override: cassette",
+                ):
+                    review_vocabulary.apply_review_overrides(reviewed, [path])
 
     def test_review_target_groups_use_the_full_draft_for_stable_quiz_options(self):
         with tempfile.TemporaryDirectory() as directory:

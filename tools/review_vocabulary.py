@@ -527,6 +527,29 @@ def apply_review_overrides(reviewed: list[dict], paths: list[Path]) -> None:
             raise sources.SourceError(f"unknown review override target: {target}")
         if "plainExpression" in override:
             item["plainExpression"] = override["plainExpression"].strip()
+        if "quizOptions" in override:
+            raw_options = override["quizOptions"]
+            if (
+                not isinstance(raw_options, list)
+                or len(raw_options) != 4
+                or not all(
+                    isinstance(option, str) and option.strip()
+                    for option in raw_options
+                )
+            ):
+                raise sources.SourceError(f"invalid quiz options override: {target}")
+            options = [option.strip() for option in raw_options]
+            normalized_options = [sources.normalized(option) for option in options]
+            normalized_target = sources.normalized(target)
+            if (
+                len(set(normalized_options)) != 4
+                or normalized_options.count(normalized_target) != 1
+            ):
+                raise sources.SourceError(f"invalid quiz options override: {target}")
+            item["quiz"]["options"] = options
+            item["quiz"]["correctOptionIndex"] = normalized_options.index(
+                normalized_target
+            )
         sense_override = override.get("primarySense")
         if sense_override is not None:
             if not isinstance(sense_override, dict) or not item["senses"]:
@@ -1000,6 +1023,18 @@ def validate_enrichment_batch(
                     raise sources.SourceError(
                         f"no deterministic enrichment repair for {item['id']}"
                     ) from error
+                repair_plain = repair["plainExpression"]
+                if sources.contains_target_form(target, repair_plain):
+                    repair_plain = next(
+                        value
+                        for value in (
+                            "a related idea",
+                            "a common expression",
+                            "a useful term",
+                            "related concept",
+                        )
+                        if not sources.contains_target_form(target, value)
+                    )
                 candidates = []
                 if repair.get("example"):
                     candidates.append({**candidate, "example": repair["example"]})
@@ -1010,12 +1045,12 @@ def validate_enrichment_batch(
                     }
                 )
                 candidates.append(
-                    {**candidate, "plainExpression": repair["plainExpression"]}
+                    {**candidate, "plainExpression": repair_plain}
                 )
                 candidates.append(
                     {
                         **candidate,
-                        "plainExpression": repair["plainExpression"],
+                        "plainExpression": repair_plain,
                         "example": repair.get("example")
                         or f'The expression "{target}" is being reviewed.',
                     }
@@ -1107,6 +1142,7 @@ def run_local_enrichment(
                                 "a related idea",
                                 "a common expression",
                                 "a useful term",
+                                "related concept",
                             )
                             if not sources.contains_target_form(
                                 input_item["target"], value
@@ -1164,19 +1200,30 @@ def run_local_enrichment(
 
         def enrich_validated(batch: dict) -> dict:
             for attempt in range(3):
+                candidate = enrich(batch)
                 try:
                     return validate_enrichment_batch(
-                        enrich(batch),
+                        candidate,
                         expected_by_id[batch["batchID"]],
                         repairs,
-                        repair_invalid=True,
+                        repair_invalid=False,
                     )
                 except sources.SourceError as error:
-                    retryable = (
-                        "invalid plain expression" in str(error)
-                        or "no deterministic enrichment repair" in str(error)
-                    )
-                    if attempt == 2 or not retryable:
+                    if "invalid plain expression" in str(error) and attempt < 2:
+                        continue
+                    try:
+                        return validate_enrichment_batch(
+                            candidate,
+                            expected_by_id[batch["batchID"]],
+                            repairs,
+                            repair_invalid=True,
+                        )
+                    except sources.SourceError as repair_error:
+                        if (
+                            "no deterministic enrichment repair" in str(repair_error)
+                            and attempt < 2
+                        ):
+                            continue
                         raise
             raise AssertionError("unreachable")
 
