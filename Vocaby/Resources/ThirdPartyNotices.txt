@@ -480,6 +480,12 @@ License: CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/
 Contains adapted data from WortUniversum English Vocabulary Database (cstr/grundwortschatz-voc-en), used under CC BY-SA 4.0. Vocaby retains the required attribution and share-alike notice for the adapted vocabulary data.
 Changes: selected, normalized, translated, sense-aligned, and adapted for Vocaby.
 
+Moby Pronunciator II (Project Gutenberg ebook 3205 files refreshed 2025-08-23)
+Source: https://www.gutenberg.org/ebooks/3205
+License: Public domain in the USA; public-domain grant from the author dated January 2001 https://www.gutenberg.org/ebooks/3205
+Moby Pronunciator II is public-domain material by grant from the author, January 2001, distributed by Project Gutenberg.
+Changes: selected, normalized, translated, sense-aligned, and adapted for Vocaby.
+
 Open English WordNet (2025 edition, git dc343f2683279ecbb13fab4e2fd778d7b162d287)
 Source: https://github.com/globalwordnet/english-wordnet
 License: Princeton WordNet license and CC BY 4.0 https://github.com/globalwordnet/english-wordnet/blob/main/LICENSE.md

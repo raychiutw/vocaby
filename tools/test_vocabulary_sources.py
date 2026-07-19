@@ -1120,11 +1120,11 @@ class VocabularySourcesTests(unittest.TestCase):
                 ],
             )
 
-    def test_frozen_100k_baseline_inputs(self):
+    def test_reviewed_vocabulary_release_inputs(self):
         expected_hashes = {
-            "Vocaby/Resources/VocabularySeed.json": "0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9",
-            "Content/VocabularyProvenance.json": "eacf3d158eec48fab86f437e74975f3feff55145427201d8a3d8bfc7aa45188f",
-            "Vocaby/Resources/ThirdPartyNotices.txt": "3f152459c424d7451fc08c3ea65f17e7d368d335bd78a93afda2307408e55d5c",
+            "Vocaby/Resources/VocabularySeed.json": "4fb6399fb1a90c518254a999cafdc415601b923610e979c8901304aaf7417a68",
+            "Content/VocabularyProvenance.json": "e1f3b7716a9eb7179c7b6b4596a121e4796e992befae9e9c572bc21ebd3b8ec2",
+            "Vocaby/Resources/ThirdPartyNotices.txt": "ec1826403b21c8b56dc511f663a8766c86034229bc42699b6480747266ef88f5",
             "Content/Sources/source-manifest.json": "6b31b1c9d0790dbe7335f43b8bd768f780d2d6211fd91d7fdb14ac10e7500ec3",
         }
 
@@ -1134,7 +1134,7 @@ class VocabularySourcesTests(unittest.TestCase):
             )
         self.assertEqual(
             len(json.loads((ROOT / "Vocaby/Resources/VocabularySeed.json").read_text())),
-            14_064,
+            18_603,
         )
         self.assertEqual(
             len(
