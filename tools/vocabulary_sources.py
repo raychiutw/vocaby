@@ -3685,7 +3685,7 @@ def build_reviewed(
     ]
     provenance = {
         "schemaVersion": 2,
-        "bankVersion": "2026.07.5",
+        "bankVersion": "2026.07.6",
         "sources": sources,
         "items": provenance_items,
     }

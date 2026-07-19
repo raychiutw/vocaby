@@ -11,6 +11,7 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+from collections import Counter
 from pathlib import Path
 
 from tools import vocabulary_sources
@@ -1120,10 +1121,33 @@ class VocabularySourcesTests(unittest.TestCase):
                 ],
             )
 
+    def test_frozen_100k_legacy_seed_ids(self):
+        manifest_path = (
+            ROOT / "Content/Reviews/vocabulary-100k/legacy-seed-ids.json"
+        )
+        self.assertEqual(
+            vocabulary_sources.sha256(manifest_path),
+            "5190943433d2376a9bbf693f0b1e584e77290dcb8658aa26754da462deae862d",
+        )
+        manifest = json.loads(manifest_path.read_text())
+        self.assertEqual(manifest["schemaVersion"], 1)
+        self.assertEqual(
+            manifest["seedSHA256"],
+            "0fad7a08386e7b9448448ce8dc2144dd6571d0614594a9c049d0e1147bb541d9",
+        )
+        self.assertEqual(len(manifest["ids"]), 14_064)
+        self.assertEqual(len(set(manifest["ids"])), 14_064)
+
+        release_items = json.loads(
+            (ROOT / "Vocaby/Resources/VocabularySeed.json").read_text()
+        )
+        release_ids = {item["id"] for item in release_items}
+        self.assertTrue(set(manifest["ids"]).issubset(release_ids))
+
     def test_reviewed_vocabulary_release_inputs(self):
         expected_hashes = {
             "Vocaby/Resources/VocabularySeed.json": "4fb6399fb1a90c518254a999cafdc415601b923610e979c8901304aaf7417a68",
-            "Content/VocabularyProvenance.json": "e1f3b7716a9eb7179c7b6b4596a121e4796e992befae9e9c572bc21ebd3b8ec2",
+            "Content/VocabularyProvenance.json": "b524911b950b680dd9c07fc0c35c0098e3aa9e913011895baed4dd2de8032882",
             "Vocaby/Resources/ThirdPartyNotices.txt": "ec1826403b21c8b56dc511f663a8766c86034229bc42699b6480747266ef88f5",
             "Content/Sources/source-manifest.json": "6b31b1c9d0790dbe7335f43b8bd768f780d2d6211fd91d7fdb14ac10e7500ec3",
         }
@@ -1132,10 +1156,24 @@ class VocabularySourcesTests(unittest.TestCase):
             self.assertEqual(
                 vocabulary_sources.sha256(ROOT / relative_path), expected_hash
             )
-        self.assertEqual(
-            len(json.loads((ROOT / "Vocaby/Resources/VocabularySeed.json").read_text())),
-            18_603,
+        release_items = json.loads(
+            (ROOT / "Vocaby/Resources/VocabularySeed.json").read_text()
         )
+        self.assertEqual(len(release_items), 18_603)
+        self.assertEqual(
+            Counter(item["level"] for item in release_items),
+            Counter({"basic": 2_153, "intermediate": 6_657, "advanced": 9_793}),
+        )
+        review_dir = ROOT / "Content/Reviews/vocabulary-100k"
+        self.assertEqual(
+            len(
+                vocabulary_sources.load_review_index(
+                    review_dir / "index.json", 5_000
+                )
+            ),
+            5_000,
+        )
+        self.assertFalse((review_dir / "checkpoint-0026.jsonl").exists())
         self.assertEqual(
             len(
                 json.loads(
@@ -3902,7 +3940,7 @@ class VocabularySourcesTests(unittest.TestCase):
                 },
             )
             provenance_data = json.loads(provenance.read_text())
-            self.assertEqual(provenance_data["bankVersion"], "2026.07.5")
+            self.assertEqual(provenance_data["bankVersion"], "2026.07.6")
             self.assertEqual(
                 provenance_data["items"][0]["reviewedAt"], "2026-07-15"
             )

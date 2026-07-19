@@ -1,5 +1,10 @@
 # Vocabulary 1.1.0 TestFlight Release Implementation Plan
 
+> **Superseded on 2026-07-20 for the current internal release:** vocabulary
+> production paused after checkpoint 25. Version 1.1.0 ships the reviewed
+> 18,603-entry JSON bank; the 100,000-entry SQLite design remains future work
+> and checkpoint 26 has not started.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Verify the exact 100,000-lesson SQLite App, release it as public version 1.1.0, push the final main branch, and confirm the corresponding GitHub Actions build reaches internal TestFlight beta readiness.
