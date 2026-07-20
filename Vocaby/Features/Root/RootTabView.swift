@@ -74,6 +74,7 @@ struct RootTabView: View {
 
             route(url)
         }
+        .sensoryFeedback(.selection, trigger: selectedTab)
     }
 
     @available(iOS 18.0, *)
@@ -139,9 +140,11 @@ struct RootTabView: View {
 
     private var homeRoot: some View {
         NavigationStack {
-            TodayView {
-                selectedTab = .learn
-            }
+            TodayView(
+                onLearn: { selectedTab = .learn },
+                onReview: { selectedTab = .learn },
+                onPractice: { selectedTab = .practice }
+            )
         }
     }
 

@@ -1,6 +1,7 @@
 import AVFoundation
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct DailyPracticePlan {
     let runID: String
@@ -425,7 +426,9 @@ struct QuizRunView<Completion: View>: View {
                         .onChange(of: remaining, initial: true) { _, remaining in
                             if remaining == 0 {
                                 isSpellingFocused = false
-                                _ = runState.timeout()
+                                if runState.timeout() != nil {
+                                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                                }
                             }
                         }
                     }
@@ -486,7 +489,7 @@ struct QuizRunView<Completion: View>: View {
             } else {
                 ForEach(visibleOptions(for: question), id: \.self) { option in
                     Button {
-                        _ = runState.submit(option)
+                        submitWithFeedback(option)
                     } label: {
                         HStack(spacing: 12) {
                             Text(verbatim: option)
@@ -648,7 +651,12 @@ struct QuizRunView<Completion: View>: View {
     private func submitSpelling() {
         guard !spellingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         isSpellingFocused = false
-        _ = runState.submit(spellingText)
+        submitWithFeedback(spellingText)
+    }
+
+    private func submitWithFeedback(_ answer: String) {
+        guard let attempt = runState.submit(answer) else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(attempt.wasCorrect ? .success : .error)
     }
 
     private func advance() {

@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 import WidgetKit
 
 struct TodayView: View {
@@ -13,7 +14,9 @@ struct TodayView: View {
     @State private var streakCount = 0
     @State private var statusMessage: String?
 
+    let onLearn: () -> Void
     let onReview: () -> Void
+    let onPractice: () -> Void
 
     private let contentLanguageCode = "en"
     private let supportLanguageCode = "zh-Hant"
@@ -44,6 +47,18 @@ struct TodayView: View {
         "\(completedCount)/\(totalCount)"
     }
 
+    private var progressFraction: Double {
+        min(1, Double(completedCount) / Double(max(totalCount, 1)))
+    }
+
+    private var newLearnedCount: Int {
+        orderedSessionItems.filter { !$0.isReviewFill && $0.answeredAt != nil }.count
+    }
+
+    private var reviewedCount: Int {
+        orderedSessionItems.filter { $0.isReviewFill && $0.answeredAt != nil }.count
+    }
+
     private var nextSeedItem: VocabularySeedItem? {
         let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
         return orderedSessionItems
@@ -70,52 +85,84 @@ struct TodayView: View {
     var body: some View {
         List {
             Section {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(progressText)
-                        .font(.title2.bold().monospacedDigit())
-
-                    Spacer()
-
-                    if streakCount > 0 {
-                        Label("\(streakCount)", systemImage: "flame.fill")
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .accessibilityLabel(Text("streak.label"))
+                HStack(spacing: 24) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color(.tertiarySystemFill), lineWidth: 14)
+                        Circle()
+                            .trim(from: 0, to: progressFraction)
+                            .stroke(AppTheme.brandGradient, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                        VStack(spacing: 2) {
+                            Text(progressText)
+                                .font(.title2.bold().monospacedDigit())
+                            Text("today.progress.accessibility")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                }
-
-                ProgressView(value: Double(completedCount), total: Double(totalCount))
-                    .tint(AppTheme.accent)
+                    .frame(width: 136, height: 136)
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel(Text("today.progress.accessibility"))
                     .accessibilityValue(Text(progressText))
 
-                Button {
-                    if todaySession != nil && completedCount == totalCount {
-                        isShowingExtraPractice = true
-                    } else {
-                        startPractice()
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("\(streakCount)", systemImage: "flame.fill")
+                            .font(.headline.monospacedDigit())
+                            .foregroundStyle(.orange)
+                            .accessibilityLabel(Text("streak.label"))
+                        if dueReviewCount > 0 {
+                            Label("\(dueReviewCount)", systemImage: "clock.arrow.circlepath")
+                                .font(.subheadline.bold().monospacedDigit())
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(.orange.opacity(0.14), in: Capsule())
+                                .accessibilityLabel(Text("review.title"))
+                        } else {
+                            Label("review.empty.title", systemImage: "checkmark.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                }
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    onLearn()
                 } label: {
-                    Text(todaySession != nil && completedCount == totalCount
-                        ? "today.extraPractice.button"
-                        : primaryButtonTitle)
+                    Label(primaryButtonTitle, systemImage: "rectangle.stack.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .prominentActionStyle(tint: AppTheme.accent)
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.accent)
                 .accessibilityIdentifier("today.start")
-            }
 
-            if dueReviewCount > 0 {
-                Section {
-                Button(action: onReview) {
-                    CompactMetadataRow(
-                        title: String(localized: "review.title"),
-                        subtitle: reviewSummary,
-                        systemImage: "arrow.triangle.2.circlepath",
-                        tint: AppTheme.reviewAmber
-                    )
+                HStack(spacing: 12) {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onReview()
+                    } label: {
+                        Label("review.title", systemImage: "arrow.triangle.2.circlepath")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(dueReviewCount == 0)
+
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onPractice()
+                    } label: {
+                        Label("practice.tab.title", systemImage: "checkmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.plain)
+
+                HStack {
+                    dailySummaryValue(newLearnedCount, key: "progress.state.new")
+                    dailySummaryValue(reviewedCount, key: "review.title")
+                    dailySummaryValue(completedCount, key: "practice.tab.title")
                 }
             }
 
@@ -127,18 +174,6 @@ struct TodayView: View {
                     systemImage: "text.quote",
                     tint: AppTheme.accent
                 )
-                }
-            }
-
-            Section {
-                NavigationLink {
-                    PracticeCenterView(
-                        seedItems: seedItems,
-                        selectedLevel: preferencesStore.read().selectedLevel,
-                        supportLanguageCode: supportLanguageCode
-                    )
-                } label: {
-                    Label("practice.center.button", systemImage: "slider.horizontal.3")
                 }
             }
 
@@ -179,6 +214,15 @@ struct TodayView: View {
             )
         }
         .learningSettingsSheet()
+    }
+
+    private func dailySummaryValue(_ value: Int, key: LocalizedStringKey) -> some View {
+        VStack(spacing: 4) {
+            Text("\(value)").font(.headline).monospacedDigit()
+            Text(key).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
     }
 
     private func refreshToday() {

@@ -20,6 +20,18 @@ struct RootView: View {
                 }
             }
         }
+        .preferredColorScheme(preferredColorScheme)
+        .onReceive(NotificationCenter.default.publisher(for: .vocabyPreferencesDidChange)) { _ in
+            preferences = preferencesStore.read()
+        }
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        switch preferences.appearance {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
     }
 }
 

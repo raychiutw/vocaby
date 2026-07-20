@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let vocabyPreferencesDidChange = Notification.Name("VocabyPreferencesDidChange")
+}
+
 enum AppAppearance: String, Codable, CaseIterable {
     case system
     case light
@@ -136,5 +140,6 @@ struct UserPreferencesStore {
     func write(_ preferences: UserPreferences) throws {
         let data = try encoder.encode(preferences)
         userDefaults.set(data, forKey: Self.storageKey)
+        NotificationCenter.default.post(name: .vocabyPreferencesDidChange, object: nil)
     }
 }

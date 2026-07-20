@@ -21,6 +21,7 @@ struct LearnView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @State private var items: [VocabularySeedItem] = []
+    @State private var session: DailySession?
     @State private var currentIndex = 0
     @State private var isRevealed = false
     @State private var dragOffset: CGSize = .zero
@@ -32,6 +33,7 @@ struct LearnView: View {
 
     private let seedLoader = SeedLoader()
     private let persistence = ProgressPersistenceService()
+    private let selectionService = DailySelectionService()
     private let scheduler = ReviewScheduler()
     private let preferencesStore = UserPreferencesStore()
     private let swipeThreshold: CGFloat = 96
@@ -141,6 +143,13 @@ struct LearnView: View {
                 answeredAt: Date(),
                 context: .dailyPractice
             )
+            if let sessionItem = session?.items.first(where: { $0.itemID == item.id && $0.answeredAt == nil }) {
+                sessionItem.answeredAt = Date()
+                sessionItem.wasCorrect = grade.rawValue >= 3
+            }
+            if let session, session.items.allSatisfy({ $0.answeredAt != nil }) {
+                session.completedAt = Date()
+            }
             try modelContext.save()
 
             if grade == .unknown { unknownCount += 1 } else { knownCount += 1 }
@@ -167,9 +176,62 @@ struct LearnView: View {
     private func loadItems() {
         do {
             let preferences = preferencesStore.read()
-            items = Array(try seedLoader.loadBundledSeed()
-                .filter { $0.level == preferences.selectedLevel }
-                .prefix(min(preferences.dailyGoal, 10)))
+            let seed = try seedLoader.loadBundledSeed()
+            let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
+            let dayKey = DayKeyService().dayKey(for: Date())
+            let descriptor = FetchDescriptor<DailySession>(predicate: #Predicate { $0.dayKey == dayKey })
+            let dailySession: DailySession
+            if let existing = try modelContext.fetch(descriptor).first {
+                dailySession = existing
+            } else {
+                let dueIDs = scheduler.allDueItems(from: progressRows, at: Date()).map(\.itemID)
+                let selection = selectionService.selectItems(
+                    from: seed,
+                    selectedLevel: preferences.selectedLevel,
+                    contentLanguageCode: "en",
+                    supportLanguageCode: "zh-Hant",
+                    firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
+                    dueReviewItemIDs: dueIDs,
+                    targetCount: preferences.dailyGoal
+                )
+                dailySession = try persistence.session(
+                    for: dayKey,
+                    itemIDs: selection.itemIDs,
+                    reviewItemIDs: Set(selection.reviewItemIDs),
+                    in: modelContext
+                )
+                try modelContext.save()
+            }
+            session = dailySession
+            let seedByID = Dictionary(uniqueKeysWithValues: seed.map { ($0.id, $0) })
+            var pendingItems = dailySession.items
+                .filter { $0.answeredAt == nil }
+                .sorted { $0.position < $1.position }
+
+            if pendingItems.isEmpty {
+                let usedIDs = Set(dailySession.items.map(\.itemID))
+                let learnedIDs = Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID })
+                let extraItems = seed
+                    .filter { $0.level == preferences.selectedLevel && !usedIDs.contains($0.id) && !learnedIDs.contains($0.id) }
+                    .prefix(10)
+                let startPosition = dailySession.items.map(\.position).max().map { $0 + 1 } ?? 0
+                for (offset, item) in extraItems.enumerated() {
+                    dailySession.items.append(DailySessionItem(itemID: item.id, position: startPosition + offset))
+                }
+                if !extraItems.isEmpty {
+                    dailySession.targetItemCount = dailySession.items.count
+                    dailySession.completedAt = nil
+                    try modelContext.save()
+                    pendingItems = dailySession.items
+                        .filter { $0.answeredAt == nil }
+                        .sorted { $0.position < $1.position }
+                }
+            }
+
+            items = pendingItems
+                .prefix(10)
+                .compactMap { seedByID[$0.itemID] }
+            currentIndex = 0
             autoplayIfNeeded()
         } catch {
             errorMessage = String(localized: "learn.error.load")
@@ -177,11 +239,11 @@ struct LearnView: View {
     }
 
     private func restart() {
-        currentIndex = 0
         knownCount = 0
         unknownCount = 0
         savedCount = 0
-        autoplayIfNeeded()
+        items = []
+        loadItems()
     }
 
     private func autoplayIfNeeded() {

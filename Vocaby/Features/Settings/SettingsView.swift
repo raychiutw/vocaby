@@ -1,13 +1,18 @@
 import SwiftUI
+import SwiftData
 import UIKit
 import UserNotifications
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.modelContext) private var modelContext
     @State private var preferences: UserPreferences
     @State private var authorizationStatus: ReminderAuthorizationStatus = .notDetermined
     @State private var isUpdatingReminders = false
+    @State private var isShowingResetConfirmation = false
+    @State private var isShowingFinalResetConfirmation = false
+    @State private var resetErrorMessage: String?
     private let preferencesStore: UserPreferencesStore
     private let calendar: Calendar
     private let notificationScheduler = NotificationScheduler()
@@ -116,6 +121,21 @@ struct SettingsView: View {
                     ThirdPartyNoticesView()
                 }
             }
+
+            Section {
+                Button("settings.reset.button", role: .destructive) {
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    isShowingResetConfirmation = true
+                }
+            } footer: {
+                Text("settings.reset.footer")
+            }
+
+            if let resetErrorMessage {
+                Section {
+                    Text(resetErrorMessage).foregroundStyle(.red)
+                }
+            }
         }
         .navigationTitle("settings.title")
         .task {
@@ -130,6 +150,37 @@ struct SettingsView: View {
                     dismiss()
                 }
             }
+        }
+        .alert("settings.reset.first.title", isPresented: $isShowingResetConfirmation) {
+            Button("common.cancel", role: .cancel) {}
+            Button("settings.reset.continue", role: .destructive) {
+                DispatchQueue.main.async { isShowingFinalResetConfirmation = true }
+            }
+        } message: {
+            Text("settings.reset.first.message")
+        }
+        .alert("settings.reset.final.title", isPresented: $isShowingFinalResetConfirmation) {
+            Button("common.cancel", role: .cancel) {}
+            Button("settings.reset.button", role: .destructive, action: resetProgress)
+        } message: {
+            Text("settings.reset.final.message")
+        }
+    }
+
+    private func resetProgress() {
+        do {
+            try modelContext.fetch(FetchDescriptor<WordProgress>()).forEach { modelContext.delete($0) }
+            try modelContext.fetch(FetchDescriptor<DailySession>()).forEach { modelContext.delete($0) }
+            try modelContext.fetch(FetchDescriptor<QuizResult>()).forEach { modelContext.delete($0) }
+            try modelContext.fetch(FetchDescriptor<PracticeAttemptRecord>()).forEach { modelContext.delete($0) }
+            try modelContext.fetch(FetchDescriptor<AchievementRecord>()).forEach { modelContext.delete($0) }
+            try modelContext.save()
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            resetErrorMessage = nil
+        } catch {
+            modelContext.rollback()
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            resetErrorMessage = String(localized: "settings.reset.error")
         }
     }
 
