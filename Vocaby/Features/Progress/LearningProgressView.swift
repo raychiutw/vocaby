@@ -1,6 +1,7 @@
 import Charts
 import SwiftData
 import SwiftUI
+import UIKit
 
 private struct LearningDay: Identifiable {
     let date: Date
@@ -15,9 +16,13 @@ private struct LearningStateSlice: Identifiable {
 }
 
 struct LearningProgressView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query private var sessions: [DailySession]
     @Query private var progressRows: [WordProgress]
+    @Query private var attempts: [PracticeAttemptRecord]
+    @Query private var achievementRecords: [AchievementRecord]
     @State private var rangeDays = 7
+    @State private var celebrationStartedAt: Date?
 
     private let dayKeyService = DayKeyService()
 
@@ -48,6 +53,16 @@ struct LearningProgressView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationTitle("progress.title")
+        .overlay {
+            if let celebrationStartedAt {
+                ConfettiCanvas(startedAt: celebrationStartedAt)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .task(id: achievementFingerprint) {
+            unlockAchievementsIfNeeded()
+        }
     }
 
     private var trendSection: some View {
@@ -115,7 +130,7 @@ struct LearningProgressView: View {
 
     private var achievementPreview: some View {
         NavigationLink {
-            AchievementWallView(progressRows: progressRows, sessions: sessions)
+            AchievementWallView(unlockedIDs: unlockedAchievementIDs)
         } label: {
             Label("achievement.wall.title", systemImage: "medal")
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -123,6 +138,36 @@ struct LearningProgressView: View {
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
+    }
+
+    private var achievementMetrics: AchievementMetrics {
+        .make(progressRows: progressRows, sessions: sessions, attempts: attempts)
+    }
+
+    private var unlockedAchievementIDs: Set<AchievementID> {
+        Set(achievementRecords.compactMap { AchievementID(rawValue: $0.achievementID) })
+    }
+
+    private var achievementFingerprint: String {
+        [progressRows.count, sessions.count, attempts.count, achievementRecords.count]
+            .map(String.init)
+            .joined(separator: "-")
+    }
+
+    @MainActor
+    private func unlockAchievementsIfNeeded() {
+        let newlyUnlocked = AchievementEngine().newlyUnlocked(
+            metrics: achievementMetrics,
+            existing: unlockedAchievementIDs
+        )
+        guard !newlyUnlocked.isEmpty else { return }
+        let now = Date()
+        newlyUnlocked.forEach {
+            modelContext.insert(AchievementRecord(achievementID: $0.rawValue, unlockedAt: now))
+        }
+        try? modelContext.save()
+        celebrationStartedAt = now
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private var trendDays: [LearningDay] {
@@ -178,25 +223,20 @@ struct LearningProgressView: View {
 }
 
 private struct AchievementWallView: View {
-    let progressRows: [WordProgress]
-    let sessions: [DailySession]
+    let unlockedIDs: Set<AchievementID>
 
-    private var achievements: [(String, String, Bool)] {
-        let learned = progressRows.filter { $0.firstSeenAt != nil }.count
-        let mastered = progressRows.filter { $0.masteredAt != nil }.count
-        let saved = progressRows.filter(\.isSaved).count
-        let maximumDay = sessions.map(\.completedItemCount).max() ?? 0
+    private var achievements: [(AchievementID, String, String)] {
         return [
-            ("achievement.first", "sparkles", learned >= 1),
-            ("achievement.streak3", "flame", sessions.count >= 3),
-            ("achievement.streak7", "flame.fill", sessions.count >= 7),
-            ("achievement.streak30", "calendar", sessions.count >= 30),
-            ("achievement.learn100", "books.vertical", learned >= 100),
-            ("achievement.learn500", "books.vertical.fill", learned >= 500),
-            ("achievement.master100", "checkmark.seal", mastered >= 100),
-            ("achievement.save10", "star.fill", saved >= 10),
-            ("achievement.perfect", "trophy", false),
-            ("achievement.day50", "bolt.fill", maximumDay >= 50)
+            (.firstStudy, "achievement.first", "sparkles"),
+            (.streak3, "achievement.streak3", "flame"),
+            (.streak7, "achievement.streak7", "flame.fill"),
+            (.streak30, "achievement.streak30", "calendar"),
+            (.learn100, "achievement.learn100", "books.vertical"),
+            (.learn500, "achievement.learn500", "books.vertical.fill"),
+            (.master100, "achievement.master100", "checkmark.seal"),
+            (.save10, "achievement.save10", "star.fill"),
+            (.perfectPractice, "achievement.perfect", "trophy"),
+            (.day50, "achievement.day50", "bolt.fill")
         ]
     }
 
@@ -205,21 +245,46 @@ private struct AchievementWallView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 16)], spacing: 16) {
                 ForEach(Array(achievements.enumerated()), id: \.offset) { _, achievement in
                     VStack(spacing: 12) {
-                        Image(systemName: achievement.1)
+                        Image(systemName: achievement.2)
                             .font(.largeTitle)
-                            .foregroundStyle(achievement.2 ? AppTheme.accent : .secondary)
-                        Text(LocalizedStringKey(achievement.0))
+                            .foregroundStyle(unlockedIDs.contains(achievement.0) ? AppTheme.accent : .secondary)
+                        Text(LocalizedStringKey(achievement.1))
                             .font(.subheadline.bold())
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, minHeight: 130)
                     .padding()
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                    .opacity(achievement.2 ? 1 : 0.5)
+                    .opacity(unlockedIDs.contains(achievement.0) ? 1 : 0.5)
                 }
             }
             .padding()
         }
         .navigationTitle("achievement.wall.title")
+    }
+}
+
+private struct ConfettiCanvas: View {
+    let startedAt: Date
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let elapsed = timeline.date.timeIntervalSince(startedAt)
+            Canvas { context, size in
+                guard elapsed < 3 else { return }
+                for index in 0..<72 {
+                    let seed = Double(index)
+                    let progress = min(1, elapsed / 2.6)
+                    let x = size.width * (0.08 + 0.84 * abs(sin(seed * 12.9898)))
+                    let drift = sin(seed * 2.3 + elapsed * 4) * 28
+                    let y = -20 + (size.height + 40) * progress * (0.45 + 0.55 * abs(cos(seed)))
+                    let rect = CGRect(x: x + drift, y: y, width: 7, height: 12)
+                    let colors: [Color] = [AppTheme.accent, .teal, .yellow, .pink, .orange]
+                    context.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(colors[index % colors.count]))
+                }
+            }
+            .opacity(max(0, 1 - elapsed / 3))
+        }
+        .ignoresSafeArea()
     }
 }

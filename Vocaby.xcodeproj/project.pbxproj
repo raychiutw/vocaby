@@ -90,6 +90,9 @@
 		200000000000000000000405 /* LearnView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000301 /* LearnView.swift */; };
 		200000000000000000000406 /* LearningProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000302 /* LearningProgressView.swift */; };
 		200000000000000000000407 /* SM2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000303 /* SM2.swift */; };
+		200000000000000000000408 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000305 /* AchievementEngine.swift */; };
+		200000000000000000000409 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000305 /* AchievementEngine.swift */; };
+		20000000000000000000040A /* AchievementEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000306 /* AchievementEngineTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -178,6 +181,8 @@
 		200000000000000000000302 /* LearningProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningProgressView.swift; sourceTree = "<group>"; };
 		200000000000000000000303 /* SM2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2.swift; sourceTree = "<group>"; };
 		200000000000000000000304 /* SM2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2Tests.swift; sourceTree = "<group>"; };
+		200000000000000000000305 /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
+		200000000000000000000306 /* AchievementEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngineTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -359,6 +364,7 @@
 				000000000000000000000313 /* UserPreferencesStore.swift */,
 				00000000000000000000031E /* PracticeProgressService.swift */,
 				200000000000000000000303 /* SM2.swift */,
+				200000000000000000000305 /* AchievementEngine.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -395,6 +401,7 @@
 				00000000000000000000032A /* LocalizationCoverageTests.swift */,
 				00000000000000000000032B /* QuizEngineTests.swift */,
 				200000000000000000000304 /* SM2Tests.swift */,
+				200000000000000000000306 /* AchievementEngineTests.swift */,
 			);
 			path = VocabyTests;
 			sourceTree = "<group>";
@@ -610,6 +617,7 @@
 				200000000000000000000401 /* LearnView.swift in Sources */,
 				200000000000000000000402 /* LearningProgressView.swift in Sources */,
 				200000000000000000000403 /* SM2.swift in Sources */,
+				200000000000000000000408 /* AchievementEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -630,6 +638,7 @@
 				00000000000000000000042A /* LocalizationCoverageTests.swift in Sources */,
 				00000000000000000000042B /* QuizEngineTests.swift in Sources */,
 				200000000000000000000404 /* SM2Tests.swift in Sources */,
+				20000000000000000000040A /* AchievementEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -675,6 +684,7 @@
 				200000000000000000000405 /* LearnView.swift in Sources */,
 				200000000000000000000406 /* LearningProgressView.swift in Sources */,
 				200000000000000000000407 /* SM2.swift in Sources */,
+				200000000000000000000409 /* AchievementEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

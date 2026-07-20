@@ -170,7 +170,7 @@ struct RootTabView: View {
     }
 
     private var dueReviewCount: Int {
-        ReviewScheduler().dueCount(from: progressRows, on: DayKeyService().dayKey(for: Date()))
+        ReviewScheduler().dueCount(from: progressRows, at: Date())
     }
 
     private func route(_ url: URL) {

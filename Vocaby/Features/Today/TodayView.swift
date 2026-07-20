@@ -189,7 +189,7 @@ struct TodayView: View {
             todaySession = sessions.first { $0.dayKey == dayKey }
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: Date())
             scheduledReviewCount = todaySession?.scheduledReviewCount(from: progressRows) ?? 0
             streakCount = streakService.streakCount(from: sessions, currentDayKey: dayKey)
             if let todaySession {
@@ -215,7 +215,7 @@ struct TodayView: View {
             try loadSeedIfNeeded()
             let dayKey = dayKeyService.dayKey(for: Date())
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueCount(from: progressRows, on: dayKey)
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: Date())
 
             if let existingSession = try existingSession(for: dayKey), !existingSession.items.isEmpty {
                 try markNewItemsFirstSeen(in: existingSession)
@@ -259,7 +259,7 @@ struct TodayView: View {
 
     private func dailySelection(from progressRows: [WordProgress], on dayKey: String) -> DailySelectionResult {
         let dueReviewItemIDs = reviewScheduler
-            .allDueItems(from: progressRows, on: dayKey)
+            .allDueItems(from: progressRows, at: Date())
             .map(\.itemID)
 
         return dailySelectionService.selectItems(

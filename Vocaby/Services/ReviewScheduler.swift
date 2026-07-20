@@ -40,7 +40,6 @@ struct ReviewScheduler {
         answeredAt: Date,
         context: ReviewAnswerContext
     ) {
-        let answeredDayKey = dayKeyService.dayKey(for: answeredAt)
         if progress.firstSeenAt == nil {
             progress.firstSeenAt = answeredAt
         }
@@ -99,12 +98,47 @@ struct ReviewScheduler {
             .prefix(max(0, limit)))
     }
 
+    func dueItems(from progressRows: [WordProgress], at date: Date, limit: Int = 20) -> [WordProgress] {
+        let dayKey = dayKeyService.dayKey(for: date)
+        return Array(progressRows
+            .filter { progress in
+                guard progress.masteredAt == nil,
+                      let dueDayKey = progress.dueDayKey,
+                      dueDayKey <= dayKey else {
+                    return false
+                }
+
+                // Legacy rows only have a day key. New SM-2 rows also carry an
+                // exact timestamp so failed cards do not reappear before the
+                // required ten-minute retry delay.
+                return progress.nextReviewAt.map { $0 <= date } ?? true
+            }
+            .sorted(by: dueSort)
+            .prefix(max(0, limit)))
+    }
+
     func dueCount(from progressRows: [WordProgress], on dayKey: String) -> Int {
         allDueItems(from: progressRows, on: dayKey).count
     }
 
+    func dueCount(from progressRows: [WordProgress], at date: Date) -> Int {
+        allDueItems(from: progressRows, at: date).count
+    }
+
     func allDueItems(from progressRows: [WordProgress], on dayKey: String) -> [WordProgress] {
         dueItems(from: progressRows, on: dayKey, limit: progressRows.count)
+    }
+
+    func allDueItems(from progressRows: [WordProgress], at date: Date) -> [WordProgress] {
+        dueItems(from: progressRows, at: date, limit: progressRows.count)
+    }
+
+    private func dueSort(_ lhs: WordProgress, _ rhs: WordProgress) -> Bool {
+        let lhsDate = lhs.nextReviewAt ?? .distantPast
+        let rhsDate = rhs.nextReviewAt ?? .distantPast
+        if lhsDate != rhsDate { return lhsDate < rhsDate }
+        if lhs.wrongCount != rhs.wrongCount { return lhs.wrongCount > rhs.wrongCount }
+        return lhs.itemID < rhs.itemID
     }
 
 }

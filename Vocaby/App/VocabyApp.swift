@@ -52,7 +52,8 @@ struct Vocaby: App {
                     DailySession.self,
                     DailySessionItem.self,
                     QuizResult.self,
-                    PracticeAttemptRecord.self
+                    PracticeAttemptRecord.self,
+                    AchievementRecord.self
                 ])
         }
     }

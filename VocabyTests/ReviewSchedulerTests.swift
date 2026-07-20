@@ -59,6 +59,20 @@ final class ReviewSchedulerTests: XCTestCase {
         XCTAssertNil(progress.masteredAt)
     }
 
+    func testFailedCardIsNotDueUntilTenMinuteRetryTimestamp() {
+        let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
+        let answeredAt = date("2026-07-10T02:00:00Z")
+        let progress = WordProgress(itemID: "basic-001", level: .basic)
+
+        scheduler.applyAnswer(to: progress, quality: 1, answeredAt: answeredAt, context: .review)
+
+        XCTAssertTrue(scheduler.dueItems(from: [progress], at: answeredAt.addingTimeInterval(599)).isEmpty)
+        XCTAssertEqual(
+            scheduler.dueItems(from: [progress], at: answeredAt.addingTimeInterval(600)).map(\.itemID),
+            ["basic-001"]
+        )
+    }
+
     func testPersistedSessionItemContextSchedulesBothFailuresForSameDay() {
         let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
         let answeredAt = date("2026-07-10T02:00:00Z")

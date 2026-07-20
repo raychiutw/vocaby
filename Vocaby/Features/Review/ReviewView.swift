@@ -96,7 +96,7 @@ struct ReviewView: View {
             try loadSeedIfNeeded()
             let dayKey = dayKeyService.dayKey(for: Date())
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            let dueProgressRows = reviewScheduler.dueItems(from: progressRows, on: dayKey, limit: 20)
+            let dueProgressRows = reviewScheduler.dueItems(from: progressRows, at: Date(), limit: 20)
             dueItems = reviewQueueService.queuedItems(
                 from: seedItems,
                 dueProgressRows: dueProgressRows,
