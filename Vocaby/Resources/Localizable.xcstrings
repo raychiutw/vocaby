@@ -1,6 +1,53 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "achievement.wall.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Achievements" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "成就徽章" } } } },
+    "achievement.first" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "First lesson" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "首次學習" } } } },
+    "achievement.streak3" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "3-day streak" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 3 天" } } } },
+    "achievement.streak7" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "7-day streak" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 7 天" } } } },
+    "achievement.streak30" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "30-day streak" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "連續 30 天" } } } },
+    "achievement.learn100" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Learn 100" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "累計學習 100 個" } } } },
+    "achievement.learn500" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Learn 500" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "累計學習 500 個" } } } },
+    "achievement.master100" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Master 100" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "掌握 100 個" } } } },
+    "achievement.save10" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Save 10" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "收藏 10 個" } } } },
+    "achievement.perfect" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Perfect practice" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "滿分練習" } } } },
+    "achievement.day50" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "50 in one day" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "單日完成 50 個" } } } },
+    "practice.load.error.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Practice unavailable" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法開始練習" } } } },
+    "home.tab.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Home" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "首頁" } } } },
+    "learn.tab.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Learn" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "學習" } } } },
+    "practice.tab.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Practice" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "練習" } } } },
+    "progress.tab.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Progress" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "進度" } } } },
+    "progress.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Progress" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "學習進度" } } } },
+    "progress.range.accessibility" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Chart range" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "圖表範圍" } } } },
+    "progress.range.7" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "7 Days" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "近 7 天" } } } },
+    "progress.range.30" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "30 Days" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "近 30 天" } } } },
+    "progress.empty.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No progress yet" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "還沒有學習紀錄" } } } },
+    "progress.empty.description" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Complete a learning round to see your progress." } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成一輪學習後即可查看進度。" } } } },
+    "progress.trend.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily learning" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每日學習量" } } } },
+    "progress.trend.accessibility" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily learning trend" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每日學習趨勢" } } } },
+    "progress.heatmap.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Last 15 weeks" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "近 15 週" } } } },
+    "progress.distribution.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Learning status" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "學習狀態" } } } },
+    "progress.distribution.accessibility" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Learning status distribution" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "學習狀態分布" } } } },
+    "progress.state.new" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "New" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "未開始" } } } },
+    "progress.state.learning" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Learning" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "學習中" } } } },
+    "progress.state.mastered" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Mastered" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已掌握" } } } },
+    "my.tab.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "My" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "我的" } } } },
+    "learn.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Learn" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "學習" } } } },
+    "learn.grade.unknown" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Unknown" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "不認識" } } } },
+    "learn.grade.saved" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "收藏" } } } },
+    "learn.grade.known" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Known" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "認識" } } } },
+    "learn.pronounce" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Pronounce" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "播放發音" } } } },
+    "learn.loading" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading learning items…" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在載入學習內容⋯" } } } },
+    "learn.error.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Learning unavailable" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法開始學習" } } } },
+    "learn.error.load" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "The learning content could not be loaded." } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法載入學習內容。" } } } },
+    "learn.error.save" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Your answer could not be saved. Try again." } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法儲存作答，請再試一次。" } } } },
+    "learn.summary.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Round complete" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "本輪完成" } } } },
+    "learn.summary.rate" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Known rate" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "認識率" } } } },
+    "learn.summary.again" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Another round" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "再來一組" } } } },
+    "learn.progress.accessibility" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Round progress" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "本輪進度" } } } },
+    "learn.card.hide" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Show front" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "顯示正面" } } } },
+    "learn.card.reveal" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Show answer" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "顯示答案" } } } },
+    "learn.card.tap" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap to reveal" } }, "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "點一下顯示答案" } } } },
     "learning.profile.accessibility" : {
       "localizations" : {
         "en" : {
@@ -1759,6 +1806,48 @@
             "value" : "中階"
           }
         }
+      }
+    },
+    "settings.appearance.dark" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dark" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "深色" } }
+      }
+    },
+    "settings.appearance.label" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "外觀" } }
+      }
+    },
+    "settings.appearance.light" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Light" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "淺色" } }
+      }
+    },
+    "settings.appearance.system" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "跟隨系統" } }
+      }
+    },
+    "settings.autoplay.toggle" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Autoplay Pronunciation" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "自動播放發音" } }
+      }
+    },
+    "settings.dailyGoal.label" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily Goal" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每日學習目標" } }
+      }
+    },
+    "settings.learning.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Learning" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "學習" } }
       }
     },
     "settings.level.label" : {

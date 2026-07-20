@@ -17,7 +17,7 @@ struct TodayView: View {
 
     private let contentLanguageCode = "en"
     private let supportLanguageCode = "zh-Hant"
-    private let dailyTargetCount = 10
+    private var dailyTargetCount: Int { preferencesStore.read().dailyGoal }
     private let dayKeyService = DayKeyService()
     private let dailySelectionService = DailySelectionService()
     private let persistenceService = ProgressPersistenceService()

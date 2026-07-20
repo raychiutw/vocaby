@@ -2,30 +2,30 @@
 
 ## Product Context
 
-- **What this is:** Vocaby is a native iOS app for daily English vocabulary practice. Its core loop is a 10-item daily expression-upgrade session, quick quiz, lightweight review, and habit support through reminders and a small widget.
+- **What this is:** Vocaby is a local-first native iOS app for learning English vocabulary and practical expression upgrades. Its core loop combines a configurable daily learning queue, two-sided study cards, quizzes, SM-2 review, progress tracking, achievements, reminders, and widgets.
 - **Who it is for:** Traditional Chinese users learning practical English expressions. The first content pair is English with Traditional Chinese support.
 - **Project type:** Native iOS utility and learning app, not a marketing site, course platform, game, or dictionary.
-- **Memorable thing:** It should feel like a calm daily expression coach: open it, finish today's 10 upgrades, leave with phrases you can use tomorrow.
+- **Memorable thing:** It turns individual words into usable English: learn the word, see how it upgrades an expression, practise it, and meet it again at the right time.
 
 ## Design Thesis
 
-Vocaby should feel native, quiet, and habit-forming. It borrows the discipline of Apple Fitness' daily completion loop, but without gamified pressure. The app is a compact study surface, not a dashboard and not a card gallery.
+Vocaby should feel native, energetic, and habit-forming without becoming noisy. Brand gradients, tactile card gestures, progress charts, and achievements make progress visible; content and the next learning action remain more prominent than decoration.
 
 ## Aesthetic Direction
 
-- **Direction:** Calm native study utility.
-- **Decoration level:** Minimal. Typography, spacing, progress, and native materials do the work.
-- **Mood:** Focused, warm, and low-friction. The interface should disappear quickly so the user can practice.
-- **Energy:** Daily momentum without mascot, leaderboard, confetti-heavy reward, or streak anxiety.
+- **Direction:** Native learning companion with tactile study cards and visible progress.
+- **Decoration level:** Focused. Gradients and celebration are reserved for progress, primary actions, and first-time achievement unlocks.
+- **Mood:** Clear, encouraging, and low-friction.
+- **Energy:** Daily momentum through goals, streaks, charts, badges, and brief celebrations without leaderboards, currencies, or guilt.
 
 ## Platform Rules
 
 - Use SwiftUI-native components before custom controls.
-- Use `TabView` for the three top-level areas: Today, Review, My.
+- Use `TabView` for the five top-level areas: Home, Learn, Practice, Progress, My.
 - The tab bar remains fully visible while scrolling; on iOS 26 and later use `.tabBarMinimizeBehavior(.never)`.
 - Use a `NavigationStack` inside each tab for detail flows.
 - Use toolbar buttons for settings and contextual actions. Do not put action buttons inside the tab bar.
-- Use sheets for Settings and focused setup flows.
+- Keep Settings under My and expose a toolbar shortcut from Home. Use sheets for focused setup and confirmation flows.
 - Use system permission UI for notifications, with a native fallback state when permission is denied.
 - The widget is glanceable only. It does not contain practice interactions in v1.
 
@@ -55,9 +55,10 @@ Use system colors for surfaces and text, plus one restrained accent. Define thes
 
 | Token | Light | Dark | Usage |
 |------|-------|------|-------|
-| `Accent` | `#0A7A6B` | `#4DD4BE` | Primary action, selected tab, progress fill |
-| `ProminentInk` | `#FFFFFF` | `#000000` | Appearance-aware label color on prominent tinted actions |
-| `AccentSoft` | `#DDF4EF` | `#123A35` | Subtle selected states and progress background |
+| `Accent` | `#0EA5E9` | `#38BDF8` | Primary action, selected tab, progress fill |
+| `BrandTeal` | `#14B8A6` | `#2DD4BF` | Brand gradient endpoint and secondary chart emphasis |
+| `ProminentInk` | `#FFFFFF` | `#FFFFFF` | Label color on prominent gradient actions |
+| `AccentSoft` | `#E0F2FE` | `#0C3445` | Subtle selected states and progress background |
 | `FocusInk` | `#17211F` | `#F3F7F5` | Primary text when a custom token is needed |
 | `MutedInk` | `#60716B` | `#A9B7B2` | Secondary text |
 | `ReviewAmber` | `#AA6400` | `#FFB84D` | Due review count and review emphasis |
@@ -73,8 +74,8 @@ System colors:
 
 Rules:
 
-- Accent is meaningful, not decorative. Use it for progress, primary actions, and selected state.
-- Avoid purple/blue gradients, colorful decorative blobs, and heavy shadow palettes.
+- Use the Accent-to-BrandTeal gradient only for primary actions, progress, selected chart emphasis, and achievement celebration.
+- Avoid decorative blobs, gradients on ordinary list rows, and heavy shadow palettes.
 - Dark mode must be designed with system colors first, not by inverting light mode.
 - Semantic answer colors always include text or icon reinforcement. Never rely on color alone.
 
@@ -95,32 +96,39 @@ Rules:
 App
 ├── Onboarding
 │   ├── Welcome
-│   ├── Level choice
+│   ├── Level and daily-goal choice
 │   └── Reminder setup
 └── Main TabView
-    ├── Today
-    │   ├── Today overview
-    │   ├── Practice session
-    │   ├── Completion summary
-    │   └── Settings sheet
-    ├── Review
-    │   ├── Due queue
-    │   └── Review session
+    ├── Home
+    │   ├── Daily overview and summary
+    │   └── Quick review/test routes
+    ├── Learn
+    │   ├── Daily and due queues
+    │   ├── Two-sided card session
+    │   └── Round summary
+    ├── Practice
+    │   ├── Quiz configuration
+    │   ├── Quiz run
+    │   └── Results and wrong-answer retry
+    ├── Progress
+    │   ├── 7/30-day trend
+    │   ├── 15-week heatmap
+    │   ├── learning-state distribution
+    │   └── Achievement wall
     └── My
-        ├── Vocabulary progress by level
-        ├── Learned list
-        ├── Saved list
-        ├── Search results
-        └── Word detail
+        ├── Search and vocabulary/expression filters
+        ├── Learned and saved lists
+        ├── Item detail
+        └── Settings
 ```
 
 Tab labels:
 
-- Today: `calendar` or `sun.max`.
-- Review: `arrow.triangle.2.circlepath` or `clock.arrow.circlepath`.
+- Home: `house`.
+- Learn: `rectangle.stack` with a system badge for due items.
+- Practice: `checkmark.circle`.
+- Progress: `chart.xyaxis.line`.
 - My: `person.crop.circle`.
-
-Do not add a Progress tab in v1. Progress belongs inside Today and My.
 
 ## Screen Hierarchy
 
@@ -135,19 +143,31 @@ Onboarding is short and task-specific. Each screen has one primary action.
 
 Do not add a language picker in onboarding v1. App language follows system/app language settings.
 
-### Today
+### Home
 
-1. Date and streak/progress summary.
-2. One primary action: start or resume today's session.
-3. Due review count, if relevant.
-4. Preview of one expression upgrade, if the session exists.
-5. Small settings entry in the toolbar, not inline chrome.
+1. Date and a secondary streak badge in the toolbar.
+2. Gradient circular progress for today's completed count and configured goal.
+3. One primary action: start or resume today's session.
+4. Amber due-review pill and quick routes to review and random practice.
+5. One-row summary for newly learned, reviewed, and practice results.
+6. Preview of the next vocabulary or expression item.
 
 Empty states:
 
 - No items due and daily session complete: "今天完成了" plus a subtle next-review hint.
 - Seed exhausted: explain that fewer than 10 items are available and show the exact count.
 - No notification permission: reminder UI remains usable but shows a disabled state and a path to Settings.
+
+### Learn Session
+
+1. Progress indicator and a two-sided learning card.
+2. Front: vocabulary/expression, IPA when available, pronunciation, and save state.
+3. Back: localized meaning, plain/upgraded expression context, example, and translation.
+4. Tap flips the card in 3D; Reduce Motion crossfades instead.
+5. Right swipe grades known (`q = 5`), left grades unknown (`q = 1`), and up saves and grades (`q = 4`).
+6. Equivalent xmark, star, and checkmark buttons are mandatory for accessibility.
+7. A committed card writes progress immediately; an interrupted round never loses committed answers.
+8. Completion presents known rate and known/saved/unknown counts.
 
 ### Practice Session
 
@@ -161,8 +181,8 @@ Empty states:
 Rules:
 
 - Learn may show the upgraded expression and supporting answer content. Quiz must not reveal a standalone correct answer before the learner responds.
-- Quiz supports four concrete modes: choose the upgraded expression from a plain-expression prompt, choose the meaning from an upgraded-expression prompt, listen and choose the expression, and spell the upgraded expression from its localized meaning. Mixed mode distributes those four modes across a run.
-- Quiz timers use 10, 15, 20, or 30 seconds. Expiry freezes the question with time-up feedback; it does not advance automatically.
+- Quiz supports vocabulary meaning, vocabulary spelling, vocabulary listening, expression upgrade, expression meaning, and expression spelling. Mixed mode distributes all eligible modes across a run.
+- Quiz timers use unlimited, 10, 15, 20, or 30 seconds. Expiry records an incorrect answer and freezes the question with time-up feedback; it does not advance automatically.
 - The practice card may be a focused card surface. The whole screen must not become nested cards.
 - Quiz choices must have stable height and clear selected/correct/wrong states.
 - The pronunciation button uses a speaker SF Symbol with a text label for clarity.
@@ -170,14 +190,15 @@ Rules:
 - If the selected answer is wrong, keep the correct answer visible before the user moves on.
 - Results list the most recent round's wrong answers. When retry is enabled, retry only those questions while preserving their modes.
 
-Practice Center remains a destination under Today, not a fourth tab.
+Practice is a top-level tab. Daily learning remains distinct from configurable quiz practice.
 
-### Review
+### Progress
 
-1. Due count.
-2. Start review action.
-3. Ordered due list preview when helpful.
-4. Empty state when nothing is due.
+1. 7/30-day learned-item LineMark and AreaMark chart.
+2. Monday-aligned 15-week heatmap with five levels, today outline, and latest-week anchoring.
+3. SectorMark distribution for new, learning, and mastered items.
+4. Vocabulary/expression filtering and equivalent accessible text summaries.
+5. Ten-achievement badge wall with locked, unlocked, and unlock-date states.
 
 ### My
 
@@ -242,14 +263,15 @@ Widget v1 is glanceable.
 - Example English: "Today's 10 expression upgrades are ready."
 - Tapping a notification opens Today.
 
-## Motion
+## Motion and Haptics
 
-- **Approach:** Minimal functional.
+- **Approach:** Tactile and purposeful.
 - Use native navigation and sheet transitions.
-- Practice card transitions can crossfade or slide lightly when moving to the next item.
+- Learning cards use spring-backed 3D flip, swipe tilt, semantic stamps, and card-exit motion.
 - Correct/wrong feedback should appear quickly, 150-250 ms.
-- Respect Reduce Motion.
-- Avoid confetti in v1. Completion can use a subtle checkmark and progress completion state.
+- First-time achievement unlocks may use a badge bounce and a 1.5-second Canvas confetti effect.
+- Respect Reduce Motion by replacing rotation, shake, flight, bounce, and particles with short opacity changes.
+- Meaningful discrete actions provide semantic haptics. Do not generate repeated haptics during scrolling, continuous drag movement, or text entry.
 
 ## Accessibility
 
@@ -291,9 +313,9 @@ Do:
 Don't:
 
 - Build a custom tab bar.
-- Add mascots, badges, leaderboards, or Duolingo-style reward layers in v1.
+- Add mascots, leaderboards, currencies, or punishment mechanics.
 - Use a generic dashboard-card mosaic.
-- Use decorative gradients, blobs, or stock illustrations.
+- Apply gradients to ordinary list rows or system surfaces.
 - Hide important labels behind icons only.
 - Let widget or notification copy expose sensitive learning data.
 
@@ -317,3 +339,5 @@ Don't:
 | 2026-07-10 | Require explicit answered state with Next action | Prevents quiz auto-advance from hiding feedback before the learner can read it. |
 | 2026-07-10 | Replace the multiple-choice-only quiz scope with four concrete modes plus mixed | The user approved expression, meaning, listening, and spelling practice with a mixed option. |
 | 2026-07-15 | Rename Library to My, show three per-level learned/total summaries, and keep the tab bar fully visible | The user approved a personal progress destination and a non-minimizing native tab bar. |
+| 2026-07-20 | Expand Vocaby to vocabulary plus practical expressions and adopt five top-level tabs | The user explicitly replaced the earlier narrow V1 positioning and navigation. |
+| 2026-07-20 | Adopt SM-2, configurable 10-100 goals, 3D cards, three-way swipe grading, charts, achievements, gradients, haptics, and brief confetti | These are required parts of the Vocaby 2.0 learning and progress experience; accessibility and Reduce Motion alternatives remain mandatory. |

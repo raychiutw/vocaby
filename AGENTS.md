@@ -2,15 +2,15 @@
 
 ## Product Scope
 
-Vocaby is a native iOS app for daily English vocabulary practice. It targets Traditional Chinese users first, with English vocabulary content and Traditional Chinese support.
+Vocaby is a local-first native iOS app for English vocabulary and practical-expression learning. It targets Traditional Chinese users first, with English content and Traditional Chinese support.
 
 V1 scope:
 
 - SwiftUI native iOS app, iOS 17+.
 - Fully local storage.
 - No account, sign-in, backend, iCloud sync, or sync-ready scaffolding.
-- Daily 10-item expression-upgrade practice.
-- Review queue, Library, local notification, and minimal WidgetKit widget.
+- Configurable 10-100-item daily vocabulary and expression learning.
+- SM-2 review, quizzes, progress charts, achievements, local notification, and WidgetKit widgets.
 - App UI localizations: Traditional Chinese and English.
 
 ## Design Rules
@@ -22,10 +22,10 @@ Do not deviate from `DESIGN.md` without explicit user approval.
 Key constraints:
 
 - Use native SwiftUI controls before custom controls.
-- Use `TabView` for Today, Review, Library.
+- Use `TabView` for Home, Learn, Practice, Progress, My.
 - Do not build a custom tab bar.
-- Keep the UI calm, Apple-native, and task-focused.
-- No mascot, leaderboard, game economy, decorative gradients, or generic dashboard-card mosaic.
+- Keep the UI Apple-native, energetic, and task-focused.
+- No mascot, leaderboard, game economy, or generic dashboard-card mosaic. Restrict brand gradients and celebration to the uses defined in `DESIGN.md`.
 - Cards are only for actual interactions, such as practice cards or quiz options.
 
 ## Architecture Rules

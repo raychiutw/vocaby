@@ -12,6 +12,11 @@ final class WordProgress {
     var dueDayKey: String?
     var wrongCount: Int
     var masteredAt: Date?
+    var easeFactor: Double = 2.5
+    var repetitionCount: Int = 0
+    var intervalDays: Int = 0
+    var nextReviewAt: Date?
+    var lastQuality: Int?
     var updatedAt: Date
 
     init(
@@ -24,6 +29,11 @@ final class WordProgress {
         dueDayKey: String? = nil,
         wrongCount: Int = 0,
         masteredAt: Date? = nil,
+        easeFactor: Double = 2.5,
+        repetitionCount: Int = 0,
+        intervalDays: Int = 0,
+        nextReviewAt: Date? = nil,
+        lastQuality: Int? = nil,
         updatedAt: Date = Date()
     ) {
         self.itemID = itemID
@@ -35,6 +45,11 @@ final class WordProgress {
         self.dueDayKey = dueDayKey
         self.wrongCount = wrongCount
         self.masteredAt = masteredAt
+        self.easeFactor = easeFactor
+        self.repetitionCount = repetitionCount
+        self.intervalDays = intervalDays
+        self.nextReviewAt = nextReviewAt
+        self.lastQuality = lastQuality
         self.updatedAt = updatedAt
     }
 }

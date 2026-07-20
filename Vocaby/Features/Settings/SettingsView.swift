@@ -32,6 +32,37 @@ struct SettingsView: View {
                 .pickerStyle(.navigationLink)
             }
 
+            Section("settings.learning.title") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("settings.dailyGoal.label")
+                        Spacer()
+                        Text("\(preferences.dailyGoal)")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Slider(
+                        value: Binding(
+                            get: { Double(preferences.dailyGoal) },
+                            set: { preferences.dailyGoal = UserPreferences.validDailyGoal(Int($0)) }
+                        ),
+                        in: 10...100,
+                        step: 5
+                    )
+                    .accessibilityValue(Text("\(preferences.dailyGoal)"))
+                }
+
+                Toggle("settings.autoplay.toggle", isOn: $preferences.autoplayPronunciation)
+
+                Picker("settings.appearance.label", selection: $preferences.appearance) {
+                    Text("settings.appearance.system").tag(AppAppearance.system)
+                    Text("settings.appearance.light").tag(AppAppearance.light)
+                    Text("settings.appearance.dark").tag(AppAppearance.dark)
+                }
+                .pickerStyle(.navigationLink)
+            }
+
             Section {
                 Toggle("settings.reminders.toggle", isOn: remindersEnabledBinding)
                     .disabled(isUpdatingReminders)

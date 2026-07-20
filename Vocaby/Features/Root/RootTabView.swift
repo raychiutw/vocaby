@@ -1,9 +1,12 @@
+import SwiftData
 import SwiftUI
 
 enum RootTab: Hashable {
-    case today
-    case review
-    case library
+    case home
+    case learn
+    case practice
+    case progress
+    case my
 }
 
 struct VocabyDeepLink: Equatable {
@@ -24,16 +27,22 @@ struct VocabyDeepLink: Equatable {
 
         switch route {
         case "today":
-            tab = .today
+            tab = .home
             wordID = nil
         case "review":
-            tab = .review
+            tab = .learn
+            wordID = nil
+        case "practice":
+            tab = .practice
+            wordID = nil
+        case "progress":
+            tab = .progress
             wordID = nil
         case "word":
             guard let id = url.pathComponents.dropFirst().first, !id.isEmpty else {
                 return nil
             }
-            tab = .library
+            tab = .my
             wordID = id
         default:
             return nil
@@ -42,7 +51,8 @@ struct VocabyDeepLink: Equatable {
 }
 
 struct RootTabView: View {
-    @State private var selectedTab = RootTab.today
+    @Query private var progressRows: [WordProgress]
+    @State private var selectedTab = RootTab.home
     @State private var deepLinkedWordID: String?
 
     var body: some View {
@@ -69,60 +79,98 @@ struct RootTabView: View {
     @available(iOS 18.0, *)
     private var modernTabs: some View {
         TabView(selection: $selectedTab) {
-            Tab("today.tab.title", systemImage: "sun.max", value: RootTab.today) {
-                todayRoot
+            Tab("home.tab.title", systemImage: "house", value: RootTab.home) {
+                homeRoot
             }
 
-            Tab("review.tab.title", systemImage: "arrow.triangle.2.circlepath", value: RootTab.review) {
-                reviewRoot
+            Tab("learn.tab.title", systemImage: "rectangle.stack", value: RootTab.learn) {
+                learnRoot
+            }
+            .badge(dueReviewCount)
+
+            Tab("practice.tab.title", systemImage: "checkmark.circle", value: RootTab.practice) {
+                practiceRoot
             }
 
-            Tab("library.tab.title", systemImage: "person.crop.circle", value: RootTab.library) {
-                libraryRoot
+            Tab("progress.tab.title", systemImage: "chart.xyaxis.line", value: RootTab.progress) {
+                progressRoot
+            }
+
+            Tab("my.tab.title", systemImage: "person.crop.circle", value: RootTab.my) {
+                myRoot
             }
         }
     }
 
     private var legacyTabs: some View {
         TabView(selection: $selectedTab) {
-            todayRoot
+            homeRoot
             .tabItem {
-                Label("today.tab.title", systemImage: "sun.max")
+                Label("home.tab.title", systemImage: "house")
             }
-            .tag(RootTab.today)
+            .tag(RootTab.home)
 
-            reviewRoot
+            learnRoot
             .tabItem {
-                Label("review.tab.title", systemImage: "arrow.triangle.2.circlepath")
+                Label("learn.tab.title", systemImage: "rectangle.stack")
             }
-            .tag(RootTab.review)
+            .tag(RootTab.learn)
+            .badge(dueReviewCount)
 
-            libraryRoot
+            practiceRoot
             .tabItem {
-                Label("library.tab.title", systemImage: "person.crop.circle")
+                Label("practice.tab.title", systemImage: "checkmark.circle")
             }
-            .tag(RootTab.library)
+            .tag(RootTab.practice)
+
+            progressRoot
+            .tabItem {
+                Label("progress.tab.title", systemImage: "chart.xyaxis.line")
+            }
+            .tag(RootTab.progress)
+
+            myRoot
+            .tabItem {
+                Label("my.tab.title", systemImage: "person.crop.circle")
+            }
+            .tag(RootTab.my)
         }
     }
 
-    private var todayRoot: some View {
+    private var homeRoot: some View {
         NavigationStack {
             TodayView {
-                selectedTab = .review
+                selectedTab = .learn
             }
         }
     }
 
-    private var reviewRoot: some View {
+    private var learnRoot: some View {
         NavigationStack {
-            ReviewView()
+            LearnView()
         }
     }
 
-    private var libraryRoot: some View {
+    private var practiceRoot: some View {
+        NavigationStack {
+            PracticeTabRoot()
+        }
+    }
+
+    private var progressRoot: some View {
+        NavigationStack {
+            LearningProgressView()
+        }
+    }
+
+    private var myRoot: some View {
         NavigationStack {
             LibraryView(deepLinkedItemID: $deepLinkedWordID)
         }
+    }
+
+    private var dueReviewCount: Int {
+        ReviewScheduler().dueCount(from: progressRows, on: DayKeyService().dayKey(for: Date()))
     }
 
     private func route(_ url: URL) {
@@ -132,6 +180,38 @@ struct RootTabView: View {
 
         selectedTab = deepLink.tab
         deepLinkedWordID = deepLink.wordID
+    }
+}
+
+private struct PracticeTabRoot: View {
+    @State private var seedItems: [VocabularySeedItem] = []
+    @State private var errorMessage: String?
+
+    var body: some View {
+        Group {
+            if !seedItems.isEmpty {
+                PracticeCenterView(
+                    seedItems: seedItems,
+                    selectedLevel: UserPreferencesStore().read().selectedLevel,
+                    supportLanguageCode: "zh-Hant"
+                )
+            } else if let errorMessage {
+                ContentUnavailableView(
+                    "practice.load.error.title",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(errorMessage)
+                )
+            } else {
+                ProgressView()
+            }
+        }
+        .task {
+            do {
+                seedItems = try SeedLoader().loadBundledSeed()
+            } catch {
+                errorMessage = String(localized: "practice.load.error")
+            }
+        }
     }
 }
 

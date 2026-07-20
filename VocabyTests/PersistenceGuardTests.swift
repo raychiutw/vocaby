@@ -188,7 +188,7 @@ final class PersistenceGuardTests: XCTestCase {
         let updatedProgress = try context.fetch(FetchDescriptor<WordProgress>())
         let dueDayByID = Dictionary(uniqueKeysWithValues: updatedProgress.map { ($0.itemID, $0.dueDayKey) })
         XCTAssertEqual(dueDayByID["basic-new"], "2026-07-10")
-        XCTAssertEqual(dueDayByID["basic-review"], "2026-07-11")
+        XCTAssertEqual(dueDayByID["basic-review"], "2026-07-10")
     }
 
     func testQuizResultGuardKeepsFirstAnswerForSameDayAndItem() throws {

@@ -13,14 +13,30 @@ extension DailySessionItem {
 
 struct ReviewScheduler {
     private let dayKeyService: DayKeyService
+    private let sm2: SM2
 
-    init(dayKeyService: DayKeyService = DayKeyService()) {
+    init(dayKeyService: DayKeyService = DayKeyService(), sm2: SM2 = SM2()) {
         self.dayKeyService = dayKeyService
+        self.sm2 = sm2
     }
 
     func applyAnswer(
         to progress: WordProgress,
         wasCorrect: Bool,
+        answeredAt: Date,
+        context: ReviewAnswerContext
+    ) {
+        applyAnswer(
+            to: progress,
+            quality: wasCorrect ? 5 : 1,
+            answeredAt: answeredAt,
+            context: context
+        )
+    }
+
+    func applyAnswer(
+        to progress: WordProgress,
+        quality: Int,
         answeredAt: Date,
         context: ReviewAnswerContext
     ) {
@@ -31,11 +47,30 @@ struct ReviewScheduler {
         progress.lastReviewedAt = answeredAt
         progress.updatedAt = answeredAt
 
+        let clampedQuality = min(5, max(0, quality))
+        let wasCorrect = clampedQuality >= 3
         if wasCorrect {
-            applyCorrectAnswer(to: progress, answeredAt: answeredAt, answeredDayKey: answeredDayKey)
+            progress.correctCount += 1
         } else {
-            applyWrongAnswer(to: progress, answeredDayKey: answeredDayKey, context: context)
+            progress.wrongCount += 1
         }
+
+        let result = sm2.schedule(
+            state: SM2State(
+                easeFactor: progress.easeFactor,
+                repetitionCount: progress.repetitionCount,
+                intervalDays: progress.intervalDays
+            ),
+            quality: clampedQuality,
+            answeredAt: answeredAt
+        )
+        progress.easeFactor = result.state.easeFactor
+        progress.repetitionCount = result.state.repetitionCount
+        progress.intervalDays = result.state.intervalDays
+        progress.nextReviewAt = result.nextReviewAt
+        progress.lastQuality = clampedQuality
+        progress.masteredAt = result.isMastered ? answeredAt : nil
+        progress.dueDayKey = result.isMastered ? nil : dayKeyService.dayKey(for: result.nextReviewAt)
     }
 
     func dueItems(from progressRows: [WordProgress], on dayKey: String, limit: Int = 20) -> [WordProgress] {
@@ -72,42 +107,4 @@ struct ReviewScheduler {
         dueItems(from: progressRows, on: dayKey, limit: progressRows.count)
     }
 
-    private func applyCorrectAnswer(to progress: WordProgress, answeredAt: Date, answeredDayKey: String) {
-        progress.correctCount += 1
-
-        guard progress.correctCount < 4 else {
-            progress.masteredAt = answeredAt
-            progress.dueDayKey = nil
-            return
-        }
-
-        progress.masteredAt = nil
-        progress.dueDayKey = dayKeyService.dayKey(
-            byAddingDays: reviewIntervalDays(forCorrectCount: progress.correctCount),
-            to: answeredDayKey
-        )
-    }
-
-    private func applyWrongAnswer(to progress: WordProgress, answeredDayKey: String, context: ReviewAnswerContext) {
-        progress.wrongCount += 1
-        progress.masteredAt = nil
-
-        switch context {
-        case .dailyPractice:
-            progress.dueDayKey = answeredDayKey
-        case .review:
-            progress.dueDayKey = dayKeyService.dayKey(byAddingDays: 1, to: answeredDayKey)
-        }
-    }
-
-    private func reviewIntervalDays(forCorrectCount correctCount: Int) -> Int {
-        switch correctCount {
-        case 1:
-            return 1
-        case 2:
-            return 3
-        default:
-            return 7
-        }
-    }
 }

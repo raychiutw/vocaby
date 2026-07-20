@@ -11,6 +11,9 @@ final class UserPreferencesStoreTests: XCTestCase {
         XCTAssertEqual(preferences.reminderMinute, 30)
         XCTAssertFalse(preferences.remindersEnabled)
         XCTAssertFalse(preferences.onboardingCompleted)
+        XCTAssertEqual(preferences.dailyGoal, 10)
+        XCTAssertFalse(preferences.autoplayPronunciation)
+        XCTAssertEqual(preferences.appearance, .system)
         XCTAssertNil(preferences.enabledReminderDateComponents)
     }
 
@@ -37,6 +40,23 @@ final class UserPreferencesStoreTests: XCTestCase {
         let store = UserPreferencesStore(userDefaults: defaults)
 
         XCTAssertEqual(store.read(), .defaults)
+    }
+
+    func testLegacyPreferencesDecodeWithNewDefaults() throws {
+        let defaults = makeDefaults()
+        defaults.set(Data(#"{"selectedLevel":"basic","reminderHour":8,"reminderMinute":30,"remindersEnabled":false,"onboardingCompleted":true}"#.utf8), forKey: UserPreferencesStore.storageKey)
+
+        let preferences = UserPreferencesStore(userDefaults: defaults).read()
+
+        XCTAssertEqual(preferences.dailyGoal, 10)
+        XCTAssertFalse(preferences.autoplayPronunciation)
+        XCTAssertEqual(preferences.appearance, .system)
+    }
+
+    func testDailyGoalClampsAndRoundsToFive() {
+        XCTAssertEqual(UserPreferences.validDailyGoal(7), 10)
+        XCTAssertEqual(UserPreferences.validDailyGoal(43), 45)
+        XCTAssertEqual(UserPreferences.validDailyGoal(103), 100)
     }
 
     func testReminderTimeDateRoundTripsThroughCalendarComponents() {

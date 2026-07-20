@@ -137,15 +137,15 @@ final class VocabyDeepLinkTests: XCTestCase {
     func testRoutesTodayReviewAndWordLinks() {
         XCTAssertEqual(
             VocabyDeepLink(url: URL(string: "vocaby://today")!),
-            VocabyDeepLink(tab: .today, wordID: nil)
+            VocabyDeepLink(tab: .home, wordID: nil)
         )
         XCTAssertEqual(
             VocabyDeepLink(url: URL(string: "vocaby://review")!),
-            VocabyDeepLink(tab: .review, wordID: nil)
+            VocabyDeepLink(tab: .learn, wordID: nil)
         )
         XCTAssertEqual(
             VocabyDeepLink(url: URL(string: "vocaby://word/basic-001")!),
-            VocabyDeepLink(tab: .library, wordID: "basic-001")
+            VocabyDeepLink(tab: .my, wordID: "basic-001")
         )
     }
 

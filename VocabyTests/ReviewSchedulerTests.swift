@@ -2,7 +2,7 @@ import XCTest
 @testable import Vocaby
 
 final class ReviewSchedulerTests: XCTestCase {
-    func testCorrectAnswersFollowReviewLadderAndMasterAtFour() {
+    func testCorrectAnswersFollowSM2AndMasterAtFour() {
         let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
         let progress = WordProgress(itemID: "basic-001", level: .basic)
 
@@ -13,11 +13,11 @@ final class ReviewSchedulerTests: XCTestCase {
 
         scheduler.applyAnswer(to: progress, wasCorrect: true, answeredAt: date("2026-07-11T02:00:00Z"), context: .review)
         XCTAssertEqual(progress.correctCount, 2)
-        XCTAssertEqual(progress.dueDayKey, "2026-07-14")
+        XCTAssertEqual(progress.dueDayKey, "2026-07-17")
 
         scheduler.applyAnswer(to: progress, wasCorrect: true, answeredAt: date("2026-07-14T02:00:00Z"), context: .review)
         XCTAssertEqual(progress.correctCount, 3)
-        XCTAssertEqual(progress.dueDayKey, "2026-07-21")
+        XCTAssertEqual(progress.dueDayKey, "2026-07-31")
 
         scheduler.applyAnswer(to: progress, wasCorrect: true, answeredAt: date("2026-07-21T02:00:00Z"), context: .review)
         XCTAssertEqual(progress.correctCount, 4)
@@ -37,7 +37,7 @@ final class ReviewSchedulerTests: XCTestCase {
         XCTAssertNil(progress.masteredAt)
     }
 
-    func testWrongReviewAnswerSchedulesNextDay() {
+    func testWrongReviewAnswerSchedulesSameDayRetry() {
         let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
         let firstSeenAt = date("2026-07-01T02:00:00Z")
         let answeredAt = date("2026-07-10T02:00:00Z")
@@ -52,13 +52,14 @@ final class ReviewSchedulerTests: XCTestCase {
 
         XCTAssertEqual(progress.correctCount, 2)
         XCTAssertEqual(progress.wrongCount, 1)
-        XCTAssertEqual(progress.dueDayKey, "2026-07-11")
+        XCTAssertEqual(progress.dueDayKey, "2026-07-10")
+        XCTAssertEqual(progress.nextReviewAt?.timeIntervalSince(answeredAt) ?? -1, 600, accuracy: 0.001)
         XCTAssertEqual(progress.firstSeenAt, firstSeenAt)
         XCTAssertEqual(progress.lastReviewedAt, answeredAt)
         XCTAssertNil(progress.masteredAt)
     }
 
-    func testPersistedSessionItemContextSchedulesReviewFillForNextDay() {
+    func testPersistedSessionItemContextSchedulesBothFailuresForSameDay() {
         let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
         let answeredAt = date("2026-07-10T02:00:00Z")
         let newProgress = WordProgress(itemID: "basic-001", level: .basic)
@@ -78,7 +79,7 @@ final class ReviewSchedulerTests: XCTestCase {
         )
 
         XCTAssertEqual(newProgress.dueDayKey, "2026-07-10")
-        XCTAssertEqual(reviewProgress.dueDayKey, "2026-07-11")
+        XCTAssertEqual(reviewProgress.dueDayKey, "2026-07-10")
     }
 
     func testDueItemsExcludeMasteredAndFutureThenSortByDueDayWrongCountAndID() {
