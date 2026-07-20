@@ -391,7 +391,7 @@ struct TodayView: View {
 
 #Preview {
     NavigationStack {
-        TodayView {}
+        TodayView(onLearn: {}, onReview: {}, onPractice: {})
     }
     .modelContainer(for: [
         WordProgress.self,
