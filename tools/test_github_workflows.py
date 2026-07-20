@@ -123,10 +123,10 @@ class GitHubWorkflowTests(unittest.TestCase):
 
     def test_public_version_sources_are_consistent(self):
         version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-        self.assertEqual(version, "1.1.0")
+        self.assertEqual(version, "2.0.0")
 
         project = (ROOT / "Vocaby.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
-        self.assertEqual(project.count("MARKETING_VERSION = 1.1.0;"), 4)
+        self.assertEqual(project.count("MARKETING_VERSION = 2.0.0;"), 4)
         self.assertNotIn("MARKETING_VERSION = 1.0;", project)
 
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")

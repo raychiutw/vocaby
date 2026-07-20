@@ -42,6 +42,15 @@ struct DailyPracticePlan {
     }
 }
 
+private struct QuizShakeEffect: GeometryEffect {
+    var animatableData: CGFloat
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        let translation = animatableData == 0 ? 0 : 9 * sin(animatableData * .pi * 4)
+        return ProjectionTransform(CGAffineTransform(translationX: translation, y: 0))
+    }
+}
+
 struct ReviewPracticePlan {
     let runID: String
     let quizQuestions: [QuizQuestion]
@@ -330,6 +339,9 @@ struct QuizRunView<Completion: View>: View {
     @State private var spellingText = ""
     @State private var deadline: Date
     @State private var errorMessage: String?
+    @State private var feedbackAnimationTrigger = 0
+    @State private var shakeTrigger = 0
+    @State private var runStartedAt = Date()
     @State private var speechSynthesizer = AVSpeechSynthesizer()
     @FocusState private var isSpellingFocused: Bool
 
@@ -386,6 +398,7 @@ struct QuizRunView<Completion: View>: View {
         .onChange(of: runID) {
             resetRun()
         }
+        .modifier(QuizShakeEffect(animatableData: CGFloat(shakeTrigger)))
     }
 
     private var nextButton: some View {
@@ -412,11 +425,21 @@ struct QuizRunView<Completion: View>: View {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let remaining = max(0, Int(ceil(deadline.timeIntervalSince(context.date))))
 
-                        HStack(spacing: 4) {
-                            Image(systemName: "clock")
-                                .accessibilityHidden(true)
-                            Text(formattedRemainingTime(remaining))
-                                .monospacedDigit()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "clock")
+                                    .accessibilityHidden(true)
+                                Text(formattedRemainingTime(remaining))
+                                    .monospacedDigit()
+                            }
+                            ProgressView(
+                                value: Double(remaining),
+                                total: Double(max(configuration.timeLimitSeconds, 1))
+                            )
+                            .tint(Double(remaining) / Double(max(configuration.timeLimitSeconds, 1)) < 0.3
+                                ? AppTheme.wrongRed
+                                : tint)
+                            .frame(width: 112)
                         }
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -427,6 +450,8 @@ struct QuizRunView<Completion: View>: View {
                             if remaining == 0 {
                                 isSpellingFocused = false
                                 if runState.timeout() != nil {
+                                    feedbackAnimationTrigger += 1
+                                    withAnimation(.linear(duration: 0.45)) { shakeTrigger += 1 }
                                     UINotificationFeedbackGenerator().notificationOccurred(.error)
                                 }
                             }
@@ -515,6 +540,7 @@ struct QuizRunView<Completion: View>: View {
                         : feedback.wasCorrect ? "practice.correct" : "practice.wrong"))
                 } icon: {
                     Image(systemName: feedback.wasCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .symbolEffect(.bounce, value: feedbackAnimationTrigger)
                 }
                 .font(.headline)
                 .foregroundStyle(feedback.wasCorrect ? AppTheme.correctGreen : AppTheme.wrongRed)
@@ -543,14 +569,37 @@ struct QuizRunView<Completion: View>: View {
 
     @ViewBuilder
     private var resultContent: some View {
+        let scoredAttempts = runState.firstAttempts
+        let correctCount = scoredAttempts.filter(\.wasCorrect).count
         let wrongAttempts = runState.isRetryRound
             ? runState.retryAttempts.filter { !$0.wasCorrect }
             : runState.firstAttempts.filter { !$0.wasCorrect }
 
         Section {
-            Label("practice.result.title", systemImage: "checkmark.circle.fill")
-                .font(.headline)
-                .foregroundStyle(tint)
+            HStack(spacing: 24) {
+                Gauge(value: Double(correctCount), in: 0...Double(max(scoredAttempts.count, 1))) {
+                    Text("practice.result.title")
+                } currentValueLabel: {
+                    Text("\(Int(Double(correctCount) / Double(max(scoredAttempts.count, 1)) * 100))%")
+                        .font(.headline.monospacedDigit())
+                }
+                .gaugeStyle(.accessoryCircularCapacity)
+                .tint(AppTheme.accent)
+                .scaleEffect(1.35)
+                .frame(width: 96, height: 96)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("\(correctCount)", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(AppTheme.correctGreen)
+                    Label("\(scoredAttempts.count - correctCount)", systemImage: "xmark.circle.fill")
+                        .foregroundStyle(AppTheme.wrongRed)
+                    Label(formattedRemainingTime(Int(Date().timeIntervalSince(runStartedAt))), systemImage: "timer")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.headline.monospacedDigit())
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .combine)
         }
 
         if !wrongAttempts.isEmpty {
@@ -656,6 +705,10 @@ struct QuizRunView<Completion: View>: View {
 
     private func submitWithFeedback(_ answer: String) {
         guard let attempt = runState.submit(answer) else { return }
+        feedbackAnimationTrigger += 1
+        if !attempt.wasCorrect {
+            withAnimation(.linear(duration: 0.45)) { shakeTrigger += 1 }
+        }
         UINotificationFeedbackGenerator().notificationOccurred(attempt.wasCorrect ? .success : .error)
     }
 
@@ -691,6 +744,7 @@ struct QuizRunView<Completion: View>: View {
 
     private func resetRun() {
         runState.reset(with: questions)
+        runStartedAt = Date()
         spellingText = ""
         isSpellingFocused = false
         errorMessage = nil
