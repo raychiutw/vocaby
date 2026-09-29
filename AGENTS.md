@@ -49,15 +49,9 @@ Review artifacts:
 - `~/.gstack/projects/raychiutw-vocaby/tasks-eng-review-20260710-112635.jsonl`
 - `~/.gstack/projects/raychiutw-vocaby/tasks-design-review-20260710-112635.jsonl`
 
-The current plan review state is cleared for planning:
-
-- Eng Review: clear.
-- Design Review: clear.
-- No unresolved decisions.
-
 ## Testing Expectations
 
-When app code exists, add focused tests for:
+Keep focused tests in `VocabyTests/` for:
 
 - `DayKeyService`: DST, timezone changes, backward date, missed-day streak.
 - Daily selection: level filtering, sort order, seed exhaustion, due review fill.
