@@ -27,7 +27,6 @@ struct TodayView: View {
     private let persistenceService = ProgressPersistenceService()
     private let preferencesStore = UserPreferencesStore()
     private let reviewScheduler = ReviewScheduler()
-    private let seedLoader = SeedLoader()
     private let streakService = StreakService()
     private let widgetSnapshotWriter = WidgetSnapshotWriter.appGroupWriter()
 
@@ -354,7 +353,7 @@ struct TodayView: View {
 
     private func loadSeedIfNeeded() throws {
         if seedItems.isEmpty {
-            seedItems = try seedLoader.loadBundledSeed()
+            seedItems = try SeedCatalog.bundled.items()
         }
     }
 

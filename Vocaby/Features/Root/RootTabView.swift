@@ -211,7 +211,7 @@ private struct PracticeTabRoot: View {
         }
         .task {
             do {
-                seedItems = try SeedLoader().loadBundledSeed()
+                seedItems = try SeedCatalog.bundled.items()
             } catch {
                 errorMessage = String(localized: "practice.load.error")
             }

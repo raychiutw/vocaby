@@ -244,7 +244,8 @@ final class PersistenceGuardTests: XCTestCase {
         )
         try context.save()
 
-        let attempts = try context.fetch(FetchDescriptor<PracticeAttemptRecord>())
+        // fetch 沒有保證順序(兩筆是一起存的);依作答時間排序才是確定的
+        let attempts = try context.fetch(FetchDescriptor<PracticeAttemptRecord>()).sorted { $0.answeredAt < $1.answeredAt }
         XCTAssertEqual(attempts.count, 2)
         XCTAssertEqual(Set(attempts.map(\.id)).count, 2)
         XCTAssertEqual(attempts.map(\.runID), ["extra-001", "extra-001"])

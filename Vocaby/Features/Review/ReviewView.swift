@@ -14,7 +14,6 @@ struct ReviewView: View {
     private let dayKeyService = DayKeyService()
     private let reviewQueueService = ReviewQueueService()
     private let reviewScheduler = ReviewScheduler()
-    private let seedLoader = SeedLoader()
 
     private var estimatedMinutes: Int {
         max(1, dueItems.count / 3 + 1)
@@ -111,7 +110,7 @@ struct ReviewView: View {
 
     private func loadSeedIfNeeded() throws {
         if seedItems.isEmpty {
-            seedItems = try seedLoader.loadBundledSeed()
+            seedItems = try SeedCatalog.bundled.items()
         }
     }
 }

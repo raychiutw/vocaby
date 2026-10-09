@@ -17,7 +17,6 @@ struct LibraryView: View {
     private let contentLanguageCode = AppLanguage.content
     private let supportLanguageCode = AppLanguage.support
     private let libraryService = LibraryService()
-    private let seedLoader = SeedLoader()
 
     init(deepLinkedItemID: Binding<String?> = .constant(nil)) {
         _deepLinkedItemID = deepLinkedItemID
@@ -151,7 +150,7 @@ struct LibraryView: View {
 
     private func loadSeedIfNeeded() throws {
         if seedItems.isEmpty {
-            seedItems = try seedLoader.loadBundledSeed()
+            seedItems = try SeedCatalog.bundled.items()
         }
     }
 

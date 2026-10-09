@@ -32,7 +32,6 @@ struct LearnView: View {
     @State private var errorMessage: String?
     @State private var synthesizer = AVSpeechSynthesizer()
 
-    private let seedLoader = SeedLoader()
     private let persistence = ProgressPersistenceService()
     private let dailyPlanner = DailyPlanner()
     private let scheduler = ReviewScheduler()
@@ -178,7 +177,7 @@ struct LearnView: View {
     private func loadItems() {
         do {
             let preferences = preferencesStore.read()
-            let seed = try seedLoader.loadBundledSeed()
+            let seed = try SeedCatalog.bundled.items()
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
             let dayKey = DayKeyService().dayKey(for: clock.now())
             let descriptor = FetchDescriptor<DailySession>(predicate: #Predicate { $0.dayKey == dayKey })
