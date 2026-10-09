@@ -12,10 +12,8 @@ struct RecordedAnswer: Equatable {
     let correctOptionIndex: Int
 }
 
-/// 作答來自哪裡。三種來源的規則不同,由 AnswerRecorder 在內部處理。
+/// 作答來自哪裡。兩種來源的規則不同,由 AnswerRecorder 在內部處理。
 enum AnswerSource {
-    /// 每日練習:進度不存在就建立;記 quizResult(以 session 的 dayKey);attempt 的 runID 是 dayKey。
-    case dailySession(dayKey: String, context: ReviewAnswerContext)
     /// 複習:進度必須已存在;quizResult 以作答當下算出的 dayKey 記;attempt 的 runID 由呼叫端給。
     case review(runID: String, resultDayKey: String)
     /// 自由練習:進度不存在就建立;不記 quizResult。
@@ -76,7 +74,7 @@ struct AnswerRecorder {
                 throw CocoaError(.fileReadCorruptFile)
             }
             progress = existing
-        case .dailySession, .freePractice:
+        case .freePractice:
             progress = try persistence.unsavedWordProgress(for: answer.itemID, level: answer.level, in: context)
         }
 
@@ -103,7 +101,6 @@ struct AnswerRecorder {
 private extension AnswerSource {
     var attemptRunID: String {
         switch self {
-        case .dailySession(let dayKey, _): dayKey
         case .review(let runID, _): runID
         case .freePractice(let runID): runID
         }
@@ -111,7 +108,6 @@ private extension AnswerSource {
 
     var scheduleContext: ReviewAnswerContext {
         switch self {
-        case .dailySession(_, let context): context
         case .review: .review
         case .freePractice: .dailyPractice
         }
@@ -119,7 +115,6 @@ private extension AnswerSource {
 
     var quizResultDayKey: String? {
         switch self {
-        case .dailySession(let dayKey, _): dayKey
         case .review(_, let resultDayKey): resultDayKey
         case .freePractice: nil
         }

@@ -79,19 +79,6 @@ extension DailySession {
     var correctItemCount: Int {
         items.filter { $0.wasCorrect == true }.count
     }
-
-    func scheduledReviewCount(from progressRows: [WordProgress]) -> Int {
-        let completedItemIDs = Set(items.compactMap { $0.answeredAt == nil ? nil : $0.itemID })
-        return Set(progressRows.compactMap { progress -> String? in
-            guard completedItemIDs.contains(progress.itemID),
-                  progress.dueDayKey != nil,
-                  progress.masteredAt == nil else {
-                return nil
-            }
-
-            return progress.itemID
-        }).count
-    }
 }
 
 @Model

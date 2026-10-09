@@ -46,12 +46,14 @@ final class AnswerRecorderTests: XCTestCase {
         XCTAssertTrue(try persisted(QuizResult.self).isEmpty)
     }
 
-    func testDailySessionAlsoRecordsQuizResultUnderTheSessionDayKey() throws {
+    func testReviewRecordsAQuizResultUnderTheGivenDayKey() throws {
         let context = ModelContext(container)
+        context.insert(WordProgress(itemID: "basic-001", level: .basic, firstSeenAt: answeredAt, dueDayKey: "2026-07-09"))
+        try context.save()
 
         try AnswerRecorder().record(
             answer(correct: false),
-            from: .dailySession(dayKey: "2026-07-10", context: .dailyPractice),
+            from: .review(runID: "run-1", resultDayKey: "2026-07-10"),
             at: answeredAt,
             in: context
         )
@@ -60,8 +62,7 @@ final class AnswerRecorderTests: XCTestCase {
         XCTAssertEqual(result.id, "2026-07-10#basic-001")
         XCTAssertEqual(result.selectedOptionIndex, 0)
         XCTAssertEqual(result.correctOptionIndex, 2)
-        XCTAssertEqual(try persisted(PracticeAttemptRecord.self).map(\.runID), ["2026-07-10"])
-        XCTAssertEqual(try persisted(WordProgress.self).first?.wrongCount, 1)
+        XCTAssertEqual(try persisted(PracticeAttemptRecord.self).map(\.runID), ["run-1"])
     }
 
     func testReviewRequiresExistingProgressAndLeavesNothingBehindWhenMissing() throws {
@@ -102,7 +103,7 @@ final class AnswerRecorderTests: XCTestCase {
 
         try AnswerRecorder().record(
             answer(first: false),
-            from: .dailySession(dayKey: "2026-07-10", context: .dailyPractice),
+            from: .freePractice(runID: "run-1"),
             at: answeredAt,
             in: context
         )
@@ -112,9 +113,11 @@ final class AnswerRecorderTests: XCTestCase {
         XCTAssertEqual(try persisted(PracticeAttemptRecord.self).count, 1)
     }
 
-    func testRecordingTheSameFirstAnswerTwiceKeepsOneQuizResult() throws {
+    func testRecordingTheSameReviewAnswerTwiceKeepsOneQuizResult() throws {
         let context = ModelContext(container)
-        let source = AnswerSource.dailySession(dayKey: "2026-07-10", context: .dailyPractice)
+        context.insert(WordProgress(itemID: "basic-001", level: .basic, firstSeenAt: answeredAt, dueDayKey: "2026-07-09"))
+        try context.save()
+        let source = AnswerSource.review(runID: "run-1", resultDayKey: "2026-07-10")
 
         try AnswerRecorder().record(answer(), from: source, at: answeredAt, in: context)
         try AnswerRecorder().record(answer(), from: source, at: answeredAt, in: context)
@@ -140,10 +143,12 @@ final class AnswerRecorderTests: XCTestCase {
 
     func testEveryRecordCarriesTheGivenAnswerTimeInsteadOfTheSystemClock() throws {
         let context = ModelContext(container)
+        context.insert(WordProgress(itemID: "basic-001", level: .basic, firstSeenAt: answeredAt.addingTimeInterval(-60), dueDayKey: "2026-07-09"))
+        try context.save()
 
         try AnswerRecorder().record(
             answer(),
-            from: .dailySession(dayKey: "2026-07-10", context: .dailyPractice),
+            from: .review(runID: "run-1", resultDayKey: "2026-07-10"),
             at: answeredAt,
             in: context
         )
