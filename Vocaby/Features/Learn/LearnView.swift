@@ -34,7 +34,7 @@ struct LearnView: View {
 
     private let seedLoader = SeedLoader()
     private let persistence = ProgressPersistenceService()
-    private let selectionService = DailySelectionService()
+    private let dailyPlanner = DailyPlanner()
     private let scheduler = ReviewScheduler()
     private let preferencesStore = UserPreferencesStore()
     private let swipeThreshold: CGFloat = 96
@@ -185,15 +185,11 @@ struct LearnView: View {
             if let existing = try modelContext.fetch(descriptor).first {
                 dailySession = existing
             } else {
-                let dueIDs = scheduler.allDueItems(from: progressRows, at: clock.now()).map(\.itemID)
-                let selection = selectionService.selectItems(
-                    from: seed,
-                    selectedLevel: preferences.selectedLevel,
-                    contentLanguageCode: "en",
-                    supportLanguageCode: "zh-Hant",
-                    firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
-                    dueReviewItemIDs: dueIDs,
-                    targetCount: preferences.dailyGoal
+                let selection = dailyPlanner.plan(
+                    seed: seed,
+                    progressRows: progressRows,
+                    preferences: preferences,
+                    now: clock.now()
                 )
                 dailySession = try persistence.session(
                     for: dayKey,

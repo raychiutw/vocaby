@@ -23,7 +23,7 @@ struct TodayView: View {
     private let supportLanguageCode = "zh-Hant"
     private var dailyTargetCount: Int { preferencesStore.read().dailyGoal }
     private let dayKeyService = DayKeyService()
-    private let dailySelectionService = DailySelectionService()
+    private let dailyPlanner = DailyPlanner()
     private let persistenceService = ProgressPersistenceService()
     private let preferencesStore = UserPreferencesStore()
     private let reviewScheduler = ReviewScheduler()
@@ -246,7 +246,7 @@ struct TodayView: View {
                     : nil
             } else {
                 statusMessage = selectionStatusMessage(
-                    for: dailySelection(from: progressRows, on: dayKey).status
+                    for: dailySelection(from: progressRows).status
                 )
             }
             writeWidgetSnapshot(dayKey: dayKey)
@@ -277,7 +277,7 @@ struct TodayView: View {
                 return
             }
 
-            let result = dailySelection(from: progressRows, on: dayKey)
+            let result = dailySelection(from: progressRows)
 
             guard !result.itemIDs.isEmpty else {
                 statusMessage = selectionStatusMessage(for: result.status)
@@ -302,19 +302,12 @@ struct TodayView: View {
         }
     }
 
-    private func dailySelection(from progressRows: [WordProgress], on dayKey: String) -> DailySelectionResult {
-        let dueReviewItemIDs = reviewScheduler
-            .allDueItems(from: progressRows, at: clock.now())
-            .map(\.itemID)
-
-        return dailySelectionService.selectItems(
-            from: seedItems,
-            selectedLevel: preferencesStore.read().selectedLevel,
-            contentLanguageCode: contentLanguageCode,
-            supportLanguageCode: supportLanguageCode,
-            firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
-            dueReviewItemIDs: dueReviewItemIDs,
-            targetCount: dailyTargetCount
+    private func dailySelection(from progressRows: [WordProgress]) -> DailySelectionResult {
+        dailyPlanner.plan(
+            seed: seedItems,
+            progressRows: progressRows,
+            preferences: preferencesStore.read(),
+            now: clock.now()
         )
     }
 
