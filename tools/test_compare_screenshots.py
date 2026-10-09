@@ -75,6 +75,21 @@ class CompareScreenshotsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("尺寸", result.stdout)
 
+    def test_ignored_screens_are_not_compared(self):
+        _png(self.baseline / "home-light.png", (0, 0, 0))
+        _png(self.current / "home-light.png", (0, 0, 0))
+        _png(self.current / "progress-light.png", (5, 5, 5))  # 基準沒有,但被忽略
+        result = _run(self.baseline, self.current, self.report, "--ignore", "progress-*")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("progress-light.png", result.stdout)
+
+    def test_update_does_not_copy_ignored_screens(self):
+        _png(self.current / "home-light.png", (0, 0, 0))
+        _png(self.current / "progress-light.png", (5, 5, 5))
+        self.assertEqual(_run(self.baseline, self.current, self.report, "--update", "--ignore", "progress-*").returncode, 0)
+        self.assertTrue((self.baseline / "home-light.png").exists())
+        self.assertFalse((self.baseline / "progress-light.png").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

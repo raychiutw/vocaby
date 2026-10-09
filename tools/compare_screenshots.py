@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""比對截圖目錄與基準圖。用法: compare_screenshots.py BASELINE CURRENT REPORT [--update]
+"""比對截圖目錄與基準圖。用法: compare_screenshots.py BASELINE CURRENT REPORT [--update] [--ignore GLOB]...
 
 有差異、缺圖或多圖時回傳 1,並把「基準 | 目前 | 差異」並排圖寫進 REPORT。
---update 會用 CURRENT 取代 BASELINE。
+--update 會用 CURRENT 取代 BASELINE。--ignore 排除符合 GLOB 的檔名(不比對、也不納入基準)。
 """
+from fnmatch import fnmatch
 from pathlib import Path
 import shutil
 import sys
@@ -22,18 +23,20 @@ def side_by_side(baseline: Image.Image, current: Image.Image) -> Image.Image:
 
 def main(argv: list[str]) -> int:
     update = "--update" in argv
+    ignore = [argv[i + 1] for i, a in enumerate(argv) if a == "--ignore"]
     baseline_dir, current_dir, report_dir = (Path(a) for a in argv[:3])
 
     if update:
-        if not any(current_dir.glob("*.png")):
+        if not any(not any(fnmatch(p.name, g) for g in ignore) for p in current_dir.glob("*.png")):
             sys.exit(f"{current_dir} 沒有截圖,不更新基準圖")
         shutil.rmtree(baseline_dir, ignore_errors=True)
-        shutil.copytree(current_dir, baseline_dir)
+        shutil.copytree(current_dir, baseline_dir, ignore=shutil.ignore_patterns(*ignore))
         return 0
 
     shutil.rmtree(report_dir, ignore_errors=True)
     report_dir.mkdir(parents=True)
-    names = {p.name for p in baseline_dir.glob("*.png")} | {p.name for p in current_dir.glob("*.png")}
+    names = {p.name for d in (baseline_dir, current_dir) for p in d.glob("*.png")
+             if not any(fnmatch(p.name, g) for g in ignore)}
     failed = False
     for name in sorted(names):
         base, cur = baseline_dir / name, current_dir / name
