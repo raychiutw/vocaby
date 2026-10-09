@@ -63,6 +63,8 @@
 		3A180E93B12E084A67CE9BA8 /* AnswerRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */; };
 		3B2CDB3C64D49DD9AD6832A9 /* DailyPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D2862E6057A6E8EEAF47F /* DailyPlanner.swift */; };
 		5348B8011A11095BDDBD2CE8 /* AppClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */; };
+		5CE30C1E16F5ECDE8386249E /* TodayProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E6AE83EE4BB91CCCE397E54 /* TodayProgressTests.swift */; };
+		66D0BA59DD8A0E5F5B013576 /* TodayProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCEE14E0E1343166FD126733 /* TodayProgress.swift */; };
 		7F0F534E5CB5530866E5F772 /* SeedCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0028B322B578CFA61319CF /* SeedCatalogTests.swift */; };
 		864CB46E89D08905E61A38BE /* SeedCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7267295262458DEFD361F74F /* SeedCatalog.swift */; };
 		8DCB911E3CD6E32A1336723E /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF01F3B5E93A8C20F643B8C5 /* AppLanguage.swift */; };
@@ -165,12 +167,14 @@
 		200000000000000000000304 /* SM2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2Tests.swift; sourceTree = "<group>"; };
 		200000000000000000000305 /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
 		200000000000000000000306 /* AchievementEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngineTests.swift; sourceTree = "<group>"; };
+		3E6AE83EE4BB91CCCE397E54 /* TodayProgressTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TodayProgressTests.swift; sourceTree = "<group>"; };
 		6A0028B322B578CFA61319CF /* SeedCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeedCatalogTests.swift; sourceTree = "<group>"; };
 		7267295262458DEFD361F74F /* SeedCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeedCatalog.swift; sourceTree = "<group>"; };
 		96D6963B45F9B526D5E6E835 /* VocabyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VocabyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnswerRecorderTests.swift; sourceTree = "<group>"; };
 		AF01F3B5E93A8C20F643B8C5 /* AppLanguage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppLanguage.swift; sourceTree = "<group>"; };
 		BD3D2862E6057A6E8EEAF47F /* DailyPlanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyPlanner.swift; sourceTree = "<group>"; };
+		CCEE14E0E1343166FD126733 /* TodayProgress.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TodayProgress.swift; sourceTree = "<group>"; };
 		E10FB948D56C44774D903105 /* DailyPlannerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyPlannerTests.swift; sourceTree = "<group>"; };
 		F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceScreenshotTests.swift; sourceTree = "<group>"; };
 		FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppClockTests.swift; sourceTree = "<group>"; };
@@ -362,6 +366,7 @@
 				BD3D2862E6057A6E8EEAF47F /* DailyPlanner.swift */,
 				AF01F3B5E93A8C20F643B8C5 /* AppLanguage.swift */,
 				7267295262458DEFD361F74F /* SeedCatalog.swift */,
+				CCEE14E0E1343166FD126733 /* TodayProgress.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -412,6 +417,7 @@
 				AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */,
 				E10FB948D56C44774D903105 /* DailyPlannerTests.swift */,
 				6A0028B322B578CFA61319CF /* SeedCatalogTests.swift */,
+				3E6AE83EE4BB91CCCE397E54 /* TodayProgressTests.swift */,
 			);
 			path = VocabyTests;
 			sourceTree = "<group>";
@@ -669,6 +675,7 @@
 				3B2CDB3C64D49DD9AD6832A9 /* DailyPlanner.swift in Sources */,
 				8DCB911E3CD6E32A1336723E /* AppLanguage.swift in Sources */,
 				864CB46E89D08905E61A38BE /* SeedCatalog.swift in Sources */,
+				66D0BA59DD8A0E5F5B013576 /* TodayProgress.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -694,6 +701,7 @@
 				26CA39D57512168D55286230 /* AnswerRecorderTests.swift in Sources */,
 				FE583A49171E432A103EED4C /* DailyPlannerTests.swift in Sources */,
 				7F0F534E5CB5530866E5F772 /* SeedCatalogTests.swift in Sources */,
+				5CE30C1E16F5ECDE8386249E /* TodayProgressTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

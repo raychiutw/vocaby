@@ -34,14 +34,13 @@ struct TodayView: View {
         (todaySession?.items ?? []).sorted { $0.position < $1.position }
     }
 
-    private var completedCount: Int {
-        todaySession?.completedItemCount ?? 0
+    private var progress: TodayProgress {
+        TodayProgress(session: todaySession, dailyGoal: dailyTargetCount)
     }
 
-    private var totalCount: Int {
-        let itemCount = orderedSessionItems.count
-        return itemCount > 0 ? itemCount : dailyTargetCount
-    }
+    private var completedCount: Int { progress.completed }
+
+    private var totalCount: Int { progress.total }
 
     private var progressText: String {
         "\(completedCount)/\(totalCount)"
@@ -60,10 +59,7 @@ struct TodayView: View {
     }
 
     private var nextSeedItem: VocabularySeedItem? {
-        let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
-        return orderedSessionItems
-            .first { $0.answeredAt == nil }
-            .flatMap { seedByID[$0.itemID] }
+        progress.nextItemID.flatMap { id in seedItems.first { $0.id == id } }
     }
 
     private var primaryButtonTitle: LocalizedStringKey {
@@ -362,18 +358,12 @@ struct TodayView: View {
             return
         }
 
-        let snapshot = WidgetSnapshot(
+        let snapshot = WidgetSnapshot.today(
             dayKey: dayKey,
-            progressCompleted: completedCount,
-            progressTotal: totalCount,
+            session: todaySession,
+            seedItems: seedItems,
             streakCount: streakCount,
-            displayExpression: nextSeedItem.map {
-                WidgetSnapshotExpression(
-                    itemID: $0.id,
-                    plainExpression: $0.plainExpression,
-                    upgradedExpression: $0.upgradedExpression
-                )
-            },
+            dailyGoal: dailyTargetCount,
             generatedAt: clock.now()
         )
 
