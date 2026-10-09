@@ -11,6 +11,9 @@ import sys
 
 from PIL import Image, ImageChops
 
+# 半透明玻璃(Liquid Glass)的模糊運算每次渲染會有 1–2 階的雜訊,低於此值視為相同
+TOLERANCE = 4
+
 
 def side_by_side(baseline: Image.Image, current: Image.Image) -> Image.Image:
     current = current.resize(baseline.size) if current.size != baseline.size else current
@@ -46,7 +49,7 @@ def main(argv: list[str]) -> int:
             print(f"NEW     {name}")
         else:
             b, c = Image.open(base).convert("RGB"), Image.open(cur).convert("RGB")
-            if b.size == c.size and ImageChops.difference(b, c).getbbox() is None:
+            if b.size == c.size and ImageChops.difference(b, c).point(lambda v: 255 if v > TOLERANCE else 0).getbbox() is None:
                 print(f"SAME    {name}")
                 continue
             side_by_side(b, c).save(report_dir / name)

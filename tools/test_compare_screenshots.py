@@ -90,6 +90,16 @@ class CompareScreenshotsTests(unittest.TestCase):
         self.assertTrue((self.baseline / "home-light.png").exists())
         self.assertFalse((self.baseline / "progress-light.png").exists())
 
+    def test_tiny_rendering_noise_is_tolerated(self):
+        _png(self.baseline / "a-dark.png", (10, 10, 10))
+        _png(self.current / "a-dark.png", (12, 11, 10))  # 玻璃模糊造成的 1–2 階雜訊
+        self.assertEqual(_run(self.baseline, self.current, self.report).returncode, 0)
+
+    def test_visible_color_change_still_fails(self):
+        _png(self.baseline / "a-dark.png", (10, 10, 10))
+        _png(self.current / "a-dark.png", (30, 10, 10))
+        self.assertEqual(_run(self.baseline, self.current, self.report).returncode, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

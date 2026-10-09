@@ -31,7 +31,7 @@ for appearance in light dark; do
   TEST_RUNNER_VOCABY_SHOT_DIR="$PWD/$OUT/current" \
     xcodebuild test -project Vocaby.xcodeproj -scheme VocabyUITests \
       -destination "platform=iOS Simulator,id=$udid" \
-      -derivedDataPath "$OUT/DerivedData" CODE_SIGNING_ALLOWED=NO -quiet
+      -derivedDataPath "$OUT/DerivedData" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO -quiet
 done
 
 if [ "${1:-}" = "--update" ]; then
