@@ -35,7 +35,6 @@
 		000000000000000000000419 /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031B /* PracticeView.swift */; };
 		00000000000000000000041A /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031C /* ThirdPartyNotices.txt */; };
 		00000000000000000000041B /* VocabularyEntryContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031D /* VocabularyEntryContentView.swift */; };
-		00000000000000000000041C /* PracticeProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031E /* PracticeProgressService.swift */; };
 		00000000000000000000041D /* LearningChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031F /* LearningChrome.swift */; };
 		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
 		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
@@ -134,7 +133,6 @@
 		00000000000000000000031B /* PracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
 		00000000000000000000031C /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		00000000000000000000031D /* VocabularyEntryContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyEntryContentView.swift; sourceTree = "<group>"; };
-		00000000000000000000031E /* PracticeProgressService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeProgressService.swift; sourceTree = "<group>"; };
 		00000000000000000000031F /* LearningChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningChrome.swift; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
@@ -339,7 +337,6 @@
 				000000000000000000000311 /* WidgetSnapshotWriter.swift */,
 				000000000000000000000312 /* NotificationScheduler.swift */,
 				000000000000000000000313 /* UserPreferencesStore.swift */,
-				00000000000000000000031E /* PracticeProgressService.swift */,
 				200000000000000000000303 /* SM2.swift */,
 				200000000000000000000305 /* AchievementEngine.swift */,
 			);
@@ -635,7 +632,6 @@
 				000000000000000000000418 /* QuizEngine.swift in Sources */,
 				000000000000000000000419 /* PracticeView.swift in Sources */,
 				00000000000000000000041B /* VocabularyEntryContentView.swift in Sources */,
-				00000000000000000000041C /* PracticeProgressService.swift in Sources */,
 				00000000000000000000041D /* LearningChrome.swift in Sources */,
 				200000000000000000000401 /* LearnView.swift in Sources */,
 				200000000000000000000402 /* LearningProgressView.swift in Sources */,

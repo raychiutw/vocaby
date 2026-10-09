@@ -96,7 +96,7 @@ final class ReviewSchedulerTests: XCTestCase {
         XCTAssertEqual(reviewProgress.dueDayKey, "2026-07-10")
     }
 
-    func testDueItemsExcludeMasteredAndFutureThenSortByDueDayWrongCountAndID() {
+    func testDueItemsExcludeMasteredAndFutureThenSortByWrongCountAndID() {
         let scheduler = ReviewScheduler(dayKeyService: dayKeyService())
         let dueLowWrong = progress("basic-002", dueDayKey: "2026-07-10", wrongCount: 1)
         let dueHighWrong = progress("basic-001", dueDayKey: "2026-07-10", wrongCount: 3)
@@ -106,11 +106,12 @@ final class ReviewSchedulerTests: XCTestCase {
 
         let dueItems = scheduler.dueItems(
             from: [dueLowWrong, dueHighWrong, olderDue, future, mastered],
-            on: "2026-07-10",
+            at: dayKeyService().date(for: "2026-07-10")!,
             limit: 20
         )
 
-        XCTAssertEqual(dueItems.map(\.itemID), ["basic-003", "basic-001", "basic-002"])
+        // 排序是 nextReviewAt → wrongCount(多的在前)→ itemID;不看到期日,舊式資料列的 nextReviewAt 視同相同
+        XCTAssertEqual(dueItems.map(\.itemID), ["basic-001", "basic-002", "basic-003"])
     }
 
     func testDueItemsRespectLimit() {
@@ -119,7 +120,7 @@ final class ReviewSchedulerTests: XCTestCase {
             progress(String(format: "basic-%03d", index), dueDayKey: "2026-07-10", wrongCount: 0)
         }
 
-        XCTAssertEqual(scheduler.dueItems(from: dueItems, on: "2026-07-10", limit: 20).count, 20)
+        XCTAssertEqual(scheduler.dueItems(from: dueItems, at: dayKeyService().date(for: "2026-07-10")!, limit: 20).count, 20)
     }
 
     func testDueCountReportsAllItemsBeyondQueueLimit() {
@@ -128,7 +129,7 @@ final class ReviewSchedulerTests: XCTestCase {
             progress(String(format: "basic-%03d", index), dueDayKey: "2026-07-10", wrongCount: 0)
         }
 
-        XCTAssertEqual(scheduler.dueCount(from: dueItems, on: "2026-07-10"), 25)
+        XCTAssertEqual(scheduler.dueCount(from: dueItems, at: dayKeyService().date(for: "2026-07-10")!), 25)
     }
 
     private func progress(

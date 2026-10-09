@@ -72,32 +72,6 @@ struct ReviewScheduler {
         progress.dueDayKey = result.isMastered ? nil : dayKeyService.dayKey(for: result.nextReviewAt)
     }
 
-    func dueItems(from progressRows: [WordProgress], on dayKey: String, limit: Int = 20) -> [WordProgress] {
-        Array(progressRows
-            .filter { progress in
-                guard let dueDayKey = progress.dueDayKey else {
-                    return false
-                }
-
-                return progress.masteredAt == nil && dueDayKey <= dayKey
-            }
-            .sorted { lhs, rhs in
-                let lhsDueDayKey = lhs.dueDayKey ?? ""
-                let rhsDueDayKey = rhs.dueDayKey ?? ""
-
-                if lhsDueDayKey != rhsDueDayKey {
-                    return lhsDueDayKey < rhsDueDayKey
-                }
-
-                if lhs.wrongCount != rhs.wrongCount {
-                    return lhs.wrongCount > rhs.wrongCount
-                }
-
-                return lhs.itemID < rhs.itemID
-            }
-            .prefix(max(0, limit)))
-    }
-
     func dueItems(from progressRows: [WordProgress], at date: Date, limit: Int = 20) -> [WordProgress] {
         let dayKey = dayKeyService.dayKey(for: date)
         return Array(progressRows
@@ -117,16 +91,8 @@ struct ReviewScheduler {
             .prefix(max(0, limit)))
     }
 
-    func dueCount(from progressRows: [WordProgress], on dayKey: String) -> Int {
-        allDueItems(from: progressRows, on: dayKey).count
-    }
-
     func dueCount(from progressRows: [WordProgress], at date: Date) -> Int {
         allDueItems(from: progressRows, at: date).count
-    }
-
-    func allDueItems(from progressRows: [WordProgress], on dayKey: String) -> [WordProgress] {
-        dueItems(from: progressRows, on: dayKey, limit: progressRows.count)
     }
 
     func allDueItems(from progressRows: [WordProgress], at date: Date) -> [WordProgress] {
