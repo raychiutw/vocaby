@@ -120,6 +120,34 @@ class CompareScreenshotsTests(unittest.TestCase):
         cur.save(self.current / "a-light.png")
         self.assertEqual(_run(self.baseline, self.current, self.report).returncode, 1)
 
+    def test_flags_may_come_before_the_paths(self):
+        _png(self.current / "a-light.png", (1, 2, 3))
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--update", str(self.baseline), str(self.current), str(self.report)],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((self.baseline / "a-light.png").exists())
+
+    def test_missing_ignore_value_is_a_usage_error_not_a_traceback(self):
+        result = _run(self.baseline, self.current, self.report, "--ignore")
+        self.assertEqual(result.returncode, 2)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_failed_update_keeps_the_existing_baseline(self):
+        _png(self.baseline / "keep-light.png", (0, 0, 0))
+        (self.current / "broken-light.png").write_bytes(b"not a png")  # 複製沒問題,但之後驗證會失敗
+        result = _run(self.baseline, self.current, self.report, "--update")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((self.baseline / "keep-light.png").exists())
+
+    def test_report_diff_is_amplified_so_small_changes_are_visible(self):
+        _png(self.baseline / "a-dark.png", (10, 10, 10))
+        _png(self.current / "a-dark.png", (20, 10, 10))  # 差 10 階:超過容差、肉眼幾乎看不出
+        _run(self.baseline, self.current, self.report)
+        report = Image.open(self.report / "a-dark.png")
+        self.assertGreater(report.getpixel((20, 4))[0], 100)  # 第三格(差異)被放大
+
 
 if __name__ == "__main__":
     unittest.main()

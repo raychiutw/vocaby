@@ -4,6 +4,8 @@
 
 ## 執行
 
+需要 Pillow(`python3 -m pip install Pillow`);腳本開頭會先檢查,缺的話立刻失敗。
+
 ```sh
 tools/capture_screenshots.sh            # 擷圖並比對基準圖,有差異時結束碼為 1
 tools/capture_screenshots.sh --update   # 用本次擷圖取代基準圖
@@ -17,6 +19,7 @@ tools/capture_screenshots.sh --update   # 用本次擷圖取代基準圖
 
 ## 解讀與限制
 
+- 每通道 4 階以內的差異視為相同(Liquid Glass 模糊運算的渲染雜訊)。副作用:整體色偏 4 階以內不會被抓到;報告中的差異圖已放大 16 倍,超過門檻的差異看得出來。
 - 比對是像素差異加人工檢視,沒有自動通過門檻,也沒有接 CI。
 - 基準圖受裝置與 OS 版本影響;換 Xcode 或模擬器 runtime 後要重新 `--update` 並人工確認。
 - 目前只涵蓋各 tab 的初始畫面(全新安裝狀態)。每日選字不依日期,所以 Home、Learn、Practice、My 與 onboarding 是穩定的。

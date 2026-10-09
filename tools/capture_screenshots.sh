@@ -6,6 +6,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# 比對步驟需要 Pillow;擷圖要跑好幾分鐘,缺的話先失敗,不要等到最後
+python3 -c "import PIL" 2>/dev/null || { echo "需要 Pillow:python3 -m pip install Pillow" >&2; exit 1; }
+
 NAME="Vocaby-Shots"
 OUT=".build/screenshots"
 BASELINE="docs/screenshots/baseline"
@@ -14,7 +17,7 @@ IGNORE=()
 
 udid=$(xcrun simctl list devices | grep -F "$NAME (" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/' || true)
 if [ -z "$udid" ]; then
-  runtime=$(xcrun simctl list runtimes | grep -E '^iOS ' | tail -1 | sed -E 's/.* - //')
+  runtime=$(xcrun simctl list runtimes available | grep -E '^iOS ' | tail -1 | sed -E 's/.* - //')
   udid=$(xcrun simctl create "$NAME" "iPhone 17" "$runtime")
 fi
 
