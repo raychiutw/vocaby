@@ -38,5 +38,29 @@ final class AppearanceScreenshotTests: XCTestCase {
             tab.tap()
             try capture(name)
         }
+
+        // 關鍵狀態:Learn 翻開答案、評分完成後的總結。
+        // Practice 的題目與選項順序用 SystemRandomNumberGenerator 且有倒數計時,無法穩定比對,不在此涵蓋。
+        // 這些狀態會改變進度資料,所以放在所有 tab 的初始畫面之後。
+        app.buttons["學習"].firstMatch.tap()
+        let reveal = app.staticTexts["點一下顯示答案"]
+        XCTAssertTrue(reveal.waitForExistence(timeout: 30), "找不到 Learn 卡片")
+        reveal.tap()
+        settle()
+        try capture("learn-revealed")
+
+        let grades = Array(repeating: "認識", count: 6) + Array(repeating: "收藏", count: 2) + Array(repeating: "不認識", count: 2)
+        let again = app.buttons["再來一組"]
+        for grade in grades {
+            let button = app.buttons[grade]
+            XCTAssertTrue(button.waitForExistence(timeout: 30), "找不到評分按鈕「\(grade)」")
+            button.tap()
+            settle()
+        }
+        XCTAssertTrue(again.waitForExistence(timeout: 30), "評分 \(grades.count) 張後沒有出現完成總結")
+        try capture("learn-complete")
     }
+
+    /// 等翻牌與換卡動畫結束,避免擷到動畫中途的畫面。
+    private func settle() { Thread.sleep(forTimeInterval: 1.0) }
 }
