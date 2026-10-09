@@ -43,9 +43,19 @@ final class VocabyDelegate: NSObject, UIApplicationDelegate, UNUserNotificationC
 struct Vocaby: App {
     @UIApplicationDelegateAdaptor(VocabyDelegate.self) private var appDelegate
 
+    private var clock: AppClock {
+        #if DEBUG
+        // UI test 以 `-VOCABY_FIXED_NOW 2026-07-10T09:00:00+08:00` 固定「現在」;Release 不含此鉤子。
+        AppClock.fixed(fromLaunchValue: UserDefaults.standard.string(forKey: "VOCABY_FIXED_NOW")) ?? .system
+        #else
+        .system
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(\.appClock, clock)
                 .tint(AppTheme.accent)
                 .modelContainer(for: [
                     WordProgress.self,

@@ -16,6 +16,7 @@ private struct LearningStateSlice: Identifiable {
 }
 
 struct LearningProgressView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.modelContext) private var modelContext
     @Query private var sessions: [DailySession]
     @Query private var progressRows: [WordProgress]
@@ -97,7 +98,7 @@ struct LearningProgressView: View {
                             .fill(heatmapColor(day.count))
                             .frame(width: 15, height: 15)
                             .overlay {
-                                if Calendar.current.isDateInToday(day.date) {
+                                if Calendar.current.isDate(day.date, inSameDayAs: clock.now()) {
                                     RoundedRectangle(cornerRadius: 3)
                                         .stroke(.primary, lineWidth: 1.5)
                                 }
@@ -161,7 +162,7 @@ struct LearningProgressView: View {
             existing: unlockedAchievementIDs
         )
         guard !newlyUnlocked.isEmpty else { return }
-        let now = Date()
+        let now = clock.now()
         newlyUnlocked.forEach {
             modelContext.insert(AchievementRecord(achievementID: $0.rawValue, unlockedAt: now))
         }
@@ -171,11 +172,11 @@ struct LearningProgressView: View {
     }
 
     private var trendDays: [LearningDay] {
-        days(endingAt: Date(), count: rangeDays)
+        days(endingAt: clock.now(), count: rangeDays)
     }
 
     private var heatmapDays: [LearningDay] {
-        days(endingAt: Date(), count: 15 * 7)
+        days(endingAt: clock.now(), count: 15 * 7)
     }
 
     private func days(endingAt date: Date, count: Int) -> [LearningDay] {

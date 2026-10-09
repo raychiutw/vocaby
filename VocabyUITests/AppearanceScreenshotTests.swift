@@ -11,7 +11,8 @@ final class AppearanceScreenshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
         let app = XCUIApplication()
-        app.launchArguments = ["-AppleLanguages", "(zh-Hant)", "-AppleLocale", "zh_TW"]
+        // 固定「現在」(AppClock 的 DEBUG 鉤子),讓含日期的畫面(Progress)每次都一樣
+        app.launchArguments = ["-AppleLanguages", "(zh-Hant)", "-AppleLocale", "zh_TW", "-VOCABY_FIXED_NOW", "2026-07-10T09:00:00+08:00"]
         app.launch()
 
         func capture(_ name: String) throws {

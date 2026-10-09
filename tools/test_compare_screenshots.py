@@ -100,6 +100,26 @@ class CompareScreenshotsTests(unittest.TestCase):
         _png(self.current / "a-dark.png", (30, 10, 10))
         self.assertEqual(_run(self.baseline, self.current, self.report).returncode, 1)
 
+    def test_home_indicator_strip_is_ignored(self):
+        # Home Indicator 是系統覆蓋層,在模擬器裡時有時無;最底部 2% 不參與比對
+        base = Image.new("RGB", (50, 100), (255, 255, 255))
+        cur = base.copy()
+        for y in (98, 99):
+            for x in range(10, 40):
+                cur.putpixel((x, y), (0, 0, 0))
+        base.save(self.baseline / "a-light.png")
+        cur.save(self.current / "a-light.png")
+        self.assertEqual(_run(self.baseline, self.current, self.report).returncode, 0)
+
+    def test_change_just_above_the_strip_still_fails(self):
+        base = Image.new("RGB", (50, 100), (255, 255, 255))
+        cur = base.copy()
+        for x in range(10, 40):
+            cur.putpixel((x, 97), (0, 0, 0))
+        base.save(self.baseline / "a-light.png")
+        cur.save(self.current / "a-light.png")
+        self.assertEqual(_run(self.baseline, self.current, self.report).returncode, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

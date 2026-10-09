@@ -244,6 +244,7 @@ private struct LibraryRowView: View {
 }
 
 private struct LibraryDetailView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.modelContext) private var modelContext
 
     let item: LibraryListItem
@@ -329,7 +330,7 @@ private struct LibraryDetailView: View {
                 in: modelContext
             )
             currentProgress.isSaved = newValue
-            currentProgress.updatedAt = Date()
+            currentProgress.updatedAt = clock.now()
             try modelContext.save()
             isSaved = newValue
             progress = currentProgress

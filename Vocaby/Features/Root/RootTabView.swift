@@ -51,6 +51,7 @@ struct VocabyDeepLink: Equatable {
 }
 
 struct RootTabView: View {
+    @Environment(\.appClock) private var clock
     @Query private var progressRows: [WordProgress]
     @State private var selectedTab = RootTab.home
     @State private var deepLinkedWordID: String?
@@ -173,7 +174,7 @@ struct RootTabView: View {
     }
 
     private var dueReviewCount: Int {
-        ReviewScheduler().dueCount(from: progressRows, at: Date())
+        ReviewScheduler().dueCount(from: progressRows, at: clock.now())
     }
 
     private func route(_ url: URL) {

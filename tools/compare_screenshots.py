@@ -14,6 +14,18 @@ from PIL import Image, ImageChops
 # 半透明玻璃(Liquid Glass)的模糊運算每次渲染會有 1–2 階的雜訊,低於此值視為相同
 TOLERANCE = 4
 
+# 最底部這個比例的帶狀區域是 Home Indicator(系統覆蓋層,在模擬器裡時有時無),不參與比對
+HOME_INDICATOR_FRACTION = 0.02
+
+
+def without_home_indicator(im: Image.Image) -> Image.Image:
+    strip = int(im.height * HOME_INDICATOR_FRACTION)
+    if strip == 0:
+        return im
+    im = im.copy()
+    im.paste((0, 0, 0), (0, im.height - strip, im.width, im.height))
+    return im
+
 
 def side_by_side(baseline: Image.Image, current: Image.Image) -> Image.Image:
     current = current.resize(baseline.size) if current.size != baseline.size else current
@@ -49,7 +61,7 @@ def main(argv: list[str]) -> int:
             print(f"NEW     {name}")
         else:
             b, c = Image.open(base).convert("RGB"), Image.open(cur).convert("RGB")
-            if b.size == c.size and ImageChops.difference(b, c).point(lambda v: 255 if v > TOLERANCE else 0).getbbox() is None:
+            if b.size == c.size and ImageChops.difference(without_home_indicator(b), without_home_indicator(c)).point(lambda v: 255 if v > TOLERANCE else 0).getbbox() is None:
                 print(f"SAME    {name}")
                 continue
             side_by_side(b, c).save(report_dir / name)

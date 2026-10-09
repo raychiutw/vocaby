@@ -4,6 +4,7 @@ import UIKit
 import WidgetKit
 
 struct TodayView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.modelContext) private var modelContext
     @State private var isShowingPractice = false
     @State private var isShowingExtraPractice = false
@@ -228,12 +229,12 @@ struct TodayView: View {
     private func refreshToday() {
         do {
             try loadSeedIfNeeded()
-            let dayKey = dayKeyService.dayKey(for: Date())
+            let dayKey = dayKeyService.dayKey(for: clock.now())
             let sessions = try modelContext.fetch(FetchDescriptor<DailySession>())
             todaySession = sessions.first { $0.dayKey == dayKey }
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: Date())
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: clock.now())
             scheduledReviewCount = todaySession?.scheduledReviewCount(from: progressRows) ?? 0
             streakCount = streakService.streakCount(from: sessions, currentDayKey: dayKey)
             if let todaySession {
@@ -257,9 +258,9 @@ struct TodayView: View {
     private func startPractice() {
         do {
             try loadSeedIfNeeded()
-            let dayKey = dayKeyService.dayKey(for: Date())
+            let dayKey = dayKeyService.dayKey(for: clock.now())
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: Date())
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: clock.now())
 
             if let existingSession = try existingSession(for: dayKey), !existingSession.items.isEmpty {
                 try markNewItemsFirstSeen(in: existingSession)
@@ -303,7 +304,7 @@ struct TodayView: View {
 
     private func dailySelection(from progressRows: [WordProgress], on dayKey: String) -> DailySelectionResult {
         let dueReviewItemIDs = reviewScheduler
-            .allDueItems(from: progressRows, at: Date())
+            .allDueItems(from: progressRows, at: clock.now())
             .map(\.itemID)
 
         return dailySelectionService.selectItems(
@@ -381,7 +382,7 @@ struct TodayView: View {
                     upgradedExpression: $0.upgradedExpression
                 )
             },
-            generatedAt: Date()
+            generatedAt: clock.now()
         )
 
         try? widgetSnapshotWriter.write(snapshot)

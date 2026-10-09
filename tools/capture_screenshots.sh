@@ -9,8 +9,8 @@ cd "$(dirname "$0")/.."
 NAME="Vocaby-Shots"
 OUT=".build/screenshots"
 BASELINE="docs/screenshots/baseline"
-# Progress 含日期(圖表橫軸與 15 週格子),每天都不同,只擷圖供人看,不納入比對
-IGNORE=(--ignore "progress-*")
+# 「現在」由 UI test 以 -VOCABY_FIXED_NOW 固定(AppClock),含日期的 Progress 也可比對
+IGNORE=()
 
 udid=$(xcrun simctl list devices | grep -F "$NAME (" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/' || true)
 if [ -z "$udid" ]; then
@@ -35,8 +35,8 @@ for appearance in light dark; do
 done
 
 if [ "${1:-}" = "--update" ]; then
-  python3 tools/compare_screenshots.py "$BASELINE" "$OUT/current" "$OUT/report" --update "${IGNORE[@]}"
+  python3 tools/compare_screenshots.py "$BASELINE" "$OUT/current" "$OUT/report" --update ${IGNORE[@]+"${IGNORE[@]}"}
   echo "基準圖已更新: $BASELINE"
 else
-  python3 tools/compare_screenshots.py "$BASELINE" "$OUT/current" "$OUT/report" "${IGNORE[@]}"
+  python3 tools/compare_screenshots.py "$BASELINE" "$OUT/current" "$OUT/report" ${IGNORE[@]+"${IGNORE[@]}"}
 fi

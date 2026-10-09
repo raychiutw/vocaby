@@ -58,6 +58,8 @@
 		200000000000000000000404 /* SM2Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000304 /* SM2Tests.swift */; };
 		200000000000000000000408 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000305 /* AchievementEngine.swift */; };
 		20000000000000000000040A /* AchievementEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000306 /* AchievementEngineTests.swift */; };
+		25A848E03FC77506D28CEF00 /* AppClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF41024F8025D2704E6363E5 /* AppClock.swift */; };
+		5348B8011A11095BDDBD2CE8 /* AppClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */; };
 		CD55F7838355B445F2414882 /* AppearanceScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -157,6 +159,8 @@
 		200000000000000000000306 /* AchievementEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngineTests.swift; sourceTree = "<group>"; };
 		96D6963B45F9B526D5E6E835 /* VocabyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VocabyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceScreenshotTests.swift; sourceTree = "<group>"; };
+		FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppClockTests.swift; sourceTree = "<group>"; };
+		FF41024F8025D2704E6363E5 /* AppClock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppClock.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -339,6 +343,7 @@
 				000000000000000000000313 /* UserPreferencesStore.swift */,
 				200000000000000000000303 /* SM2.swift */,
 				200000000000000000000305 /* AchievementEngine.swift */,
+				FF41024F8025D2704E6363E5 /* AppClock.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -385,6 +390,7 @@
 				00000000000000000000032B /* QuizEngineTests.swift */,
 				200000000000000000000304 /* SM2Tests.swift */,
 				200000000000000000000306 /* AchievementEngineTests.swift */,
+				FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */,
 			);
 			path = VocabyTests;
 			sourceTree = "<group>";
@@ -637,6 +643,7 @@
 				200000000000000000000402 /* LearningProgressView.swift in Sources */,
 				200000000000000000000403 /* SM2.swift in Sources */,
 				200000000000000000000408 /* AchievementEngine.swift in Sources */,
+				25A848E03FC77506D28CEF00 /* AppClock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -658,6 +665,7 @@
 				00000000000000000000042B /* QuizEngineTests.swift in Sources */,
 				200000000000000000000404 /* SM2Tests.swift in Sources */,
 				20000000000000000000040A /* AchievementEngineTests.swift in Sources */,
+				5348B8011A11095BDDBD2CE8 /* AppClockTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

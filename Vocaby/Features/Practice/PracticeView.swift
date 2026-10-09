@@ -150,6 +150,7 @@ struct PracticeCenterPlan {
 }
 
 struct PracticeCenterView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.modelContext) private var modelContext
 
     let seedItems: [VocabularySeedItem]
@@ -193,6 +194,7 @@ struct PracticeCenterView: View {
                     questions: activePlan.questions,
                     configuration: activePlan.configuration,
                     tint: AppTheme.accent,
+                    clock: clock,
                     onAttempt: persistAnswer
                 ) {
                     Section {
@@ -304,7 +306,7 @@ struct PracticeCenterView: View {
                 reviewScheduler.applyAnswer(
                     to: progress,
                     wasCorrect: attempt.wasCorrect,
-                    answeredAt: Date(),
+                    answeredAt: clock.now(),
                     context: .dailyPractice
                 )
             }
@@ -334,6 +336,7 @@ struct QuizRunView<Completion: View>: View {
     let tint: Color
     let onAttempt: (QuizAttempt) throws -> Void
     let completion: () -> Completion
+    private let clock: AppClock
 
     @State private var runState: QuizRunState
     @State private var spellingText = ""
@@ -341,7 +344,7 @@ struct QuizRunView<Completion: View>: View {
     @State private var errorMessage: String?
     @State private var feedbackAnimationTrigger = 0
     @State private var shakeTrigger = 0
-    @State private var runStartedAt = Date()
+    @State private var runStartedAt: Date
     @State private var speechSynthesizer = AVSpeechSynthesizer()
     @FocusState private var isSpellingFocused: Bool
 
@@ -350,6 +353,7 @@ struct QuizRunView<Completion: View>: View {
         questions: [QuizQuestion],
         configuration: PracticeConfiguration,
         tint: Color,
+        clock: AppClock,
         onAttempt: @escaping (QuizAttempt) throws -> Void,
         @ViewBuilder completion: @escaping () -> Completion
     ) {
@@ -359,8 +363,10 @@ struct QuizRunView<Completion: View>: View {
         self.tint = tint
         self.onAttempt = onAttempt
         self.completion = completion
+        self.clock = clock
         _runState = State(initialValue: QuizRunState(questions: questions))
-        _deadline = State(initialValue: Date().addingTimeInterval(TimeInterval(configuration.timeLimitSeconds)))
+        _deadline = State(initialValue: clock.now().addingTimeInterval(TimeInterval(configuration.timeLimitSeconds)))
+        _runStartedAt = State(initialValue: clock.now())
     }
 
     var body: some View {
@@ -422,8 +428,9 @@ struct QuizRunView<Completion: View>: View {
                 Spacer()
 
                 if runState.currentFeedback == nil, configuration.timeLimitSeconds > 0 {
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        let remaining = max(0, Int(ceil(deadline.timeIntervalSince(context.date))))
+                    TimelineView(.periodic(from: .now, by: 1)) { _ in
+                        // TimelineView 只負責每秒重算;「現在」一律走 clock,固定時鐘下倒數才會凍結而不是歸零
+                        let remaining = max(0, Int(ceil(deadline.timeIntervalSince(clock.now()))))
 
                         VStack(alignment: .trailing, spacing: 4) {
                             HStack(spacing: 4) {
@@ -593,7 +600,7 @@ struct QuizRunView<Completion: View>: View {
                         .foregroundStyle(AppTheme.correctGreen)
                     Label("\(scoredAttempts.count - correctCount)", systemImage: "xmark.circle.fill")
                         .foregroundStyle(AppTheme.wrongRed)
-                    Label(formattedRemainingTime(Int(Date().timeIntervalSince(runStartedAt))), systemImage: "timer")
+                    Label(formattedRemainingTime(Int(clock.now().timeIntervalSince(runStartedAt))), systemImage: "timer")
                         .foregroundStyle(.secondary)
                 }
                 .font(.headline.monospacedDigit())
@@ -739,12 +746,12 @@ struct QuizRunView<Completion: View>: View {
 
     private func resetDeadline() {
         guard configuration.timeLimitSeconds > 0 else { return }
-        deadline = Date().addingTimeInterval(TimeInterval(configuration.timeLimitSeconds))
+        deadline = clock.now().addingTimeInterval(TimeInterval(configuration.timeLimitSeconds))
     }
 
     private func resetRun() {
         runState.reset(with: questions)
-        runStartedAt = Date()
+        runStartedAt = clock.now()
         spellingText = ""
         isSpellingFocused = false
         errorMessage = nil
@@ -771,6 +778,7 @@ struct QuizRunView<Completion: View>: View {
 }
 
 struct DailyPracticeView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -812,6 +820,7 @@ struct DailyPracticeView: View {
                     questions: plan.quizQuestions,
                     configuration: .daily,
                     tint: AppTheme.accent,
+                    clock: clock,
                     onAttempt: persistAnswer
                 ) {
                     completionContent
@@ -908,7 +917,7 @@ struct DailyPracticeView: View {
         }
 
         do {
-            let now = Date()
+            let now = clock.now()
             if attempt.isFirstAttempt {
                 guard let sessionItem = session.items.first(where: {
                     $0.itemID == attempt.question.itemID && $0.answeredAt == nil

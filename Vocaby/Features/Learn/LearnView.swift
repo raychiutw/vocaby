@@ -18,6 +18,7 @@ enum LearnGrade: Int {
 }
 
 struct LearnView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @State private var items: [VocabularySeedItem] = []
@@ -140,15 +141,15 @@ struct LearnView: View {
             scheduler.applyAnswer(
                 to: progress,
                 quality: grade.rawValue,
-                answeredAt: Date(),
+                answeredAt: clock.now(),
                 context: .dailyPractice
             )
             if let sessionItem = session?.items.first(where: { $0.itemID == item.id && $0.answeredAt == nil }) {
-                sessionItem.answeredAt = Date()
+                sessionItem.answeredAt = clock.now()
                 sessionItem.wasCorrect = grade.rawValue >= 3
             }
             if let session, session.items.allSatisfy({ $0.answeredAt != nil }) {
-                session.completedAt = Date()
+                session.completedAt = clock.now()
             }
             try modelContext.save()
 
@@ -178,13 +179,13 @@ struct LearnView: View {
             let preferences = preferencesStore.read()
             let seed = try seedLoader.loadBundledSeed()
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            let dayKey = DayKeyService().dayKey(for: Date())
+            let dayKey = DayKeyService().dayKey(for: clock.now())
             let descriptor = FetchDescriptor<DailySession>(predicate: #Predicate { $0.dayKey == dayKey })
             let dailySession: DailySession
             if let existing = try modelContext.fetch(descriptor).first {
                 dailySession = existing
             } else {
-                let dueIDs = scheduler.allDueItems(from: progressRows, at: Date()).map(\.itemID)
+                let dueIDs = scheduler.allDueItems(from: progressRows, at: clock.now()).map(\.itemID)
                 let selection = selectionService.selectItems(
                     from: seed,
                     selectedLevel: preferences.selectedLevel,

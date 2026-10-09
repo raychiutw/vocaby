@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct ReviewView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.modelContext) private var modelContext
     @State private var isShowingReview = false
     @State private var seedItems: [VocabularySeedItem] = []
@@ -82,7 +83,7 @@ struct ReviewView: View {
             ReviewSessionView(
                 items: dueItems,
                 seedItems: seedItems,
-                dayKey: dayKeyService.dayKey(for: Date()),
+                dayKey: dayKeyService.dayKey(for: clock.now()),
                 supportLanguageCode: supportLanguageCode
             ) {
                 refreshReviewQueue()
@@ -94,9 +95,9 @@ struct ReviewView: View {
     private func refreshReviewQueue() {
         do {
             try loadSeedIfNeeded()
-            let dayKey = dayKeyService.dayKey(for: Date())
+            let dayKey = dayKeyService.dayKey(for: clock.now())
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            let dueProgressRows = reviewScheduler.dueItems(from: progressRows, at: Date(), limit: 20)
+            let dueProgressRows = reviewScheduler.dueItems(from: progressRows, at: clock.now(), limit: 20)
             dueItems = reviewQueueService.queuedItems(
                 from: seedItems,
                 dueProgressRows: dueProgressRows,
@@ -117,6 +118,7 @@ struct ReviewView: View {
 }
 
 private struct ReviewSessionView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -148,6 +150,7 @@ private struct ReviewSessionView: View {
                 retriesWrongAnswers: true
             ),
             tint: AppTheme.reviewAmber,
+            clock: clock,
             onAttempt: persistAnswer
         ) {
             completionContent
@@ -173,7 +176,7 @@ private struct ReviewSessionView: View {
         }
 
         do {
-            let now = Date()
+            let now = clock.now()
             if attempt.isFirstAttempt {
                 let indices = attempt.question.persistenceIndices(
                     for: attempt.submittedAnswer,
