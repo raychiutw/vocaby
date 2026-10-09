@@ -62,6 +62,19 @@ class CompareScreenshotsTests(unittest.TestCase):
         self.assertEqual(_run(self.baseline, self.current, self.report, "--update").returncode, 0)
         self.assertEqual(_run(self.baseline, self.current, self.report).returncode, 0)
 
+    def test_update_with_empty_current_keeps_baseline(self):
+        _png(self.baseline / "a-light.png", (0, 0, 0))
+        result = _run(self.baseline, self.current, self.report, "--update")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((self.baseline / "a-light.png").exists())
+
+    def test_size_mismatch_is_called_out(self):
+        _png(self.baseline / "a-light.png", (0, 0, 0))
+        Image.new("RGB", (4, 4), (0, 0, 0)).save(self.current / "a-light.png")
+        result = _run(self.baseline, self.current, self.report)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("尺寸", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

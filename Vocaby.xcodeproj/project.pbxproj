@@ -59,7 +59,6 @@
 		200000000000000000000404 /* SM2Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000304 /* SM2Tests.swift */; };
 		200000000000000000000408 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000305 /* AchievementEngine.swift */; };
 		20000000000000000000040A /* AchievementEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000306 /* AchievementEngineTests.swift */; };
-		8570D8BCC402BA3346128D31 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47187AE2A497FBF25A4957B8 /* Foundation.framework */; };
 		CD55F7838355B445F2414882 /* AppearanceScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -158,7 +157,6 @@
 		200000000000000000000304 /* SM2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2Tests.swift; sourceTree = "<group>"; };
 		200000000000000000000305 /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
 		200000000000000000000306 /* AchievementEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngineTests.swift; sourceTree = "<group>"; };
-		47187AE2A497FBF25A4957B8 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		96D6963B45F9B526D5E6E835 /* VocabyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VocabyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceScreenshotTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -189,7 +187,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8570D8BCC402BA3346128D31 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -433,7 +430,6 @@
 		80F008B010B842549A4FBD67 /* iOS */ = {
 			isa = PBXGroup;
 			children = (
-				47187AE2A497FBF25A4957B8 /* Foundation.framework */,
 			);
 			name = iOS;
 			sourceTree = "<group>";

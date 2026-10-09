@@ -5,7 +5,8 @@ import XCTest
 final class AppearanceScreenshotTests: XCTestCase {
     func testCaptureScreens() throws {
         let env = ProcessInfo.processInfo.environment
-        let appearance = env["VOCABY_APPEARANCE"] ?? "light"
+        let appearance = try XCTUnwrap(env["VOCABY_APPEARANCE"], "VOCABY_APPEARANCE is not set")
+        XCTAssertTrue(["light", "dark"].contains(appearance), "VOCABY_APPEARANCE 必須是 light 或 dark")
         let directory = URL(fileURLWithPath: try XCTUnwrap(env["VOCABY_SHOT_DIR"], "VOCABY_SHOT_DIR is not set"))
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 

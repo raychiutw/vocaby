@@ -25,6 +25,8 @@ def main(argv: list[str]) -> int:
     baseline_dir, current_dir, report_dir = (Path(a) for a in argv[:3])
 
     if update:
+        if not any(current_dir.glob("*.png")):
+            sys.exit(f"{current_dir} 沒有截圖,不更新基準圖")
         shutil.rmtree(baseline_dir, ignore_errors=True)
         shutil.copytree(current_dir, baseline_dir)
         return 0
@@ -45,7 +47,8 @@ def main(argv: list[str]) -> int:
                 print(f"SAME    {name}")
                 continue
             side_by_side(b, c).save(report_dir / name)
-            print(f"CHANGED {name}")
+            note = f" (尺寸 {b.size} -> {c.size},報告中的目前圖已縮放)" if b.size != c.size else ""
+            print(f"CHANGED {name}{note}")
         failed = True
     return 1 if failed else 0
 

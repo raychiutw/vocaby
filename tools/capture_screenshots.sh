@@ -16,6 +16,7 @@ if [ -z "$udid" ]; then
   udid=$(xcrun simctl create "$NAME" "iPhone 17" "$runtime")
 fi
 
+trap 'xcrun simctl shutdown "$udid" 2>/dev/null || true' EXIT
 rm -rf "$OUT/current"
 mkdir -p "$OUT/current"
 for appearance in light dark; do
@@ -30,7 +31,6 @@ for appearance in light dark; do
       -destination "platform=iOS Simulator,id=$udid" \
       -derivedDataPath "$OUT/DerivedData" CODE_SIGNING_ALLOWED=NO -quiet
 done
-xcrun simctl shutdown "$udid" 2>/dev/null || true
 
 if [ "${1:-}" = "--update" ]; then
   python3 tools/compare_screenshots.py "$BASELINE" "$OUT/current" "$OUT/report" --update
