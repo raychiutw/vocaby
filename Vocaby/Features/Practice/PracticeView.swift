@@ -163,7 +163,6 @@ struct PracticeCenterView: View {
     @State private var activePlan: PracticeCenterPlan?
     @State private var loadError: String?
 
-    private let persistenceService = ProgressPersistenceService()
     private let reviewScheduler = ReviewScheduler()
 
     init(
@@ -296,34 +295,13 @@ struct PracticeCenterView: View {
             throw CocoaError(.fileReadCorruptFile)
         }
 
-        do {
-            if attempt.isFirstAttempt {
-                let progress = try persistenceService.wordProgress(
-                    for: item.id,
-                    level: item.level,
-                    in: modelContext
-                )
-                reviewScheduler.applyAnswer(
-                    to: progress,
-                    wasCorrect: attempt.wasCorrect,
-                    answeredAt: clock.now(),
-                    context: .dailyPractice
-                )
-            }
-
-            _ = try persistenceService.practiceAttempt(
-                runID: activePlan.runID.uuidString,
-                itemID: item.id,
-                level: item.level,
-                mode: attempt.question.mode,
-                wasCorrect: attempt.wasCorrect,
-                in: modelContext
-            )
-            onUpdate()
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
+        try AnswerRecorder(scheduler: reviewScheduler).record(
+            attempt.recordedAnswer(level: item.level),
+            from: .freePractice(runID: activePlan.runID.uuidString),
+            at: clock.now(),
+            in: modelContext
+        )
+        onUpdate()
     }
 }
 
@@ -794,7 +772,6 @@ struct DailyPracticeView: View {
     @State private var learnIndex = 0
     @State private var speechSynthesizer = AVSpeechSynthesizer()
 
-    private let persistenceService = ProgressPersistenceService()
     private let reviewScheduler = ReviewScheduler()
 
     var body: some View {
@@ -916,62 +893,33 @@ struct DailyPracticeView: View {
             throw CocoaError(.fileReadCorruptFile)
         }
 
-        do {
-            let now = clock.now()
-            if attempt.isFirstAttempt {
-                guard let sessionItem = session.items.first(where: {
-                    $0.itemID == attempt.question.itemID && $0.answeredAt == nil
-                }) else {
-                    throw CocoaError(.fileReadCorruptFile)
-                }
-                let progress = try persistenceService.wordProgress(
-                    for: seedItem.id,
-                    level: seedItem.level,
-                    in: modelContext
-                )
-                let indices = attempt.question.persistenceIndices(
-                    for: attempt.submittedAnswer,
-                    wasCorrect: attempt.wasCorrect
-                )
-
-                sessionItem.selectedOptionIndex = indices.selected
-                sessionItem.wasCorrect = attempt.wasCorrect
-                sessionItem.answeredAt = now
-                reviewScheduler.applyAnswer(
-                    to: progress,
-                    wasCorrect: attempt.wasCorrect,
-                    answeredAt: now,
-                    context: sessionItem.reviewAnswerContext
-                )
-                if session.items.allSatisfy({ $0.answeredAt != nil }) {
-                    session.completedAt = now
-                }
-
-                _ = try persistenceService.quizResult(
-                    dayKey: session.dayKey,
-                    itemID: seedItem.id,
-                    selectedOptionIndex: indices.selected,
-                    correctOptionIndex: indices.correct,
-                    in: modelContext
-                )
+        let now = clock.now()
+        var context = ReviewAnswerContext.dailyPractice
+        if attempt.isFirstAttempt {
+            guard let sessionItem = session.items.first(where: {
+                $0.itemID == attempt.question.itemID && $0.answeredAt == nil
+            }) else {
+                throw CocoaError(.fileReadCorruptFile)
             }
+            let answer = attempt.recordedAnswer(level: seedItem.level)
 
-            _ = try persistenceService.practiceAttempt(
-                runID: session.dayKey,
-                itemID: seedItem.id,
-                level: seedItem.level,
-                mode: attempt.question.mode,
-                wasCorrect: attempt.wasCorrect,
-                in: modelContext
-            )
-            if modelContext.hasChanges {
-                try modelContext.save()
+            // 這些修改與 recorder 寫入同一個 context,由 recorder 一次存檔;失敗時一起回滾
+            sessionItem.selectedOptionIndex = answer.selectedOptionIndex
+            sessionItem.wasCorrect = attempt.wasCorrect
+            sessionItem.answeredAt = now
+            context = sessionItem.reviewAnswerContext
+            if session.items.allSatisfy({ $0.answeredAt != nil }) {
+                session.completedAt = now
             }
-            onUpdate()
-        } catch {
-            modelContext.rollback()
-            throw error
         }
+
+        try AnswerRecorder(scheduler: reviewScheduler).record(
+            attempt.recordedAnswer(level: seedItem.level),
+            from: .dailySession(dayKey: session.dayKey, context: context),
+            at: now,
+            in: modelContext
+        )
+        onUpdate()
     }
 
 }

@@ -59,6 +59,8 @@
 		200000000000000000000408 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000305 /* AchievementEngine.swift */; };
 		20000000000000000000040A /* AchievementEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000306 /* AchievementEngineTests.swift */; };
 		25A848E03FC77506D28CEF00 /* AppClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF41024F8025D2704E6363E5 /* AppClock.swift */; };
+		26CA39D57512168D55286230 /* AnswerRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */; };
+		3A180E93B12E084A67CE9BA8 /* AnswerRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */; };
 		5348B8011A11095BDDBD2CE8 /* AppClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */; };
 		CD55F7838355B445F2414882 /* AppearanceScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */; };
 /* End PBXBuildFile section */
@@ -151,6 +153,7 @@
 		000000000000000000000330 /* VocabyWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabyWidget.swift; sourceTree = "<group>"; };
 		000000000000000000000331 /* VocabyWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VocabyWidget.entitlements; sourceTree = "<group>"; };
 		000000000000000000000332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnswerRecorder.swift; sourceTree = "<group>"; };
 		200000000000000000000301 /* LearnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnView.swift; sourceTree = "<group>"; };
 		200000000000000000000302 /* LearningProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningProgressView.swift; sourceTree = "<group>"; };
 		200000000000000000000303 /* SM2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2.swift; sourceTree = "<group>"; };
@@ -158,6 +161,7 @@
 		200000000000000000000305 /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
 		200000000000000000000306 /* AchievementEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngineTests.swift; sourceTree = "<group>"; };
 		96D6963B45F9B526D5E6E835 /* VocabyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VocabyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnswerRecorderTests.swift; sourceTree = "<group>"; };
 		F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceScreenshotTests.swift; sourceTree = "<group>"; };
 		FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppClockTests.swift; sourceTree = "<group>"; };
 		FF41024F8025D2704E6363E5 /* AppClock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppClock.swift; sourceTree = "<group>"; };
@@ -344,6 +348,7 @@
 				200000000000000000000303 /* SM2.swift */,
 				200000000000000000000305 /* AchievementEngine.swift */,
 				FF41024F8025D2704E6363E5 /* AppClock.swift */,
+				014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -391,6 +396,7 @@
 				200000000000000000000304 /* SM2Tests.swift */,
 				200000000000000000000306 /* AchievementEngineTests.swift */,
 				FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */,
+				AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */,
 			);
 			path = VocabyTests;
 			sourceTree = "<group>";
@@ -644,6 +650,7 @@
 				200000000000000000000403 /* SM2.swift in Sources */,
 				200000000000000000000408 /* AchievementEngine.swift in Sources */,
 				25A848E03FC77506D28CEF00 /* AppClock.swift in Sources */,
+				3A180E93B12E084A67CE9BA8 /* AnswerRecorder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -666,6 +673,7 @@
 				200000000000000000000404 /* SM2Tests.swift in Sources */,
 				20000000000000000000040A /* AchievementEngineTests.swift in Sources */,
 				5348B8011A11095BDDBD2CE8 /* AppClockTests.swift in Sources */,
+				26CA39D57512168D55286230 /* AnswerRecorderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

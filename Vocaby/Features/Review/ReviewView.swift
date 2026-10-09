@@ -95,7 +95,6 @@ struct ReviewView: View {
     private func refreshReviewQueue() {
         do {
             try loadSeedIfNeeded()
-            let dayKey = dayKeyService.dayKey(for: clock.now())
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
             let dueProgressRows = reviewScheduler.dueItems(from: progressRows, at: clock.now(), limit: 20)
             dueItems = reviewQueueService.queuedItems(
@@ -129,7 +128,6 @@ private struct ReviewSessionView: View {
     let onUpdate: () -> Void
 
     private let dayKeyService = DayKeyService()
-    private let persistenceService = ProgressPersistenceService()
     private let reviewScheduler = ReviewScheduler()
 
     var body: some View {
@@ -175,49 +173,13 @@ private struct ReviewSessionView: View {
             throw CocoaError(.fileReadCorruptFile)
         }
 
-        do {
-            let now = clock.now()
-            if attempt.isFirstAttempt {
-                let indices = attempt.question.persistenceIndices(
-                    for: attempt.submittedAnswer,
-                    wasCorrect: attempt.wasCorrect
-                )
-                guard let progress = try persistenceService.existingWordProgress(
-                    for: item.id,
-                    in: modelContext
-                ) else {
-                    throw CocoaError(.fileReadCorruptFile)
-                }
-                reviewScheduler.applyAnswer(
-                    to: progress,
-                    wasCorrect: attempt.wasCorrect,
-                    answeredAt: now,
-                    context: .review
-                )
-                _ = try persistenceService.quizResult(
-                    dayKey: dayKeyService.dayKey(for: now),
-                    itemID: item.id,
-                    selectedOptionIndex: indices.selected,
-                    correctOptionIndex: indices.correct,
-                    in: modelContext
-                )
-            }
-
-            _ = try persistenceService.practiceAttempt(
-                runID: dayKey,
-                itemID: item.id,
-                level: item.level,
-                mode: attempt.question.mode,
-                wasCorrect: attempt.wasCorrect,
-                in: modelContext
-            )
-            if modelContext.hasChanges {
-                try modelContext.save()
-            }
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
+        let now = clock.now()
+        try AnswerRecorder(scheduler: reviewScheduler).record(
+            attempt.recordedAnswer(level: item.level),
+            from: .review(runID: dayKey, resultDayKey: dayKeyService.dayKey(for: now)),
+            at: now,
+            in: modelContext
+        )
     }
 }
 

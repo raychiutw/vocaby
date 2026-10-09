@@ -56,13 +56,23 @@ struct ProgressPersistenceService {
         level: VocabularyLevel,
         in context: ModelContext
     ) throws -> WordProgress {
+        let progress = try unsavedWordProgress(for: itemID, level: level, in: context)
+        if context.hasChanges { try context.save() }
+        return progress
+    }
+
+    /// 與 `wordProgress` 相同但不存檔;給需要把多個步驟合成一次 save 的呼叫端(AnswerRecorder)。
+    func unsavedWordProgress(
+        for itemID: String,
+        level: VocabularyLevel,
+        in context: ModelContext
+    ) throws -> WordProgress {
         if let existing = try existingWordProgress(for: itemID, in: context) {
             return existing
         }
 
         let progress = WordProgress(itemID: itemID, level: level)
         context.insert(progress)
-        try context.save()
         return progress
     }
 
@@ -77,6 +87,24 @@ struct ProgressPersistenceService {
     }
 
     func quizResult(
+        dayKey: String,
+        itemID: String,
+        selectedOptionIndex: Int,
+        correctOptionIndex: Int,
+        in context: ModelContext
+    ) throws -> QuizResult {
+        let result = try unsavedQuizResult(
+            dayKey: dayKey,
+            itemID: itemID,
+            selectedOptionIndex: selectedOptionIndex,
+            correctOptionIndex: correctOptionIndex,
+            in: context
+        )
+        if context.hasChanges { try context.save() }
+        return result
+    }
+
+    func unsavedQuizResult(
         dayKey: String,
         itemID: String,
         selectedOptionIndex: Int,
@@ -99,7 +127,6 @@ struct ProgressPersistenceService {
             correctOptionIndex: correctOptionIndex
         )
         context.insert(result)
-        try context.save()
         return result
     }
 
@@ -111,6 +138,21 @@ struct ProgressPersistenceService {
         wasCorrect: Bool,
         in context: ModelContext
     ) throws -> PracticeAttemptRecord {
+        let attempt = unsavedPracticeAttempt(
+            runID: runID, itemID: itemID, level: level, mode: mode, wasCorrect: wasCorrect, in: context
+        )
+        try context.save()
+        return attempt
+    }
+
+    func unsavedPracticeAttempt(
+        runID: String,
+        itemID: String,
+        level: VocabularyLevel,
+        mode: PracticeMode,
+        wasCorrect: Bool,
+        in context: ModelContext
+    ) -> PracticeAttemptRecord {
         let attempt = PracticeAttemptRecord(
             runID: runID,
             itemID: itemID,
@@ -119,7 +161,6 @@ struct ProgressPersistenceService {
             wasCorrect: wasCorrect
         )
         context.insert(attempt)
-        try context.save()
         return attempt
     }
 
