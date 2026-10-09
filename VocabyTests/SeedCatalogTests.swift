@@ -34,6 +34,22 @@ final class SeedCatalogTests: XCTestCase {
         XCTAssertEqual(attempts, 2, "失敗不快取;成功之後就不再載入")
     }
 
+    func testConcurrentCallersShareASingleLoad() {
+        let counter = NSLock()
+        var loadCount = 0
+        let catalog = SeedCatalog {
+            counter.lock(); loadCount += 1; counter.unlock()
+            Thread.sleep(forTimeInterval: 0.05)
+            return SeedLoader.sampleItems
+        }
+
+        DispatchQueue.concurrentPerform(iterations: 16) { _ in
+            XCTAssertFalse(((try? catalog.items()) ?? []).isEmpty)
+        }
+
+        XCTAssertEqual(loadCount, 1)
+    }
+
     func testTheBundledCatalogIsASingleSharedInstance() {
         XCTAssertTrue(SeedCatalog.bundled === SeedCatalog.bundled)
     }

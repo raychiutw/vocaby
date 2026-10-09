@@ -12,6 +12,18 @@ final class TodayProgressTests: XCTestCase {
         XCTAssertNil(progress.nextItemID)
     }
 
+    func testTheDailyGoalIsOnlyReadWhenTheSessionHasNoItems() {
+        var reads = 0
+        let goal = { () -> Int in reads += 1; return 10 }
+        let withItems = session([DailySessionItem(itemID: "a", position: 0)])
+
+        _ = TodayProgress(session: withItems, dailyGoal: goal())
+        XCTAssertEqual(reads, 0, "有項目時不該去讀偏好")
+
+        _ = TodayProgress(session: nil, dailyGoal: goal())
+        XCTAssertEqual(reads, 1)
+    }
+
     func testCountsAnsweredItemsAndPicksTheFirstUnansweredByPosition() {
         // 故意不照 position 排列,結果不能依賴陣列順序
         let session = session([

@@ -13,12 +13,6 @@ enum PracticeMode: String, CaseIterable, Codable, Identifiable {
 struct PracticeConfiguration: Equatable {
     static let questionCounts = [5, 10, 15, 20]
     static let timeLimits = [10, 15, 20, 30]
-    static let daily = PracticeConfiguration(
-        mode: .mixed,
-        questionCount: 10,
-        timeLimitSeconds: 0,
-        retriesWrongAnswers: true
-    )
 
     var mode: PracticeMode
     var questionCount: Int

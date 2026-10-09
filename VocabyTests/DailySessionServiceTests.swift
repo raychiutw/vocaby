@@ -85,6 +85,16 @@ final class DailySessionServiceTests: XCTestCase {
         XCTAssertEqual(try persisted(DailySession.self).count, 1)
     }
 
+    func testRefillingAnEmptySessionClearsAStaleCompletedAt() throws {
+        let context = ModelContext(container)
+        context.insert(DailySession(dayKey: dayKey, targetItemCount: 0, createdAt: now, completedAt: now))
+        try context.save()
+
+        let session = try XCTUnwrap(sessionForToday(context, seed: seeds(4)))
+
+        XCTAssertNil(session.completedAt, "補滿後有未作答的項目,不能還標示為已完成")
+    }
+
     func testTheSessionAndItsItemsArePersistedInOneSave() throws {
         let context = ModelContext(container)
 

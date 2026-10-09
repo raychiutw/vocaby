@@ -117,8 +117,6 @@ struct PracticeCenterView: View {
     let seedItems: [VocabularySeedItem]
     let selectedLevel: VocabularyLevel
     let supportLanguageCode: String
-    let startsImmediately: Bool
-    let onUpdate: () -> Void
 
     @State private var configuration = PracticeCenterPlan.defaultConfiguration
     @State private var activePlan: PracticeCenterPlan?
@@ -129,15 +127,11 @@ struct PracticeCenterView: View {
     init(
         seedItems: [VocabularySeedItem],
         selectedLevel: VocabularyLevel,
-        supportLanguageCode: String,
-        startsImmediately: Bool = false,
-        onUpdate: @escaping () -> Void = {}
+        supportLanguageCode: String
     ) {
         self.seedItems = seedItems
         self.selectedLevel = selectedLevel
         self.supportLanguageCode = supportLanguageCode
-        self.startsImmediately = startsImmediately
-        self.onUpdate = onUpdate
     }
 
     private var hasEligibleItems: Bool {
@@ -172,11 +166,6 @@ struct PracticeCenterView: View {
             }
         }
         .navigationTitle("practice.center.title")
-        .task {
-            if startsImmediately, activePlan == nil {
-                startRun()
-            }
-        }
     }
 
     private var setupForm: some View {
@@ -262,7 +251,6 @@ struct PracticeCenterView: View {
             at: clock.now(),
             in: modelContext
         )
-        onUpdate()
     }
 }
 

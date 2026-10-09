@@ -66,7 +66,7 @@ final class QuizEngineTests: XCTestCase {
             selectedLevel: .basic,
             supportLanguageCode: "zh-Hant",
             learnedItemIDs: [],
-            configuration: .daily,
+            configuration: PracticeCenterPlan.defaultConfiguration,
             using: &firstRandom
         )
         let second = PracticeCenterPlan(
@@ -74,7 +74,7 @@ final class QuizEngineTests: XCTestCase {
             selectedLevel: .basic,
             supportLanguageCode: "zh-Hant",
             learnedItemIDs: [],
-            configuration: .daily,
+            configuration: PracticeCenterPlan.defaultConfiguration,
             using: &secondRandom
         )
 
@@ -93,10 +93,6 @@ final class QuizEngineTests: XCTestCase {
                 retriesWrongAnswers: true
             )
         )
-    }
-
-    func testDailyPracticeIsUntimed() {
-        XCTAssertEqual(PracticeConfiguration.daily.timeLimitSeconds, 0)
     }
 
     func testPracticeSelectionUsesLearnedItemsThenFillsFromLocalSeed() {

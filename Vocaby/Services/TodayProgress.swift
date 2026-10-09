@@ -6,10 +6,11 @@ struct TodayProgress: Equatable {
     let total: Int
     let nextItemID: String?
 
-    init(session: DailySession?, dailyGoal: Int) {
+    /// dailyGoal 只在 session 沒有項目時才會被讀取(它每次都要解碼偏好)。
+    init(session: DailySession?, dailyGoal: @autoclosure () -> Int) {
         let items = (session?.items ?? []).sorted { $0.position < $1.position }
         completed = session?.completedItemCount ?? 0
-        total = items.isEmpty ? dailyGoal : items.count
+        total = items.isEmpty ? dailyGoal() : items.count
         nextItemID = items.first { $0.answeredAt == nil }?.itemID
     }
 }
@@ -25,14 +26,12 @@ extension WidgetSnapshot {
         generatedAt: Date
     ) -> WidgetSnapshot {
         let progress = TodayProgress(session: session, dailyGoal: dailyGoal)
-        let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
-
         return WidgetSnapshot(
             dayKey: dayKey,
             progressCompleted: progress.completed,
             progressTotal: progress.total,
             streakCount: streakCount,
-            displayExpression: progress.nextItemID.flatMap { seedByID[$0] }.map {
+            displayExpression: progress.nextItemID.flatMap { id in seedItems.first { $0.id == id } }.map {
                 WidgetSnapshotExpression(
                     itemID: $0.id,
                     plainExpression: $0.plainExpression,

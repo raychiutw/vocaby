@@ -190,6 +190,7 @@ struct LearnView: View {
                 now: clock.now(),
                 in: modelContext
             ) else {
+                session = nil
                 items = []
                 currentIndex = 0
                 return
