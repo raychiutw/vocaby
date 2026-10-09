@@ -197,7 +197,7 @@ private struct PracticeTabRoot: View {
                 PracticeCenterView(
                     seedItems: seedItems,
                     selectedLevel: UserPreferencesStore().read().selectedLevel,
-                    supportLanguageCode: "zh-Hant"
+                    supportLanguageCode: AppLanguage.support
                 )
             } else if let errorMessage {
                 ContentUnavailableView(

@@ -86,29 +86,13 @@ struct ProgressPersistenceService {
         return try context.fetch(descriptor).first
     }
 
+    /// 不存檔:由 AnswerRecorder 與其他寫入合成一次 save。
     func quizResult(
         dayKey: String,
         itemID: String,
         selectedOptionIndex: Int,
         correctOptionIndex: Int,
-        in context: ModelContext
-    ) throws -> QuizResult {
-        let result = try unsavedQuizResult(
-            dayKey: dayKey,
-            itemID: itemID,
-            selectedOptionIndex: selectedOptionIndex,
-            correctOptionIndex: correctOptionIndex,
-            in: context
-        )
-        if context.hasChanges { try context.save() }
-        return result
-    }
-
-    func unsavedQuizResult(
-        dayKey: String,
-        itemID: String,
-        selectedOptionIndex: Int,
-        correctOptionIndex: Int,
+        answeredAt: Date,
         in context: ModelContext
     ) throws -> QuizResult {
         let resultID = Self.quizResultID(dayKey: dayKey, itemID: itemID)
@@ -124,33 +108,21 @@ struct ProgressPersistenceService {
             dayKey: dayKey,
             itemID: itemID,
             selectedOptionIndex: selectedOptionIndex,
-            correctOptionIndex: correctOptionIndex
+            correctOptionIndex: correctOptionIndex,
+            answeredAt: answeredAt
         )
         context.insert(result)
         return result
     }
 
+    /// 不存檔:由 AnswerRecorder 與其他寫入合成一次 save。
     func practiceAttempt(
         runID: String,
         itemID: String,
         level: VocabularyLevel,
         mode: PracticeMode,
         wasCorrect: Bool,
-        in context: ModelContext
-    ) throws -> PracticeAttemptRecord {
-        let attempt = unsavedPracticeAttempt(
-            runID: runID, itemID: itemID, level: level, mode: mode, wasCorrect: wasCorrect, in: context
-        )
-        try context.save()
-        return attempt
-    }
-
-    func unsavedPracticeAttempt(
-        runID: String,
-        itemID: String,
-        level: VocabularyLevel,
-        mode: PracticeMode,
-        wasCorrect: Bool,
+        answeredAt: Date,
         in context: ModelContext
     ) -> PracticeAttemptRecord {
         let attempt = PracticeAttemptRecord(
@@ -158,7 +130,8 @@ struct ProgressPersistenceService {
             itemID: itemID,
             level: level,
             mode: mode,
-            wasCorrect: wasCorrect
+            wasCorrect: wasCorrect,
+            answeredAt: answeredAt
         )
         context.insert(attempt)
         return attempt

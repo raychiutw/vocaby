@@ -19,8 +19,8 @@ struct TodayView: View {
     let onReview: () -> Void
     let onPractice: () -> Void
 
-    private let contentLanguageCode = "en"
-    private let supportLanguageCode = "zh-Hant"
+    private let contentLanguageCode = AppLanguage.content
+    private let supportLanguageCode = AppLanguage.support
     private var dailyTargetCount: Int { preferencesStore.read().dailyGoal }
     private let dayKeyService = DayKeyService()
     private let dailyPlanner = DailyPlanner()

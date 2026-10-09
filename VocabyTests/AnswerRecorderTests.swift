@@ -137,4 +137,37 @@ final class AnswerRecorderTests: XCTestCase {
         XCTAssertTrue(try persisted(PracticeAttemptRecord.self).isEmpty)
         XCTAssertFalse(context.hasChanges)
     }
+
+    func testEveryRecordCarriesTheGivenAnswerTimeInsteadOfTheSystemClock() throws {
+        let context = ModelContext(container)
+
+        try AnswerRecorder().record(
+            answer(),
+            from: .dailySession(dayKey: "2026-07-10", context: .dailyPractice),
+            at: answeredAt,
+            in: context
+        )
+
+        XCTAssertEqual(try persisted(PracticeAttemptRecord.self).map(\.answeredAt), [answeredAt])
+        XCTAssertEqual(try persisted(QuizResult.self).map(\.answeredAt), [answeredAt])
+        XCTAssertEqual(try persisted(WordProgress.self).first?.lastReviewedAt, answeredAt)
+    }
+
+    func testCallerEditsToExistingModelsAreRolledBackOnFailure() throws {
+        let context = ModelContext(container)
+        let session = DailySession(dayKey: "2026-07-10")
+        context.insert(session)
+        try context.save()
+
+        // 呼叫端(每日練習)在 record 之前先改了既有 model;record 失敗時要連這些一起回滾
+        session.completedAt = answeredAt
+        XCTAssertThrowsError(
+            try AnswerRecorder().record(
+                answer(), from: .review(runID: "r", resultDayKey: "d"), at: answeredAt, in: context
+            )
+        )
+
+        XCTAssertNil(try persisted(DailySession.self).first?.completedAt)
+        XCTAssertNil(session.completedAt)
+    }
 }

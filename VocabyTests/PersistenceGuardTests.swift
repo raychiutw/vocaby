@@ -200,15 +200,19 @@ final class PersistenceGuardTests: XCTestCase {
             itemID: "basic-001",
             selectedOptionIndex: 1,
             correctOptionIndex: 1,
+            answeredAt: Date(timeIntervalSince1970: 100),
             in: context
         )
+        try context.save()
         _ = try service.quizResult(
             dayKey: "2026-07-10",
             itemID: "basic-001",
             selectedOptionIndex: 0,
             correctOptionIndex: 1,
+            answeredAt: Date(timeIntervalSince1970: 200),
             in: context
         )
+        try context.save()
 
         let results = try context.fetch(FetchDescriptor<QuizResult>())
         XCTAssertEqual(results.count, 1)
@@ -220,22 +224,25 @@ final class PersistenceGuardTests: XCTestCase {
         let context = try makeContext()
         let service = ProgressPersistenceService()
 
-        _ = try service.practiceAttempt(
+        _ = service.practiceAttempt(
             runID: "extra-001",
             itemID: "basic-001",
             level: .basic,
             mode: .meaningChoice,
             wasCorrect: false,
+            answeredAt: Date(timeIntervalSince1970: 100),
             in: context
         )
-        _ = try service.practiceAttempt(
+        _ = service.practiceAttempt(
             runID: "extra-001",
             itemID: "basic-001",
             level: .basic,
             mode: .meaningChoice,
             wasCorrect: true,
+            answeredAt: Date(timeIntervalSince1970: 200),
             in: context
         )
+        try context.save()
 
         let attempts = try context.fetch(FetchDescriptor<PracticeAttemptRecord>())
         XCTAssertEqual(attempts.count, 2)

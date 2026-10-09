@@ -142,7 +142,7 @@ struct LearningProgressView: View {
     }
 
     private var achievementMetrics: AchievementMetrics {
-        .make(progressRows: progressRows, sessions: sessions, attempts: attempts)
+        .make(progressRows: progressRows, sessions: sessions, attempts: attempts, now: clock.now())
     }
 
     private var unlockedAchievementIDs: Set<AchievementID> {

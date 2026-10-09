@@ -14,8 +14,8 @@ struct LibraryView: View {
     @State private var statusMessage: String?
     @State private var selectedDetailItemID: String?
 
-    private let contentLanguageCode = "en"
-    private let supportLanguageCode = "zh-Hant"
+    private let contentLanguageCode = AppLanguage.content
+    private let supportLanguageCode = AppLanguage.support
     private let libraryService = LibraryService()
     private let seedLoader = SeedLoader()
 

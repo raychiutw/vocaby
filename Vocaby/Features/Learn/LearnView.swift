@@ -133,6 +133,7 @@ struct LearnView: View {
         guard let item = currentItem else { return }
 
         do {
+            let now = clock.now()
             let progress = try persistence.wordProgress(for: item.id, level: item.level, in: modelContext)
             if grade == .saved {
                 progress.isSaved = true
@@ -141,15 +142,15 @@ struct LearnView: View {
             scheduler.applyAnswer(
                 to: progress,
                 quality: grade.rawValue,
-                answeredAt: clock.now(),
+                answeredAt: now,
                 context: .dailyPractice
             )
             if let sessionItem = session?.items.first(where: { $0.itemID == item.id && $0.answeredAt == nil }) {
-                sessionItem.answeredAt = clock.now()
+                sessionItem.answeredAt = now
                 sessionItem.wasCorrect = grade.rawValue >= 3
             }
             if let session, session.items.allSatisfy({ $0.answeredAt != nil }) {
-                session.completedAt = clock.now()
+                session.completedAt = now
             }
             try modelContext.save()
 

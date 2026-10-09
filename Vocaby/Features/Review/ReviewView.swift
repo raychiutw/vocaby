@@ -9,8 +9,8 @@ struct ReviewView: View {
     @State private var dueItems: [VocabularySeedItem] = []
     @State private var statusMessage: String?
 
-    private let contentLanguageCode = "en"
-    private let supportLanguageCode = "zh-Hant"
+    private let contentLanguageCode = AppLanguage.content
+    private let supportLanguageCode = AppLanguage.support
     private let dayKeyService = DayKeyService()
     private let reviewQueueService = ReviewQueueService()
     private let reviewScheduler = ReviewScheduler()

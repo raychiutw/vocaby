@@ -47,12 +47,13 @@ struct AnswerRecorder {
                 try recordFirstAttempt(answer, from: source, at: answeredAt, in: context)
             }
 
-            _ = persistence.unsavedPracticeAttempt(
+            _ = persistence.practiceAttempt(
                 runID: source.attemptRunID,
                 itemID: answer.itemID,
                 level: answer.level,
                 mode: answer.mode,
                 wasCorrect: answer.wasCorrect,
+                answeredAt: answeredAt,
                 in: context
             )
             try context.save()
@@ -87,11 +88,12 @@ struct AnswerRecorder {
         )
 
         if let resultDayKey = source.quizResultDayKey {
-            _ = try persistence.unsavedQuizResult(
+            _ = try persistence.quizResult(
                 dayKey: resultDayKey,
                 itemID: answer.itemID,
                 selectedOptionIndex: answer.selectedOptionIndex,
                 correctOptionIndex: answer.correctOptionIndex,
+                answeredAt: answeredAt,
                 in: context
             )
         }
