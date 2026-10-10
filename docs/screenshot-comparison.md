@@ -26,6 +26,6 @@ tools/capture_screenshots.sh --update   # 用本次擷圖取代基準圖
 - **「現在」被固定**:UI test 以 `-VOCABY_FIXED_NOW 2026-07-10T09:00:00+08:00` 啟動 app(只在 Debug 建置有效),所以含日期的 Progress 也能比對。app 內取得時間一律走 `AppClock`;新增程式碼不要直接呼叫 `Date()`,否則該畫面會繞過固定時鐘。
 - **畫面最底部 2% 不參與比對**:那是 Home Indicator(系統覆蓋層),在模擬器裡時有時無。
 - My 的「已學習 0 / N」分母是詞庫總數,詞庫異動時基準圖會跟著變,屬預期。
-- **Practice 的作答狀態不涵蓋**:題目與選項順序用 `SystemRandomNumberGenerator`、且有倒數計時,無法穩定比對;固定時鐘已就緒,還缺出題用的 seed 注入。
+- **Practice 只涵蓋「選中文意思」第一題**(題目畫面與答對後的回饋):用 `-VOCABY_RANDOM_SEED 1`(DEBUG 限定)固定出題,倒數計時用固定時鐘所以秒數不動。測試直接點「我想。」,出題邏輯一改會明確失敗,需更新測試與基準圖。其他題型(聽力、拼寫)與答錯回饋不涵蓋。
 - Widget、通知、Increase Contrast 與 Dynamic Type 不在涵蓋範圍(Widget 請依 `docs/manual-verification.md`)。
 - 修改視覺後的流程:執行比對 → 檢視報告確認差異符合預期 → `--update` 更新基準 → 一起 commit。

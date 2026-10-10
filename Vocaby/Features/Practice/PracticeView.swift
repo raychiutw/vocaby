@@ -112,6 +112,7 @@ struct PracticeCenterPlan {
 
 struct PracticeCenterView: View {
     @Environment(\.appClock) private var clock
+    @Environment(\.appRandomSeed) private var randomSeed
     @Environment(\.modelContext) private var modelContext
 
     let seedItems: [VocabularySeedItem]
@@ -226,13 +227,26 @@ struct PracticeCenterView: View {
     private func startRun() {
         do {
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            activePlan = PracticeCenterPlan(
-                seedItems: seedItems,
-                selectedLevel: selectedLevel,
-                supportLanguageCode: supportLanguageCode,
-                learnedItemIDs: progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID },
-                configuration: configuration
-            )
+            let learnedItemIDs = progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }
+            if let randomSeed {
+                var random = SeededRandomNumberGenerator(seed: randomSeed)
+                activePlan = PracticeCenterPlan(
+                    seedItems: seedItems,
+                    selectedLevel: selectedLevel,
+                    supportLanguageCode: supportLanguageCode,
+                    learnedItemIDs: learnedItemIDs,
+                    configuration: configuration,
+                    using: &random
+                )
+            } else {
+                activePlan = PracticeCenterPlan(
+                    seedItems: seedItems,
+                    selectedLevel: selectedLevel,
+                    supportLanguageCode: supportLanguageCode,
+                    learnedItemIDs: learnedItemIDs,
+                    configuration: configuration
+                )
+            }
             loadError = nil
         } catch {
             loadError = String(localized: "practice.center.load.error")
