@@ -4,7 +4,7 @@ import SwiftData
 /// 今天的 session 生命週期:取得或建立、學完後追加。
 /// 新字的 firstSeenAt 不在這裡標記;由 ReviewScheduler 在答題時才設定。
 /// 建立時合成一次 save();失敗則 rollback,不會留下空的 session。
-/// 注意:rollback 作用於整個傳入的 ModelContext,會一併丟掉呼叫端在同一個 context 上尚未存檔的修改。
+/// 注意:rollback 作用於整個傳入的 ModelContext,會一併丟掉呼叫端在同一個 context 上尚未存檔的修改(iOS 26 上既有實例的記憶體值可能不還原)。
 struct DailySessionService {
     static let extraBatchSize = 10
 
