@@ -59,10 +59,20 @@ struct Vocaby: App {
         return .system
     }
 
+    private let randomSeed: UInt64? = {
+        #if DEBUG
+        // UI test 以 `-VOCABY_RANDOM_SEED 1` 固定 Practice 的題目與選項順序;Release 不含此鉤子。
+        return SeededRandomNumberGenerator(fromLaunchValue: UserDefaults.standard.string(forKey: "VOCABY_RANDOM_SEED"))?.seed
+        #else
+        return nil
+        #endif
+    }()
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(\.appClock, clock)
+                .environment(\.appRandomSeed, randomSeed)
                 .tint(AppTheme.accent)
                 .modelContainer(for: [
                     WordProgress.self,

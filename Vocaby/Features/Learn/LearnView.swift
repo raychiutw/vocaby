@@ -138,13 +138,14 @@ struct LearnView: View {
                 progress.isSaved = true
                 savedCount += 1
             }
+            let sessionItem = session?.items.first(where: { $0.itemID == item.id && $0.answeredAt == nil })
             scheduler.applyAnswer(
                 to: progress,
                 quality: grade.rawValue,
                 answeredAt: now,
-                context: .dailyPractice
+                context: sessionItem?.reviewAnswerContext ?? .dailyPractice
             )
-            if let sessionItem = session?.items.first(where: { $0.itemID == item.id && $0.answeredAt == nil }) {
+            if let sessionItem {
                 sessionItem.answeredAt = now
                 sessionItem.wasCorrect = grade.rawValue >= 3
             }

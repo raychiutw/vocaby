@@ -12,8 +12,9 @@ final class AppearanceScreenshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
         let app = XCUIApplication()
-        // 固定「現在」(AppClock 的 DEBUG 鉤子),讓含日期的畫面(Progress)每次都一樣
-        app.launchArguments = ["-AppleLanguages", "(zh-Hant)", "-AppleLocale", "zh_TW", "-VOCABY_FIXED_NOW", "2026-07-10T09:00:00+08:00"]
+        // 固定「現在」(AppClock 的 DEBUG 鉤子),讓含日期的畫面(Progress)每次都一樣;
+        // 固定亂數 seed,讓 Practice 的題目與選項順序每次都一樣
+        app.launchArguments = ["-AppleLanguages", "(zh-Hant)", "-AppleLocale", "zh_TW", "-VOCABY_FIXED_NOW", "2026-07-10T09:00:00+08:00", "-VOCABY_RANDOM_SEED", "1"]
         app.launch()
 
         func capture(_ name: String) throws {
@@ -44,7 +45,6 @@ final class AppearanceScreenshotTests: XCTestCase {
         }
 
         // 關鍵狀態:Learn 翻開答案、評分完成後的總結。
-        // Practice 的題目與選項順序用 SystemRandomNumberGenerator 且有倒數計時,無法穩定比對,不在此涵蓋。
         // 這些狀態會改變進度資料,所以放在所有 tab 的初始畫面之後。
         app.buttons["學習"].firstMatch.tap()
         let reveal = app.staticTexts["點一下顯示答案"]
@@ -67,6 +67,29 @@ final class AppearanceScreenshotTests: XCTestCase {
             settle()
         }
         try capture("learn-complete")
+
+        // Practice:選中文意思(其他題型有音訊或輸入框),作答後看對錯回饋。
+        // 倒數計時用固定時鐘,畫面上的剩餘秒數不會變。
+        app.buttons["練習"].firstMatch.tap()
+        // Menu 式 Picker 的 label 帶著目前的值(「模式, 混合題型」),所以用前綴比對
+        let modePicker = app.buttons.matching(NSPredicate(format: "label BEGINSWITH '模式'")).firstMatch
+        XCTAssertTrue(modePicker.waitForExistence(timeout: 30), "找不到「模式」選單")
+        modePicker.tap()
+        XCTAssertTrue(app.buttons["選中文意思"].firstMatch.waitForExistence(timeout: 10), "找不到「選中文意思」")
+        app.buttons["選中文意思"].firstMatch.tap()
+        let start = app.buttons["開始練習"]
+        XCTAssertTrue(start.waitForExistence(timeout: 30), "找不到「開始練習」")
+        start.tap()
+        let next = app.buttons["下一題"]
+        // 固定 seed 下第一題與選項順序固定;選「我想。」(「I suppose」的答案),若出題改變會在此明確失敗
+        let answer = app.buttons["我想。"]
+        XCTAssertTrue(answer.waitForExistence(timeout: 30), "找不到練習選項「我想。」")
+        settle()
+        try capture("practice-question")
+        answer.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 30), "作答後沒有出現「下一題」")
+        settle()
+        try capture("practice-answered")
     }
 
     /// 等翻牌與換卡動畫結束,避免擷到動畫中途的畫面。

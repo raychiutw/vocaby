@@ -62,8 +62,10 @@
 		26CA39D57512168D55286230 /* AnswerRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */; };
 		3A180E93B12E084A67CE9BA8 /* AnswerRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */; };
 		3B2CDB3C64D49DD9AD6832A9 /* DailyPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D2862E6057A6E8EEAF47F /* DailyPlanner.swift */; };
+		4BD613FBD7869D49545D7123 /* SeededRandomNumberGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C8014ABA55639E630492BA9 /* SeededRandomNumberGenerator.swift */; };
 		5348B8011A11095BDDBD2CE8 /* AppClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */; };
 		5CE30C1E16F5ECDE8386249E /* TodayProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E6AE83EE4BB91CCCE397E54 /* TodayProgressTests.swift */; };
+		5D7A57722D6CB8BEDB34E95E /* SeededRandomNumberGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108DD140C393311A297C7B3A /* SeededRandomNumberGeneratorTests.swift */; };
 		66D0BA59DD8A0E5F5B013576 /* TodayProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCEE14E0E1343166FD126733 /* TodayProgress.swift */; };
 		76ADF0161D79D56ED017734A /* DailySessionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0790FCF4917E957827ABC3D6 /* DailySessionServiceTests.swift */; };
 		7F0F534E5CB5530866E5F772 /* SeedCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0028B322B578CFA61319CF /* SeedCatalogTests.swift */; };
@@ -164,12 +166,14 @@
 		000000000000000000000332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnswerRecorder.swift; sourceTree = "<group>"; };
 		0790FCF4917E957827ABC3D6 /* DailySessionServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailySessionServiceTests.swift; sourceTree = "<group>"; };
+		108DD140C393311A297C7B3A /* SeededRandomNumberGeneratorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeededRandomNumberGeneratorTests.swift; sourceTree = "<group>"; };
 		200000000000000000000301 /* LearnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnView.swift; sourceTree = "<group>"; };
 		200000000000000000000302 /* LearningProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningProgressView.swift; sourceTree = "<group>"; };
 		200000000000000000000303 /* SM2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2.swift; sourceTree = "<group>"; };
 		200000000000000000000304 /* SM2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2Tests.swift; sourceTree = "<group>"; };
 		200000000000000000000305 /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
 		200000000000000000000306 /* AchievementEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngineTests.swift; sourceTree = "<group>"; };
+		2C8014ABA55639E630492BA9 /* SeededRandomNumberGenerator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeededRandomNumberGenerator.swift; sourceTree = "<group>"; };
 		3E6AE83EE4BB91CCCE397E54 /* TodayProgressTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TodayProgressTests.swift; sourceTree = "<group>"; };
 		6A0028B322B578CFA61319CF /* SeedCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeedCatalogTests.swift; sourceTree = "<group>"; };
 		7267295262458DEFD361F74F /* SeedCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeedCatalog.swift; sourceTree = "<group>"; };
@@ -372,6 +376,7 @@
 				7267295262458DEFD361F74F /* SeedCatalog.swift */,
 				CCEE14E0E1343166FD126733 /* TodayProgress.swift */,
 				77DE4506E9EF833F22308A21 /* DailySessionService.swift */,
+				2C8014ABA55639E630492BA9 /* SeededRandomNumberGenerator.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -424,6 +429,7 @@
 				6A0028B322B578CFA61319CF /* SeedCatalogTests.swift */,
 				3E6AE83EE4BB91CCCE397E54 /* TodayProgressTests.swift */,
 				0790FCF4917E957827ABC3D6 /* DailySessionServiceTests.swift */,
+				108DD140C393311A297C7B3A /* SeededRandomNumberGeneratorTests.swift */,
 			);
 			path = VocabyTests;
 			sourceTree = "<group>";
@@ -683,6 +689,7 @@
 				864CB46E89D08905E61A38BE /* SeedCatalog.swift in Sources */,
 				66D0BA59DD8A0E5F5B013576 /* TodayProgress.swift in Sources */,
 				B0E6C964CAE4092D05187BF9 /* DailySessionService.swift in Sources */,
+				4BD613FBD7869D49545D7123 /* SeededRandomNumberGenerator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -710,6 +717,7 @@
 				7F0F534E5CB5530866E5F772 /* SeedCatalogTests.swift in Sources */,
 				5CE30C1E16F5ECDE8386249E /* TodayProgressTests.swift in Sources */,
 				76ADF0161D79D56ED017734A /* DailySessionServiceTests.swift in Sources */,
+				5D7A57722D6CB8BEDB34E95E /* SeededRandomNumberGeneratorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
