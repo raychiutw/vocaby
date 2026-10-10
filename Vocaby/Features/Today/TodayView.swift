@@ -6,12 +6,9 @@ import WidgetKit
 struct TodayView: View {
     @Environment(\.appClock) private var clock
     @Environment(\.modelContext) private var modelContext
-    @State private var isShowingPractice = false
-    @State private var isShowingExtraPractice = false
     @State private var todaySession: DailySession?
     @State private var seedItems: [VocabularySeedItem] = []
     @State private var dueReviewCount = 0
-    @State private var scheduledReviewCount = 0
     @State private var streakCount = 0
     @State private var statusMessage: String?
 
@@ -24,10 +21,8 @@ struct TodayView: View {
     private var dailyTargetCount: Int { preferencesStore.read().dailyGoal }
     private let dayKeyService = DayKeyService()
     private let dailyPlanner = DailyPlanner()
-    private let persistenceService = ProgressPersistenceService()
     private let preferencesStore = UserPreferencesStore()
     private let reviewScheduler = ReviewScheduler()
-    private let seedLoader = SeedLoader()
     private let streakService = StreakService()
     private let widgetSnapshotWriter = WidgetSnapshotWriter.appGroupWriter()
 
@@ -35,14 +30,13 @@ struct TodayView: View {
         (todaySession?.items ?? []).sorted { $0.position < $1.position }
     }
 
-    private var completedCount: Int {
-        todaySession?.completedItemCount ?? 0
+    private var progress: TodayProgress {
+        TodayProgress(session: todaySession, dailyGoal: dailyTargetCount)
     }
 
-    private var totalCount: Int {
-        let itemCount = orderedSessionItems.count
-        return itemCount > 0 ? itemCount : dailyTargetCount
-    }
+    private var completedCount: Int { progress.completed }
+
+    private var totalCount: Int { progress.total }
 
     private var progressText: String {
         "\(completedCount)/\(totalCount)"
@@ -61,10 +55,7 @@ struct TodayView: View {
     }
 
     private var nextSeedItem: VocabularySeedItem? {
-        let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
-        return orderedSessionItems
-            .first { $0.answeredAt == nil }
-            .flatMap { seedByID[$0.itemID] }
+        progress.nextItemID.flatMap { id in seedItems.first { $0.id == id } }
     }
 
     private var primaryButtonTitle: LocalizedStringKey {
@@ -190,30 +181,6 @@ struct TodayView: View {
         .task {
             refreshToday()
         }
-        .navigationDestination(isPresented: $isShowingPractice) {
-            if let todaySession {
-                DailyPracticeView(
-                    session: todaySession,
-                    seedItems: seedItems,
-                    supportLanguageCode: supportLanguageCode,
-                    streakCount: streakCount,
-                    scheduledReviewCount: scheduledReviewCount,
-                    dueReviewCount: dueReviewCount,
-                    onReview: onReview
-                ) {
-                    refreshToday()
-                }
-            }
-        }
-        .navigationDestination(isPresented: $isShowingExtraPractice) {
-            PracticeCenterView(
-                seedItems: seedItems,
-                selectedLevel: preferencesStore.read().selectedLevel,
-                supportLanguageCode: supportLanguageCode,
-                startsImmediately: true,
-                onUpdate: refreshToday
-            )
-        }
         .learningSettingsSheet()
     }
 
@@ -235,7 +202,6 @@ struct TodayView: View {
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
             dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: clock.now())
-            scheduledReviewCount = todaySession?.scheduledReviewCount(from: progressRows) ?? 0
             streakCount = streakService.streakCount(from: sessions, currentDayKey: dayKey)
             if let todaySession {
                 statusMessage = todaySession.targetItemCount < dailyTargetCount
@@ -255,53 +221,6 @@ struct TodayView: View {
         }
     }
 
-    private func startPractice() {
-        do {
-            try loadSeedIfNeeded()
-            let dayKey = dayKeyService.dayKey(for: clock.now())
-            let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: clock.now())
-
-            if let existingSession = try existingSession(for: dayKey), !existingSession.items.isEmpty {
-                try markNewItemsFirstSeen(in: existingSession)
-                try modelContext.save()
-                todaySession = existingSession
-                statusMessage = existingSession.targetItemCount < dailyTargetCount
-                    ? selectionStatusMessage(for: .fewerThanTarget(
-                        availableCount: existingSession.targetItemCount,
-                        targetCount: dailyTargetCount
-                    ))
-                    : nil
-                writeWidgetSnapshot(dayKey: dayKey)
-                isShowingPractice = true
-                return
-            }
-
-            let result = dailySelection(from: progressRows)
-
-            guard !result.itemIDs.isEmpty else {
-                statusMessage = selectionStatusMessage(for: result.status)
-                return
-            }
-
-            let session = try persistenceService.session(
-                for: dayKey,
-                itemIDs: result.itemIDs,
-                reviewItemIDs: Set(result.reviewItemIDs),
-                in: modelContext
-            )
-            try markNewItemsFirstSeen(in: session)
-
-            try modelContext.save()
-            todaySession = session
-            writeWidgetSnapshot(dayKey: dayKey)
-            statusMessage = selectionStatusMessage(for: result.status)
-            isShowingPractice = true
-        } catch {
-            statusMessage = String(localized: "today.load.error")
-        }
-    }
-
     private func dailySelection(from progressRows: [WordProgress]) -> DailySelectionResult {
         dailyPlanner.plan(
             seed: seedItems,
@@ -309,25 +228,6 @@ struct TodayView: View {
             preferences: preferencesStore.read(),
             now: clock.now()
         )
-    }
-
-    private func markNewItemsFirstSeen(in session: DailySession) throws {
-        let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
-
-        for sessionItem in session.items where !sessionItem.isReviewFill {
-            guard let seedItem = seedByID[sessionItem.itemID] else {
-                continue
-            }
-
-            let progress = try persistenceService.wordProgress(
-                for: seedItem.id,
-                level: seedItem.level,
-                in: modelContext
-            )
-            if progress.firstSeenAt == nil {
-                progress.firstSeenAt = session.createdAt
-            }
-        }
     }
 
     private func selectionStatusMessage(for status: DailySelectionStatus) -> String? {
@@ -345,16 +245,9 @@ struct TodayView: View {
         }
     }
 
-    private func existingSession(for dayKey: String) throws -> DailySession? {
-        let descriptor = FetchDescriptor<DailySession>(
-            predicate: #Predicate { $0.dayKey == dayKey }
-        )
-        return try modelContext.fetch(descriptor).first
-    }
-
     private func loadSeedIfNeeded() throws {
         if seedItems.isEmpty {
-            seedItems = try seedLoader.loadBundledSeed()
+            seedItems = try SeedCatalog.bundled.items()
         }
     }
 
@@ -363,18 +256,12 @@ struct TodayView: View {
             return
         }
 
-        let snapshot = WidgetSnapshot(
+        let snapshot = WidgetSnapshot.today(
             dayKey: dayKey,
-            progressCompleted: completedCount,
-            progressTotal: totalCount,
+            session: todaySession,
+            seedItems: seedItems,
             streakCount: streakCount,
-            displayExpression: nextSeedItem.map {
-                WidgetSnapshotExpression(
-                    itemID: $0.id,
-                    plainExpression: $0.plainExpression,
-                    upgradedExpression: $0.upgradedExpression
-                )
-            },
+            dailyGoal: dailyTargetCount,
             generatedAt: clock.now()
         )
 

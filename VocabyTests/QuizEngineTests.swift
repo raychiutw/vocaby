@@ -66,7 +66,7 @@ final class QuizEngineTests: XCTestCase {
             selectedLevel: .basic,
             supportLanguageCode: "zh-Hant",
             learnedItemIDs: [],
-            configuration: .daily,
+            configuration: PracticeCenterPlan.defaultConfiguration,
             using: &firstRandom
         )
         let second = PracticeCenterPlan(
@@ -74,7 +74,7 @@ final class QuizEngineTests: XCTestCase {
             selectedLevel: .basic,
             supportLanguageCode: "zh-Hant",
             learnedItemIDs: [],
-            configuration: .daily,
+            configuration: PracticeCenterPlan.defaultConfiguration,
             using: &secondRandom
         )
 
@@ -93,10 +93,6 @@ final class QuizEngineTests: XCTestCase {
                 retriesWrongAnswers: true
             )
         )
-    }
-
-    func testDailyPracticeIsUntimed() {
-        XCTAssertEqual(PracticeConfiguration.daily.timeLimitSeconds, 0)
     }
 
     func testPracticeSelectionUsesLearnedItemsThenFillsFromLocalSeed() {
@@ -274,56 +270,6 @@ final class QuizEngineTests: XCTestCase {
         )
 
         XCTAssertGreaterThan(Set(questions.compactMap(\.correctOptionIndex)).count, 1)
-    }
-
-    func testDailyPracticePlanLearnsNewItemsAndQuizzesAllUnansweredInSessionOrder() {
-        let items = makeItems(count: 3)
-        let answeredAt = Date(timeIntervalSince1970: 100)
-        let session = DailySession(dayKey: "2026-07-10", targetItemCount: 3)
-        session.items = [
-            DailySessionItem(itemID: items[2].id, position: 2, answeredAt: answeredAt),
-            DailySessionItem(itemID: items[1].id, position: 1, isReviewFill: true),
-            DailySessionItem(itemID: items[0].id, position: 0)
-        ]
-
-        let plan = DailyPracticePlan(
-            session: session,
-            seedItems: items,
-            supportLanguageCode: "zh-Hant"
-        )
-
-        XCTAssertEqual(plan.learnItems.map(\.id), [items[0].id])
-        XCTAssertEqual(plan.quizQuestions.map(\.itemID), [items[0].id, items[1].id])
-        XCTAssertEqual(plan.runID, session.dayKey)
-
-        session.items.first { $0.itemID == items[0].id }?.answeredAt = answeredAt
-        let resumedPlan = DailyPracticePlan(
-            session: session,
-            seedItems: items,
-            supportLanguageCode: "zh-Hant"
-        )
-
-        XCTAssertEqual(resumedPlan.quizQuestions.map(\.itemID), [items[1].id])
-        XCTAssertEqual(resumedPlan.runID, plan.runID)
-    }
-
-    func testDailyPracticePlanFailsClosedWhenUnansweredItemIsMissingFromSeed() {
-        let items = makeItems(count: 1)
-        let session = DailySession(dayKey: "2026-07-10", targetItemCount: 2)
-        session.items = [
-            DailySessionItem(itemID: items[0].id, position: 0),
-            DailySessionItem(itemID: "missing-seed", position: 1, isReviewFill: true)
-        ]
-
-        let plan = DailyPracticePlan(
-            session: session,
-            seedItems: items,
-            supportLanguageCode: "zh-Hant"
-        )
-
-        XCTAssertEqual(plan.missingSeedItemIDs, ["missing-seed"])
-        XCTAssertTrue(plan.learnItems.isEmpty)
-        XCTAssertTrue(plan.quizQuestions.isEmpty)
     }
 
     func testReviewPracticePlanPreservesDueOrderAndUsesFullSeedForMixedQuestions() {

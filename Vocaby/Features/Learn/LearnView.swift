@@ -32,9 +32,8 @@ struct LearnView: View {
     @State private var errorMessage: String?
     @State private var synthesizer = AVSpeechSynthesizer()
 
-    private let seedLoader = SeedLoader()
     private let persistence = ProgressPersistenceService()
-    private let dailyPlanner = DailyPlanner()
+    private let dailySessionService = DailySessionService()
     private let scheduler = ReviewScheduler()
     private let preferencesStore = UserPreferencesStore()
     private let swipeThreshold: CGFloat = 96
@@ -178,54 +177,39 @@ struct LearnView: View {
     private func loadItems() {
         do {
             let preferences = preferencesStore.read()
-            let seed = try seedLoader.loadBundledSeed()
+            let seed = try SeedCatalog.bundled.items()
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
             let dayKey = DayKeyService().dayKey(for: clock.now())
-            let descriptor = FetchDescriptor<DailySession>(predicate: #Predicate { $0.dayKey == dayKey })
-            let dailySession: DailySession
-            if let existing = try modelContext.fetch(descriptor).first {
-                dailySession = existing
-            } else {
-                let selection = dailyPlanner.plan(
-                    seed: seed,
-                    progressRows: progressRows,
-                    preferences: preferences,
-                    now: clock.now()
-                )
-                dailySession = try persistence.session(
-                    for: dayKey,
-                    itemIDs: selection.itemIDs,
-                    reviewItemIDs: Set(selection.reviewItemIDs),
-                    in: modelContext
-                )
-                try modelContext.save()
+
+            // 新字的 firstSeenAt 在答題時才由 ReviewScheduler 設定,取得 session 時不標記
+            guard let dailySession = try dailySessionService.sessionForToday(
+                dayKey: dayKey,
+                seed: seed,
+                progressRows: progressRows,
+                preferences: preferences,
+                now: clock.now(),
+                in: modelContext
+            ) else {
+                session = nil
+                items = []
+                currentIndex = 0
+                return
             }
             session = dailySession
-            let seedByID = Dictionary(uniqueKeysWithValues: seed.map { ($0.id, $0) })
-            var pendingItems = dailySession.items
-                .filter { $0.answeredAt == nil }
-                .sorted { $0.position < $1.position }
 
-            if pendingItems.isEmpty {
-                let usedIDs = Set(dailySession.items.map(\.itemID))
-                let learnedIDs = Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID })
-                let extraItems = seed
-                    .filter { $0.level == preferences.selectedLevel && !usedIDs.contains($0.id) && !learnedIDs.contains($0.id) }
-                    .prefix(10)
-                let startPosition = dailySession.items.map(\.position).max().map { $0 + 1 } ?? 0
-                for (offset, item) in extraItems.enumerated() {
-                    dailySession.items.append(DailySessionItem(itemID: item.id, position: startPosition + offset))
-                }
-                if !extraItems.isEmpty {
-                    dailySession.targetItemCount = dailySession.items.count
-                    dailySession.completedAt = nil
-                    try modelContext.save()
-                    pendingItems = dailySession.items
-                        .filter { $0.answeredAt == nil }
-                        .sorted { $0.position < $1.position }
-                }
+            var pendingItems = pending(in: dailySession)
+            if pendingItems.isEmpty,
+               try dailySessionService.appendExtraItems(
+                   to: dailySession,
+                   seed: seed,
+                   progressRows: progressRows,
+                   level: preferences.selectedLevel,
+                   in: modelContext
+               ) {
+                pendingItems = pending(in: dailySession)
             }
 
+            let seedByID = Dictionary(uniqueKeysWithValues: seed.map { ($0.id, $0) })
             items = pendingItems
                 .prefix(10)
                 .compactMap { seedByID[$0.itemID] }
@@ -234,6 +218,12 @@ struct LearnView: View {
         } catch {
             errorMessage = String(localized: "learn.error.load")
         }
+    }
+
+    private func pending(in session: DailySession) -> [DailySessionItem] {
+        session.items
+            .filter { $0.answeredAt == nil }
+            .sorted { $0.position < $1.position }
     }
 
     private func restart() {

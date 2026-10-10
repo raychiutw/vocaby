@@ -3,56 +3,6 @@ import XCTest
 @testable import Vocaby
 
 final class PersistenceGuardTests: XCTestCase {
-    func testSessionGuardReusesExistingDayKey() throws {
-        let context = try makeContext()
-        let service = ProgressPersistenceService()
-
-        _ = try service.session(for: "2026-07-10", itemIDs: ["basic-001"], in: context)
-        _ = try service.session(for: "2026-07-10", itemIDs: ["basic-001"], in: context)
-
-        let sessions = try context.fetch(FetchDescriptor<DailySession>())
-        XCTAssertEqual(sessions.count, 1)
-        XCTAssertEqual(sessions.first?.dayKey, "2026-07-10")
-        XCTAssertEqual(sessions.first?.targetItemCount, 1)
-    }
-
-    func testSessionItemsAreCreatedInSelectionOrder() throws {
-        let context = try makeContext()
-        let service = ProgressPersistenceService()
-
-        let session = try service.session(
-            for: "2026-07-10",
-            itemIDs: ["basic-001", "basic-002", "basic-003"],
-            reviewItemIDs: ["basic-002"],
-            in: context
-        )
-
-        let items = session.items.sorted { $0.position < $1.position }
-        XCTAssertEqual(session.targetItemCount, 3)
-        XCTAssertEqual(items.map(\.itemID), ["basic-001", "basic-002", "basic-003"])
-        XCTAssertEqual(items.map(\.position), [0, 1, 2])
-        XCTAssertEqual(items.map(\.isReviewFill), [false, true, false])
-    }
-
-    func testSessionItemsAreNotReplacedForExistingSession() throws {
-        let context = try makeContext()
-        let service = ProgressPersistenceService()
-
-        _ = try service.session(
-            for: "2026-07-10",
-            itemIDs: ["basic-001", "basic-002"],
-            in: context
-        )
-        let existing = try service.session(
-            for: "2026-07-10",
-            itemIDs: ["basic-003", "basic-004"],
-            in: context
-        )
-
-        let items = existing.items.sorted { $0.position < $1.position }
-        XCTAssertEqual(items.map(\.itemID), ["basic-001", "basic-002"])
-    }
-
     func testCompletionCountsAnsweredAndCorrectSessionItems() {
         let answeredAt = date("2026-07-10T02:00:00Z")
         let session = DailySession(dayKey: "2026-07-10", targetItemCount: 3, completedAt: answeredAt)
@@ -64,29 +14,6 @@ final class PersistenceGuardTests: XCTestCase {
 
         XCTAssertEqual(session.completedItemCount, 2)
         XCTAssertEqual(session.correctItemCount, 1)
-    }
-
-    func testScheduledReviewCountIncludesOnlyAnsweredUnmasteredSessionItemsWithDueDates() {
-        let answeredAt = date("2026-07-10T02:00:00Z")
-        let session = DailySession(dayKey: "2026-07-10", targetItemCount: 3, completedAt: answeredAt)
-        session.items = [
-            DailySessionItem(itemID: "basic-001", position: 0, answeredAt: answeredAt, wasCorrect: true),
-            DailySessionItem(itemID: "basic-002", position: 1, answeredAt: answeredAt, wasCorrect: true),
-            DailySessionItem(itemID: "basic-003", position: 2)
-        ]
-        let progressRows = [
-            WordProgress(itemID: "basic-001", level: .basic, dueDayKey: "2026-07-11"),
-            WordProgress(
-                itemID: "basic-002",
-                level: .basic,
-                dueDayKey: "2026-07-11",
-                masteredAt: answeredAt
-            ),
-            WordProgress(itemID: "basic-003", level: .basic, dueDayKey: "2026-07-11"),
-            WordProgress(itemID: "outside-session", level: .basic, dueDayKey: "2026-07-11")
-        ]
-
-        XCTAssertEqual(session.scheduledReviewCount(from: progressRows), 1)
     }
 
     func testWordProgressGuardReusesExistingItemID() throws {
@@ -159,12 +86,18 @@ final class PersistenceGuardTests: XCTestCase {
             dueReviewItemIDs: scheduler.allDueItems(from: progressRows, at: DayKeyService().date(for: "2026-07-10")!).map(\.itemID),
             targetCount: 2
         )
-        _ = try persistenceService.session(
-            for: "2026-07-10",
-            itemIDs: selection.itemIDs,
-            reviewItemIDs: Set(selection.reviewItemIDs),
-            in: context
-        )
+        // session 只是這個情境的前置資料:依選字結果直接建立
+        let session = DailySession(dayKey: "2026-07-10", targetItemCount: selection.itemIDs.count)
+        context.insert(session)
+        for (position, itemID) in selection.itemIDs.enumerated() {
+            let item = DailySessionItem(
+                itemID: itemID,
+                position: position,
+                isReviewFill: selection.reviewItemIDs.contains(itemID)
+            )
+            context.insert(item)
+            session.items.append(item)
+        }
         _ = try persistenceService.wordProgress(for: "basic-new", level: .basic, in: context)
         try context.save()
 
@@ -244,7 +177,8 @@ final class PersistenceGuardTests: XCTestCase {
         )
         try context.save()
 
-        let attempts = try context.fetch(FetchDescriptor<PracticeAttemptRecord>())
+        // fetch 沒有保證順序(兩筆是一起存的);依作答時間排序才是確定的
+        let attempts = try context.fetch(FetchDescriptor<PracticeAttemptRecord>()).sorted { $0.answeredAt < $1.answeredAt }
         XCTAssertEqual(attempts.count, 2)
         XCTAssertEqual(Set(attempts.map(\.id)).count, 2)
         XCTAssertEqual(attempts.map(\.runID), ["extra-001", "extra-001"])

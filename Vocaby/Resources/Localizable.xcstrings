@@ -1248,38 +1248,6 @@
         }
       }
     },
-    "practice.completion.scheduled.format" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld expressions scheduled for review."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已安排 %lld 個表達進入複習。"
-          }
-        }
-      }
-    },
-    "practice.completion.summary.format" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld of %lld correct."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "答對 %lld／%lld 題。"
-          }
-        }
-      }
-    },
     "practice.correct" : {
       "localizations" : {
         "en" : {
@@ -1324,22 +1292,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正確答案"
-          }
-        }
-      }
-    },
-    "practice.learn.startQuiz" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start quiz"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開始測驗"
           }
         }
       }
@@ -1436,22 +1388,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "播放發音"
-          }
-        }
-      }
-    },
-    "practice.review.button" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Review due words"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "複習到期項目"
           }
         }
       }

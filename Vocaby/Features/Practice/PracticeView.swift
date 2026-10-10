@@ -3,45 +3,6 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-struct DailyPracticePlan {
-    let runID: String
-    let missingSeedItemIDs: [String]
-    let learnItems: [VocabularySeedItem]
-    let quizQuestions: [QuizQuestion]
-
-    init(
-        session: DailySession,
-        seedItems: [VocabularySeedItem],
-        supportLanguageCode: String
-    ) {
-        runID = session.dayKey
-
-        let seedByID = Dictionary(uniqueKeysWithValues: seedItems.map { ($0.id, $0) })
-        let unansweredItems = session.items
-            .filter { $0.answeredAt == nil }
-            .sorted { $0.position < $1.position }
-        missingSeedItemIDs = unansweredItems
-            .map(\.itemID)
-            .filter { seedByID[$0] == nil }
-
-        guard missingSeedItemIDs.isEmpty else {
-            learnItems = []
-            quizQuestions = []
-            return
-        }
-
-        learnItems = unansweredItems
-            .filter { !$0.isReviewFill }
-            .compactMap { seedByID[$0.itemID] }
-        quizQuestions = QuizEngine().makeQuestions(
-            for: unansweredItems.compactMap { seedByID[$0.itemID] },
-            candidates: seedItems,
-            mode: .mixed,
-            supportLanguageCode: supportLanguageCode
-        )
-    }
-}
-
 private struct QuizShakeEffect: GeometryEffect {
     var animatableData: CGFloat
 
@@ -156,8 +117,6 @@ struct PracticeCenterView: View {
     let seedItems: [VocabularySeedItem]
     let selectedLevel: VocabularyLevel
     let supportLanguageCode: String
-    let startsImmediately: Bool
-    let onUpdate: () -> Void
 
     @State private var configuration = PracticeCenterPlan.defaultConfiguration
     @State private var activePlan: PracticeCenterPlan?
@@ -168,15 +127,11 @@ struct PracticeCenterView: View {
     init(
         seedItems: [VocabularySeedItem],
         selectedLevel: VocabularyLevel,
-        supportLanguageCode: String,
-        startsImmediately: Bool = false,
-        onUpdate: @escaping () -> Void = {}
+        supportLanguageCode: String
     ) {
         self.seedItems = seedItems
         self.selectedLevel = selectedLevel
         self.supportLanguageCode = supportLanguageCode
-        self.startsImmediately = startsImmediately
-        self.onUpdate = onUpdate
     }
 
     private var hasEligibleItems: Bool {
@@ -211,11 +166,6 @@ struct PracticeCenterView: View {
             }
         }
         .navigationTitle("practice.center.title")
-        .task {
-            if startsImmediately, activePlan == nil {
-                startRun()
-            }
-        }
     }
 
     private var setupForm: some View {
@@ -301,7 +251,6 @@ struct PracticeCenterView: View {
             at: clock.now(),
             in: modelContext
         )
-        onUpdate()
     }
 }
 
@@ -753,173 +702,4 @@ struct QuizRunView<Completion: View>: View {
             pronunciation: pronunciation
         ))
     }
-}
-
-struct DailyPracticeView: View {
-    @Environment(\.appClock) private var clock
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-
-    let session: DailySession
-    let seedItems: [VocabularySeedItem]
-    let supportLanguageCode: String
-    let streakCount: Int
-    let scheduledReviewCount: Int
-    let dueReviewCount: Int
-    let onReview: () -> Void
-    let onUpdate: () -> Void
-
-    @State private var learnIndex = 0
-    @State private var speechSynthesizer = AVSpeechSynthesizer()
-
-    private let reviewScheduler = ReviewScheduler()
-
-    var body: some View {
-        let plan = DailyPracticePlan(
-            session: session,
-            seedItems: seedItems,
-            supportLanguageCode: supportLanguageCode
-        )
-
-        Group {
-            if !plan.missingSeedItemIDs.isEmpty {
-                List {
-                    Section {
-                        Label("today.load.error", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(AppTheme.wrongRed)
-                    }
-                }
-            } else if plan.learnItems.indices.contains(learnIndex) {
-                learnView(item: plan.learnItems[learnIndex], total: plan.learnItems.count)
-            } else {
-                QuizRunView(
-                    runID: plan.runID,
-                    questions: plan.quizQuestions,
-                    configuration: .daily,
-                    tint: AppTheme.accent,
-                    clock: clock,
-                    onAttempt: persistAnswer
-                ) {
-                    completionContent
-                }
-            }
-        }
-        .navigationTitle("practice.title")
-    }
-
-    private func learnView(item: VocabularySeedItem, total: Int) -> some View {
-        List {
-            Section {
-                Text("\(learnIndex + 1)/\(total)")
-                    .font(.headline.monospacedDigit())
-            }
-
-            VocabularyEntryContentView(
-                item: item,
-                senseID: item.primarySenseID,
-                supportLanguageCode: supportLanguageCode,
-                showsAdditionalSenses: true,
-                synthesizer: speechSynthesizer
-            )
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                learnIndex += 1
-            } label: {
-                Group {
-                    if learnIndex + 1 == total {
-                        Text("practice.learn.startQuiz")
-                    } else {
-                        Text("practice.next")
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .prominentActionStyle(tint: AppTheme.accent)
-            .controlSize(.large)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .bottomActionChrome()
-        }
-    }
-
-    @ViewBuilder
-    private var completionContent: some View {
-        Section {
-            Text(completionSummary)
-                .font(.title3.weight(.semibold))
-
-            if scheduledReviewCount > 0 {
-                Text(scheduledReviewSummary)
-                    .foregroundStyle(.secondary)
-            }
-        }
-
-        Section {
-            if dueReviewCount > 0 {
-                Button {
-                    dismiss()
-                    onReview()
-                } label: {
-                    Label("practice.review.button", systemImage: "arrow.triangle.2.circlepath")
-                        .frame(maxWidth: .infinity)
-                }
-                .controlSize(.large)
-            }
-
-            Button("common.done") {
-                dismiss()
-            }
-        }
-    }
-
-    private var completionSummary: String {
-        String.localizedStringWithFormat(
-            String(localized: "practice.completion.summary.format"),
-            session.correctItemCount,
-            session.completedItemCount
-        )
-    }
-
-    private var scheduledReviewSummary: String {
-        String.localizedStringWithFormat(
-            String(localized: "practice.completion.scheduled.format"),
-            scheduledReviewCount
-        )
-    }
-
-    private func persistAnswer(_ attempt: QuizAttempt) throws {
-        guard let seedItem = seedItems.first(where: { $0.id == attempt.question.itemID }) else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-
-        let now = clock.now()
-        var context = ReviewAnswerContext.dailyPractice
-        if attempt.isFirstAttempt {
-            guard let sessionItem = session.items.first(where: {
-                $0.itemID == attempt.question.itemID && $0.answeredAt == nil
-            }) else {
-                throw CocoaError(.fileReadCorruptFile)
-            }
-            let answer = attempt.recordedAnswer(level: seedItem.level)
-
-            // 這些修改與 recorder 寫入同一個 context,由 recorder 一次存檔;失敗時一起回滾
-            sessionItem.selectedOptionIndex = answer.selectedOptionIndex
-            sessionItem.wasCorrect = attempt.wasCorrect
-            sessionItem.answeredAt = now
-            context = sessionItem.reviewAnswerContext
-            if session.items.allSatisfy({ $0.answeredAt != nil }) {
-                session.completedAt = now
-            }
-        }
-
-        try AnswerRecorder(scheduler: reviewScheduler).record(
-            attempt.recordedAnswer(level: seedItem.level),
-            from: .dailySession(dayKey: session.dayKey, context: context),
-            at: now,
-            in: modelContext
-        )
-        onUpdate()
-    }
-
 }
