@@ -167,7 +167,7 @@ final class AnswerRecorderTests: XCTestCase {
             )
         )
 
+        // 只驗資料庫:iOS 26 的 rollback 不會還原既有實例在記憶體中的屬性值(iOS 27 會),所以不斷言 session.completedAt
         XCTAssertNil(try persisted(DailySession.self).first?.completedAt)
-        XCTAssertNil(session.completedAt)
     }
 }
