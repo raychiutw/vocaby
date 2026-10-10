@@ -22,6 +22,7 @@ enum AnswerSource {
 
 /// 記錄一次作答:套用排程、寫 quizResult 與 attempt,最後只 save 一次。
 /// 任何一步失敗都 rollback 整個 context(含呼叫端在呼叫前對同一 context 做的未存修改),不會留下半筆資料。
+/// 保證的是「沒有存進資料庫」;iOS 26 上,已存在的 model 實例仍可能保留記憶體中未存的修改值(iOS 27 會還原)。
 struct AnswerRecorder {
     private let persistence: ProgressPersistenceService
     private let scheduler: ReviewScheduler
