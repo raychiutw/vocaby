@@ -143,7 +143,7 @@ final class DailySelectionServiceTests: XCTestCase {
             )
         ]
         let dueReviewItemIDs = ReviewScheduler()
-            .allDueItems(from: progressRows, on: "2026-07-10")
+            .allDueItems(from: progressRows, at: DayKeyService().date(for: "2026-07-10")!)
             .map(\.itemID)
 
         let selection = DailySelectionService().selectItems(

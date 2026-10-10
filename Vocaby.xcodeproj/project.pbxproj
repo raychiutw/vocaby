@@ -35,7 +35,6 @@
 		000000000000000000000419 /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031B /* PracticeView.swift */; };
 		00000000000000000000041A /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031C /* ThirdPartyNotices.txt */; };
 		00000000000000000000041B /* VocabularyEntryContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031D /* VocabularyEntryContentView.swift */; };
-		00000000000000000000041C /* PracticeProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031E /* PracticeProgressService.swift */; };
 		00000000000000000000041D /* LearningChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000031F /* LearningChrome.swift */; };
 		000000000000000000000420 /* DayKeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000320 /* DayKeyServiceTests.swift */; };
 		000000000000000000000421 /* VocabularySeedValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000321 /* VocabularySeedValidationTests.swift */; };
@@ -59,7 +58,14 @@
 		200000000000000000000404 /* SM2Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000304 /* SM2Tests.swift */; };
 		200000000000000000000408 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000305 /* AchievementEngine.swift */; };
 		20000000000000000000040A /* AchievementEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000306 /* AchievementEngineTests.swift */; };
+		25A848E03FC77506D28CEF00 /* AppClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF41024F8025D2704E6363E5 /* AppClock.swift */; };
+		26CA39D57512168D55286230 /* AnswerRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */; };
+		3A180E93B12E084A67CE9BA8 /* AnswerRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */; };
+		3B2CDB3C64D49DD9AD6832A9 /* DailyPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3D2862E6057A6E8EEAF47F /* DailyPlanner.swift */; };
+		5348B8011A11095BDDBD2CE8 /* AppClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */; };
+		8DCB911E3CD6E32A1336723E /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF01F3B5E93A8C20F643B8C5 /* AppLanguage.swift */; };
 		CD55F7838355B445F2414882 /* AppearanceScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */; };
+		FE583A49171E432A103EED4C /* DailyPlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10FB948D56C44774D903105 /* DailyPlannerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -134,7 +140,6 @@
 		00000000000000000000031B /* PracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
 		00000000000000000000031C /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		00000000000000000000031D /* VocabularyEntryContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyEntryContentView.swift; sourceTree = "<group>"; };
-		00000000000000000000031E /* PracticeProgressService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeProgressService.swift; sourceTree = "<group>"; };
 		00000000000000000000031F /* LearningChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningChrome.swift; sourceTree = "<group>"; };
 		000000000000000000000320 /* DayKeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayKeyServiceTests.swift; sourceTree = "<group>"; };
 		000000000000000000000321 /* VocabularySeedValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularySeedValidationTests.swift; sourceTree = "<group>"; };
@@ -151,6 +156,7 @@
 		000000000000000000000330 /* VocabyWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabyWidget.swift; sourceTree = "<group>"; };
 		000000000000000000000331 /* VocabyWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VocabyWidget.entitlements; sourceTree = "<group>"; };
 		000000000000000000000332 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnswerRecorder.swift; sourceTree = "<group>"; };
 		200000000000000000000301 /* LearnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnView.swift; sourceTree = "<group>"; };
 		200000000000000000000302 /* LearningProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningProgressView.swift; sourceTree = "<group>"; };
 		200000000000000000000303 /* SM2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SM2.swift; sourceTree = "<group>"; };
@@ -158,7 +164,13 @@
 		200000000000000000000305 /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
 		200000000000000000000306 /* AchievementEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngineTests.swift; sourceTree = "<group>"; };
 		96D6963B45F9B526D5E6E835 /* VocabyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VocabyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnswerRecorderTests.swift; sourceTree = "<group>"; };
+		AF01F3B5E93A8C20F643B8C5 /* AppLanguage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppLanguage.swift; sourceTree = "<group>"; };
+		BD3D2862E6057A6E8EEAF47F /* DailyPlanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyPlanner.swift; sourceTree = "<group>"; };
+		E10FB948D56C44774D903105 /* DailyPlannerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyPlannerTests.swift; sourceTree = "<group>"; };
 		F4487D8507AB04294657BE21 /* AppearanceScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceScreenshotTests.swift; sourceTree = "<group>"; };
+		FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppClockTests.swift; sourceTree = "<group>"; };
+		FF41024F8025D2704E6363E5 /* AppClock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppClock.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -339,9 +351,12 @@
 				000000000000000000000311 /* WidgetSnapshotWriter.swift */,
 				000000000000000000000312 /* NotificationScheduler.swift */,
 				000000000000000000000313 /* UserPreferencesStore.swift */,
-				00000000000000000000031E /* PracticeProgressService.swift */,
 				200000000000000000000303 /* SM2.swift */,
 				200000000000000000000305 /* AchievementEngine.swift */,
+				FF41024F8025D2704E6363E5 /* AppClock.swift */,
+				014DA1718296DE6AE81B7317 /* AnswerRecorder.swift */,
+				BD3D2862E6057A6E8EEAF47F /* DailyPlanner.swift */,
+				AF01F3B5E93A8C20F643B8C5 /* AppLanguage.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -388,6 +403,9 @@
 				00000000000000000000032B /* QuizEngineTests.swift */,
 				200000000000000000000304 /* SM2Tests.swift */,
 				200000000000000000000306 /* AchievementEngineTests.swift */,
+				FD481C97A3CA832CEF2BA9E6 /* AppClockTests.swift */,
+				AC511EA46C3E9CF607781A16 /* AnswerRecorderTests.swift */,
+				E10FB948D56C44774D903105 /* DailyPlannerTests.swift */,
 			);
 			path = VocabyTests;
 			sourceTree = "<group>";
@@ -635,12 +653,15 @@
 				000000000000000000000418 /* QuizEngine.swift in Sources */,
 				000000000000000000000419 /* PracticeView.swift in Sources */,
 				00000000000000000000041B /* VocabularyEntryContentView.swift in Sources */,
-				00000000000000000000041C /* PracticeProgressService.swift in Sources */,
 				00000000000000000000041D /* LearningChrome.swift in Sources */,
 				200000000000000000000401 /* LearnView.swift in Sources */,
 				200000000000000000000402 /* LearningProgressView.swift in Sources */,
 				200000000000000000000403 /* SM2.swift in Sources */,
 				200000000000000000000408 /* AchievementEngine.swift in Sources */,
+				25A848E03FC77506D28CEF00 /* AppClock.swift in Sources */,
+				3A180E93B12E084A67CE9BA8 /* AnswerRecorder.swift in Sources */,
+				3B2CDB3C64D49DD9AD6832A9 /* DailyPlanner.swift in Sources */,
+				8DCB911E3CD6E32A1336723E /* AppLanguage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -662,6 +683,9 @@
 				00000000000000000000042B /* QuizEngineTests.swift in Sources */,
 				200000000000000000000404 /* SM2Tests.swift in Sources */,
 				20000000000000000000040A /* AchievementEngineTests.swift in Sources */,
+				5348B8011A11095BDDBD2CE8 /* AppClockTests.swift in Sources */,
+				26CA39D57512168D55286230 /* AnswerRecorderTests.swift in Sources */,
+				FE583A49171E432A103EED4C /* DailyPlannerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

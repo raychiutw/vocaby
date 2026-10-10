@@ -18,6 +18,7 @@ enum LearnGrade: Int {
 }
 
 struct LearnView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @State private var items: [VocabularySeedItem] = []
@@ -33,7 +34,7 @@ struct LearnView: View {
 
     private let seedLoader = SeedLoader()
     private let persistence = ProgressPersistenceService()
-    private let selectionService = DailySelectionService()
+    private let dailyPlanner = DailyPlanner()
     private let scheduler = ReviewScheduler()
     private let preferencesStore = UserPreferencesStore()
     private let swipeThreshold: CGFloat = 96
@@ -132,6 +133,7 @@ struct LearnView: View {
         guard let item = currentItem else { return }
 
         do {
+            let now = clock.now()
             let progress = try persistence.wordProgress(for: item.id, level: item.level, in: modelContext)
             if grade == .saved {
                 progress.isSaved = true
@@ -140,15 +142,15 @@ struct LearnView: View {
             scheduler.applyAnswer(
                 to: progress,
                 quality: grade.rawValue,
-                answeredAt: Date(),
+                answeredAt: now,
                 context: .dailyPractice
             )
             if let sessionItem = session?.items.first(where: { $0.itemID == item.id && $0.answeredAt == nil }) {
-                sessionItem.answeredAt = Date()
+                sessionItem.answeredAt = now
                 sessionItem.wasCorrect = grade.rawValue >= 3
             }
             if let session, session.items.allSatisfy({ $0.answeredAt != nil }) {
-                session.completedAt = Date()
+                session.completedAt = now
             }
             try modelContext.save()
 
@@ -178,21 +180,17 @@ struct LearnView: View {
             let preferences = preferencesStore.read()
             let seed = try seedLoader.loadBundledSeed()
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            let dayKey = DayKeyService().dayKey(for: Date())
+            let dayKey = DayKeyService().dayKey(for: clock.now())
             let descriptor = FetchDescriptor<DailySession>(predicate: #Predicate { $0.dayKey == dayKey })
             let dailySession: DailySession
             if let existing = try modelContext.fetch(descriptor).first {
                 dailySession = existing
             } else {
-                let dueIDs = scheduler.allDueItems(from: progressRows, at: Date()).map(\.itemID)
-                let selection = selectionService.selectItems(
-                    from: seed,
-                    selectedLevel: preferences.selectedLevel,
-                    contentLanguageCode: "en",
-                    supportLanguageCode: "zh-Hant",
-                    firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
-                    dueReviewItemIDs: dueIDs,
-                    targetCount: preferences.dailyGoal
+                let selection = dailyPlanner.plan(
+                    seed: seed,
+                    progressRows: progressRows,
+                    preferences: preferences,
+                    now: clock.now()
                 )
                 dailySession = try persistence.session(
                     for: dayKey,

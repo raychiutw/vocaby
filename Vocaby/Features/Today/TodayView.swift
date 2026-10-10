@@ -4,6 +4,7 @@ import UIKit
 import WidgetKit
 
 struct TodayView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.modelContext) private var modelContext
     @State private var isShowingPractice = false
     @State private var isShowingExtraPractice = false
@@ -18,11 +19,11 @@ struct TodayView: View {
     let onReview: () -> Void
     let onPractice: () -> Void
 
-    private let contentLanguageCode = "en"
-    private let supportLanguageCode = "zh-Hant"
+    private let contentLanguageCode = AppLanguage.content
+    private let supportLanguageCode = AppLanguage.support
     private var dailyTargetCount: Int { preferencesStore.read().dailyGoal }
     private let dayKeyService = DayKeyService()
-    private let dailySelectionService = DailySelectionService()
+    private let dailyPlanner = DailyPlanner()
     private let persistenceService = ProgressPersistenceService()
     private let preferencesStore = UserPreferencesStore()
     private let reviewScheduler = ReviewScheduler()
@@ -228,12 +229,12 @@ struct TodayView: View {
     private func refreshToday() {
         do {
             try loadSeedIfNeeded()
-            let dayKey = dayKeyService.dayKey(for: Date())
+            let dayKey = dayKeyService.dayKey(for: clock.now())
             let sessions = try modelContext.fetch(FetchDescriptor<DailySession>())
             todaySession = sessions.first { $0.dayKey == dayKey }
 
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: Date())
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: clock.now())
             scheduledReviewCount = todaySession?.scheduledReviewCount(from: progressRows) ?? 0
             streakCount = streakService.streakCount(from: sessions, currentDayKey: dayKey)
             if let todaySession {
@@ -245,7 +246,7 @@ struct TodayView: View {
                     : nil
             } else {
                 statusMessage = selectionStatusMessage(
-                    for: dailySelection(from: progressRows, on: dayKey).status
+                    for: dailySelection(from: progressRows).status
                 )
             }
             writeWidgetSnapshot(dayKey: dayKey)
@@ -257,9 +258,9 @@ struct TodayView: View {
     private func startPractice() {
         do {
             try loadSeedIfNeeded()
-            let dayKey = dayKeyService.dayKey(for: Date())
+            let dayKey = dayKeyService.dayKey(for: clock.now())
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: Date())
+            dueReviewCount = reviewScheduler.dueCount(from: progressRows, at: clock.now())
 
             if let existingSession = try existingSession(for: dayKey), !existingSession.items.isEmpty {
                 try markNewItemsFirstSeen(in: existingSession)
@@ -276,7 +277,7 @@ struct TodayView: View {
                 return
             }
 
-            let result = dailySelection(from: progressRows, on: dayKey)
+            let result = dailySelection(from: progressRows)
 
             guard !result.itemIDs.isEmpty else {
                 statusMessage = selectionStatusMessage(for: result.status)
@@ -301,19 +302,12 @@ struct TodayView: View {
         }
     }
 
-    private func dailySelection(from progressRows: [WordProgress], on dayKey: String) -> DailySelectionResult {
-        let dueReviewItemIDs = reviewScheduler
-            .allDueItems(from: progressRows, at: Date())
-            .map(\.itemID)
-
-        return dailySelectionService.selectItems(
-            from: seedItems,
-            selectedLevel: preferencesStore.read().selectedLevel,
-            contentLanguageCode: contentLanguageCode,
-            supportLanguageCode: supportLanguageCode,
-            firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
-            dueReviewItemIDs: dueReviewItemIDs,
-            targetCount: dailyTargetCount
+    private func dailySelection(from progressRows: [WordProgress]) -> DailySelectionResult {
+        dailyPlanner.plan(
+            seed: seedItems,
+            progressRows: progressRows,
+            preferences: preferencesStore.read(),
+            now: clock.now()
         )
     }
 
@@ -381,7 +375,7 @@ struct TodayView: View {
                     upgradedExpression: $0.upgradedExpression
                 )
             },
-            generatedAt: Date()
+            generatedAt: clock.now()
         )
 
         try? widgetSnapshotWriter.write(snapshot)

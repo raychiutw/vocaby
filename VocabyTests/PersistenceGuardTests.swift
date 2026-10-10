@@ -156,7 +156,7 @@ final class PersistenceGuardTests: XCTestCase {
             contentLanguageCode: "en",
             supportLanguageCode: "zh-Hant",
             firstSeenItemIDs: Set(progressRows.compactMap { $0.firstSeenAt == nil ? nil : $0.itemID }),
-            dueReviewItemIDs: scheduler.allDueItems(from: progressRows, on: "2026-07-10").map(\.itemID),
+            dueReviewItemIDs: scheduler.allDueItems(from: progressRows, at: DayKeyService().date(for: "2026-07-10")!).map(\.itemID),
             targetCount: 2
         )
         _ = try persistenceService.session(
@@ -200,15 +200,19 @@ final class PersistenceGuardTests: XCTestCase {
             itemID: "basic-001",
             selectedOptionIndex: 1,
             correctOptionIndex: 1,
+            answeredAt: Date(timeIntervalSince1970: 100),
             in: context
         )
+        try context.save()
         _ = try service.quizResult(
             dayKey: "2026-07-10",
             itemID: "basic-001",
             selectedOptionIndex: 0,
             correctOptionIndex: 1,
+            answeredAt: Date(timeIntervalSince1970: 200),
             in: context
         )
+        try context.save()
 
         let results = try context.fetch(FetchDescriptor<QuizResult>())
         XCTAssertEqual(results.count, 1)
@@ -220,52 +224,31 @@ final class PersistenceGuardTests: XCTestCase {
         let context = try makeContext()
         let service = ProgressPersistenceService()
 
-        _ = try service.practiceAttempt(
+        _ = service.practiceAttempt(
             runID: "extra-001",
             itemID: "basic-001",
             level: .basic,
             mode: .meaningChoice,
             wasCorrect: false,
+            answeredAt: Date(timeIntervalSince1970: 100),
             in: context
         )
-        _ = try service.practiceAttempt(
+        _ = service.practiceAttempt(
             runID: "extra-001",
             itemID: "basic-001",
             level: .basic,
             mode: .meaningChoice,
             wasCorrect: true,
+            answeredAt: Date(timeIntervalSince1970: 200),
             in: context
         )
+        try context.save()
 
         let attempts = try context.fetch(FetchDescriptor<PracticeAttemptRecord>())
         XCTAssertEqual(attempts.count, 2)
         XCTAssertEqual(Set(attempts.map(\.id)).count, 2)
         XCTAssertEqual(attempts.map(\.runID), ["extra-001", "extra-001"])
         XCTAssertEqual(attempts.map(\.wasCorrect), [false, true])
-    }
-
-    func testPracticeProgressCountsEachCorrectVocabularyItemOnceByLevel() {
-        var intermediate = seedItem("intermediate-001", sortOrder: 1)
-        intermediate.level = .intermediate
-        let seedItems = [
-            seedItem("basic-001", sortOrder: 1),
-            seedItem("basic-002", sortOrder: 2),
-            intermediate
-        ]
-        let attempts = [
-            PracticeAttemptRecord(runID: "run-1", itemID: "basic-001", level: .basic, mode: .meaningChoice, wasCorrect: false),
-            PracticeAttemptRecord(runID: "run-1", itemID: "basic-001", level: .basic, mode: .meaningChoice, wasCorrect: true),
-            PracticeAttemptRecord(runID: "run-2", itemID: "basic-001", level: .basic, mode: .spelling, wasCorrect: true),
-            PracticeAttemptRecord(runID: "run-2", itemID: "intermediate-001", level: .intermediate, mode: .listeningChoice, wasCorrect: true),
-            PracticeAttemptRecord(runID: "run-2", itemID: "removed-item", level: .advanced, mode: .meaningChoice, wasCorrect: true)
-        ]
-
-        let summary = PracticeProgressService().summary(seedItems: seedItems, attempts: attempts)
-
-        XCTAssertEqual(summary.total, VocabularyPracticeProgress(correctItemCount: 2, totalItemCount: 3))
-        XCTAssertEqual(summary.progress(for: .basic), VocabularyPracticeProgress(correctItemCount: 1, totalItemCount: 2))
-        XCTAssertEqual(summary.progress(for: .intermediate), VocabularyPracticeProgress(correctItemCount: 1, totalItemCount: 1))
-        XCTAssertEqual(summary.progress(for: .advanced), VocabularyPracticeProgress(correctItemCount: 0, totalItemCount: 0))
     }
 
     private func makeContext() throws -> ModelContext {

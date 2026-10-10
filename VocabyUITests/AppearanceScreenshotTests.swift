@@ -4,6 +4,7 @@ import XCTest
 /// 輸出到 `VOCABY_SHOT_DIR`,由 tools/capture_screenshots.sh 負責設定並比對基準圖。
 final class AppearanceScreenshotTests: XCTestCase {
     func testCaptureScreens() throws {
+        continueAfterFailure = false
         let env = ProcessInfo.processInfo.environment
         let appearance = try XCTUnwrap(env["VOCABY_APPEARANCE"], "VOCABY_APPEARANCE is not set")
         XCTAssertTrue(["light", "dark"].contains(appearance), "VOCABY_APPEARANCE 必須是 light 或 dark")
@@ -11,7 +12,8 @@ final class AppearanceScreenshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
         let app = XCUIApplication()
-        app.launchArguments = ["-AppleLanguages", "(zh-Hant)", "-AppleLocale", "zh_TW"]
+        // 固定「現在」(AppClock 的 DEBUG 鉤子),讓含日期的畫面(Progress)每次都一樣
+        app.launchArguments = ["-AppleLanguages", "(zh-Hant)", "-AppleLocale", "zh_TW", "-VOCABY_FIXED_NOW", "2026-07-10T09:00:00+08:00"]
         app.launch()
 
         func capture(_ name: String) throws {
@@ -28,6 +30,7 @@ final class AppearanceScreenshotTests: XCTestCase {
             let next = app.buttons[button]
             XCTAssertTrue(next.waitForExistence(timeout: 10), "\(step) 找不到「\(button)」")
             if let select { app.buttons[select].tap() }
+            settle()
             try capture(step)
             next.tap()
         }
@@ -36,6 +39,7 @@ final class AppearanceScreenshotTests: XCTestCase {
             let tab = app.buttons[title].firstMatch  // iOS 26 的 tab bar 不一定以 tabBars 暴露
             XCTAssertTrue(tab.waitForExistence(timeout: 120), "找不到 tab「\(title)」")
             tab.tap()
+            settle()
             try capture(name)
         }
 
@@ -49,15 +53,19 @@ final class AppearanceScreenshotTests: XCTestCase {
         settle()
         try capture("learn-revealed")
 
-        let grades = Array(repeating: "認識", count: 6) + Array(repeating: "收藏", count: 2) + Array(repeating: "不認識", count: 2)
+        // 以固定比例循環評分(認識 ×6、收藏 ×2、不認識 ×2),直到出現完成總結;一輪張數不寫死
+        let pattern = Array(repeating: "認識", count: 6) + Array(repeating: "收藏", count: 2) + Array(repeating: "不認識", count: 2)
         let again = app.buttons["再來一組"]
-        for grade in grades {
+        var graded = 0
+        while !again.exists {
+            XCTAssertLessThan(graded, 30, "評了 30 張仍沒有完成總結")
+            let grade = pattern[graded % pattern.count]
             let button = app.buttons[grade]
             XCTAssertTrue(button.waitForExistence(timeout: 30), "找不到評分按鈕「\(grade)」")
             button.tap()
+            graded += 1
             settle()
         }
-        XCTAssertTrue(again.waitForExistence(timeout: 30), "評分 \(grades.count) 張後沒有出現完成總結")
         try capture("learn-complete")
     }
 

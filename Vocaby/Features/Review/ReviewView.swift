@@ -2,14 +2,15 @@ import SwiftData
 import SwiftUI
 
 struct ReviewView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.modelContext) private var modelContext
     @State private var isShowingReview = false
     @State private var seedItems: [VocabularySeedItem] = []
     @State private var dueItems: [VocabularySeedItem] = []
     @State private var statusMessage: String?
 
-    private let contentLanguageCode = "en"
-    private let supportLanguageCode = "zh-Hant"
+    private let contentLanguageCode = AppLanguage.content
+    private let supportLanguageCode = AppLanguage.support
     private let dayKeyService = DayKeyService()
     private let reviewQueueService = ReviewQueueService()
     private let reviewScheduler = ReviewScheduler()
@@ -82,7 +83,7 @@ struct ReviewView: View {
             ReviewSessionView(
                 items: dueItems,
                 seedItems: seedItems,
-                dayKey: dayKeyService.dayKey(for: Date()),
+                dayKey: dayKeyService.dayKey(for: clock.now()),
                 supportLanguageCode: supportLanguageCode
             ) {
                 refreshReviewQueue()
@@ -94,9 +95,8 @@ struct ReviewView: View {
     private func refreshReviewQueue() {
         do {
             try loadSeedIfNeeded()
-            let dayKey = dayKeyService.dayKey(for: Date())
             let progressRows = try modelContext.fetch(FetchDescriptor<WordProgress>())
-            let dueProgressRows = reviewScheduler.dueItems(from: progressRows, at: Date(), limit: 20)
+            let dueProgressRows = reviewScheduler.dueItems(from: progressRows, at: clock.now(), limit: 20)
             dueItems = reviewQueueService.queuedItems(
                 from: seedItems,
                 dueProgressRows: dueProgressRows,
@@ -117,6 +117,7 @@ struct ReviewView: View {
 }
 
 private struct ReviewSessionView: View {
+    @Environment(\.appClock) private var clock
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -127,7 +128,6 @@ private struct ReviewSessionView: View {
     let onUpdate: () -> Void
 
     private let dayKeyService = DayKeyService()
-    private let persistenceService = ProgressPersistenceService()
     private let reviewScheduler = ReviewScheduler()
 
     var body: some View {
@@ -148,6 +148,7 @@ private struct ReviewSessionView: View {
                 retriesWrongAnswers: true
             ),
             tint: AppTheme.reviewAmber,
+            clock: clock,
             onAttempt: persistAnswer
         ) {
             completionContent
@@ -172,49 +173,13 @@ private struct ReviewSessionView: View {
             throw CocoaError(.fileReadCorruptFile)
         }
 
-        do {
-            let now = Date()
-            if attempt.isFirstAttempt {
-                let indices = attempt.question.persistenceIndices(
-                    for: attempt.submittedAnswer,
-                    wasCorrect: attempt.wasCorrect
-                )
-                guard let progress = try persistenceService.existingWordProgress(
-                    for: item.id,
-                    in: modelContext
-                ) else {
-                    throw CocoaError(.fileReadCorruptFile)
-                }
-                reviewScheduler.applyAnswer(
-                    to: progress,
-                    wasCorrect: attempt.wasCorrect,
-                    answeredAt: now,
-                    context: .review
-                )
-                _ = try persistenceService.quizResult(
-                    dayKey: dayKeyService.dayKey(for: now),
-                    itemID: item.id,
-                    selectedOptionIndex: indices.selected,
-                    correctOptionIndex: indices.correct,
-                    in: modelContext
-                )
-            }
-
-            _ = try persistenceService.practiceAttempt(
-                runID: dayKey,
-                itemID: item.id,
-                level: item.level,
-                mode: attempt.question.mode,
-                wasCorrect: attempt.wasCorrect,
-                in: modelContext
-            )
-            if modelContext.hasChanges {
-                try modelContext.save()
-            }
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
+        let now = clock.now()
+        try AnswerRecorder(scheduler: reviewScheduler).record(
+            attempt.recordedAnswer(level: item.level),
+            from: .review(runID: dayKey, resultDayKey: dayKeyService.dayKey(for: now)),
+            at: now,
+            in: modelContext
+        )
     }
 }
 
