@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1 - 2026-10-18
+
+- GitHub 上的 README 改為產品介紹：說明每日目標與提醒、雙面學習卡、間隔複習、四種練習題型、學習進度與成就、內建詞庫與桌面小工具，並附上淺色與深色模式截圖。
+
 ## 2.0.0 - 2026-07-20
 
 - Reposition Vocaby as a combined word and expression learning app with five primary tabs.
